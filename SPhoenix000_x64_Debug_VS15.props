@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>D:\Code-Libraries\OpenGL\assimp-master\include;D:\Code-Libraries\OpenGL\glew-2.0.0\include;D:\Code-Libraries\OpenGL\glfw-master\include;D:\Code-Libraries\OpenGL\glm-master;D:\Code-Libraries\OpenGL\SOIL\src;$(IncludePath)</IncludePath>
+    <IncludePath>../common;D:\Code-Libraries\OpenGL\assimp-master\include;D:\Code-Libraries\OpenGL\glew-2.0.0\include;D:\Code-Libraries\OpenGL\glfw-master\include;D:\Code-Libraries\OpenGL\glm-master;D:\Code-Libraries\OpenGL\SOIL\src;$(IncludePath)</IncludePath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
   <ItemDefinitionGroup>

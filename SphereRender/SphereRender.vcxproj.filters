@@ -13,5 +13,53 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Shader">
+      <UniqueIdentifier>{015aa328-f893-4754-8c06-df511e06b5db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\SPhoenix">
+      <UniqueIdentifier>{61c0a334-7fb2-4b29-8d84-3689b6e2035f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\SPhoenix">
+      <UniqueIdentifier>{50cf2787-8338-49c2-aeb2-b02e17bf662a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="SphereRender.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\SPhoenix\core.cpp">
+      <Filter>Source Files\SPhoenix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\SPhoenix\Shader.cpp">
+      <Filter>Source Files\SPhoenix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\SPhoenix\Scene.cpp">
+      <Filter>Source Files\SPhoenix</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SphereRender.frag">
+      <Filter>Source Files\Shader</Filter>
+    </None>
+    <None Include="SphereRender.vert">
+      <Filter>Source Files\Shader</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\common\SPhoenix\global_macro.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\utils.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\core.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Shader.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Scene.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
