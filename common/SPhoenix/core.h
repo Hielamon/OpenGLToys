@@ -1,19 +1,8 @@
 #pragma once
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <algorithm>
-#include <memory>
-
-#include <glm\glm.hpp>
-#include <glm\gtc\matrix_transform.hpp>
-#include <glm\gtc\type_ptr.hpp>
-#include <glm\gtc\matrix_access.hpp>
-
-#include <SOIL.h>
+#include <SPhoenix/utils.h>
 #include <SPhoenix/Shader.h>
 #include <SPhoenix/Scene.h>
-#include <SPhoenix/utils.h>
 
 namespace SP
 {
@@ -61,17 +50,20 @@ namespace SP
 		~GLWindowBase()
 		{
 			if (mopened && mglfwWinPtr != nullptr)
+			{
 				glfwDestroyWindow(mglfwWinPtr);
+				mopened = false;
+			}
 		}
 
 		bool run()
 		{
-			if (prepare() == GL_FALSE)
+			/*if (prepare() == GL_FALSE)
 			{
 				return GL_FALSE;
-			}
+			}*/
 
-			while (!glfwWindowShouldClose(mglfwWinPtr))
+			while (!isShutdown())
 			{
 				runOnce();
 
@@ -82,11 +74,15 @@ namespace SP
 			return GL_TRUE;
 		}
 
-	protected:
-		virtual bool prepare() = 0;
-
 		virtual void runOnce() = 0;
 
+		virtual bool isShutdown()
+		{
+			return glfwWindowShouldClose(mglfwWinPtr);
+		}
+
+	protected:
+		//virtual bool prepare() = 0;
 
 	private:
 		/**GLFW window pointer*/
@@ -129,7 +125,6 @@ namespace SP
 
 			return window;
 		}
-		
 	};
 
 	/**Camera class : execute the rendering loop*/
@@ -139,32 +134,71 @@ namespace SP
 		Camera(int width, int height, const std::string &camName = "Untitled")
 			: GLWindowBase(camName, width, height)
 		{
+			mviewMatrix = glm::mat4(1.0f);
+
+			mfovy = glm::radians(45.f);
+			maspect = 1.0f;
+			mzNear = 0.01;
+			mzFar = 100.f;
+
+			//mprojectionMatrix = glm::mat4(1.0f);
+			mprojectionMatrix = glm::perspective(mfovy, maspect, mzNear, mzFar);
 		}
 
 		~Camera(){}
 
-		/***/
-		void addScene(Scene &scene)
+		/**Set a scene to show mass*/
+		GLuint addScene(Scene &scene)
 		{
 			SceneUtil sceneUtil(scene);
 			mvSceneUtil.push_back(sceneUtil);
+			return mvSceneUtil.size() - 1;
+		}
+
+		void setFrustum(float fovyDeg = 45.f, float aspect = 1.0, float zNear = 0.01, float zFar = 100.f)
+		{
+			mfovy = glm::radians(fovyDeg);
+			maspect = aspect;
+			mzNear = zNear;
+			mzFar = zFar;
+
+			mprojectionMatrix = glm::perspective(mfovy, maspect, mzNear, mzFar);
 		}
 
 	protected:
-		virtual bool prepare()
+		/*virtual bool prepare()
 		{
+			if (mvSceneUtil.empty())
+			{
+				SP_CERR("There isn't any scene for preparation");
+				return GL_FALSE;
+			}
+
 			return GL_TRUE;
-		}
+		}*/
 
 		virtual void runOnce()
 		{
 			for (size_t i = 0; i < mvSceneUtil.size(); i++)
 			{
+				GLuint programID = mvSceneUtil[i].getProgramID();
+
+				GLint projectionLoc = glGetUniformLocation(programID, "projection");
+				glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(mprojectionMatrix));
+
+				GLint viewLoc = glGetUniformLocation(programID, "view");
+				glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(mviewMatrix));
+
 				mvSceneUtil[i].show();
 			}
 		}
 
 	private:
 		std::vector<SceneUtil> mvSceneUtil;
+
+		glm::mat4 mprojectionMatrix;
+		glm::mat4 mviewMatrix;
+
+		float mfovy, maspect, mzNear, mzFar;
 	};
 }

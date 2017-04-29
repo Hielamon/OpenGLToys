@@ -61,5 +61,8 @@
     <ClInclude Include="..\common\SPhoenix\Scene.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Geometry.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
