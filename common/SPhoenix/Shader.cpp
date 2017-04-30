@@ -3,36 +3,38 @@
 
 namespace SP
 {
+	ShaderCodes::ShaderCodes()
+	{
+		std::vector<std::string> fileNames;
+		_initCommon(fileNames);
+	}
+
 	ShaderCodes::ShaderCodes(const std::string &vertFilePath, const std::string &fragFilePath)
 	{
-		std::string fileName[2] = { vertFilePath, fragFilePath };
+		std::vector<std::string> fileNames = { vertFilePath, fragFilePath };
 
-		for (size_t i = 0; i < 2; i++)
-		{
-			std::string &shaderCode = mcodes[i], line = "";
-			std::ifstream shaderStream(fileName[i], std::ios::in);
-			if (!shaderStream.is_open())
-			{
-				SP_CERR("Failed to Open File: " + fileName[i]);
-				exit(-1);
-			}
-			while (std::getline(shaderStream, line))
-				shaderCode += "\n" + line;
-			shaderStream.close();
-		}
+		_initCommon(fileNames);
 	}
 
 	ShaderCodes::ShaderCodes(const std::string &vertFilePath, const std::string &fragFilePath, const std::string &geomFilePath)
 	{
-		std::string fileName[3] = { vertFilePath, fragFilePath, geomFilePath};
+		std::vector<std::string> fileNames = { vertFilePath, fragFilePath, geomFilePath};
 
-		for (size_t i = 0; i < 3; i++)
+		_initCommon(fileNames);
+	}
+
+	void ShaderCodes::_initCommon(std::vector<std::string> &filenames)
+	{
+		mcodes.resize(SHADER_KINDS);
+
+		for (size_t i = 0; i < filenames.size(); i++)
 		{
-			std::string &shaderCode = mcodes[i], line = "";
-			std::ifstream shaderStream(fileName[i], std::ios::in);
+			mcodes[i] = std::make_shared<std::string>();
+			std::string &shaderCode = *mcodes[i], line = "";
+			std::ifstream shaderStream(filenames[i], std::ios::in);
 			if (!shaderStream.is_open())
 			{
-				SP_CERR("Failed to Open File: " + fileName[i]);
+				SP_CERR("Failed to Open File: " + filenames[i]);
 				exit(-1);
 			}
 			while (std::getline(shaderStream, line))
@@ -41,21 +43,16 @@ namespace SP
 		}
 	}
 
-	std::string & ShaderCodes::operator[](size_t idx)
-	{
-		return mcodes[idx];
-	}
-
 	ShaderUtil::ShaderUtil(ShaderCodes &shaderCodes)
+		: ShaderCodes(shaderCodes)
 	{
 		std::vector<GLuint> shaderIDs;
 
 		for (size_t i = 0; i < SHADER_KINDS; i++)
 		{
-			std::string &code = shaderCodes[i];
-			if (!code.empty())
+			if (mcodes[i] != nullptr)
 			{
-				GLuint shaderID = _createAndCompile(code, (ShaderType)i);
+				GLuint shaderID = _createAndCompile(*mcodes[i], (ShaderType)i);
 				shaderIDs.push_back(shaderID);
 			}
 			else

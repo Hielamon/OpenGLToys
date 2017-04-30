@@ -18,24 +18,29 @@ namespace SP
 
 		~ShaderCodes(){}
 
-		std::string & operator[](size_t idx);
+	protected:
+		ShaderCodes();
+
+		std::vector<std::shared_ptr<std::string>> mcodes;
 
 	private:
-		std::string mcodes[SHADER_KINDS];
+		void _initCommon(std::vector<std::string> &filenames);
 	};
 
 	/**Create , Compile Shaders and Give interface to access the programID*/
-	class ShaderUtil
+	class ShaderUtil : public ShaderCodes
 	{
 	public:
 		ShaderUtil(ShaderCodes &shaderCodes);
 		ShaderUtil() {}
+
 		~ShaderUtil();
 		bool isOpen();
 		void useProgram();
 		GLuint getProgramID();
 
 	private:
+
 		GLuint _createAndCompile(const std::string &shaderCode, ShaderType type);
 
 		GLuint _linkShaders(const std::vector<GLuint> &shaderIDs);

@@ -5,38 +5,38 @@
 
 namespace SP
 {
-	class SceneUtil;
-
 	class Scene
 	{
 	public:
 		Scene(ShaderCodes &shaderCodes, Geometry &geometry)
-			: mshaderCodes(shaderCodes), mgeometry(geometry)
 		{
-			mmodelMatrix = glm::mat4(1.0f);
+			mpModelMatrix =std::make_shared<glm::mat4>(1.0f);
+			mpShaderCodes = std::make_shared<ShaderCodes>(shaderCodes);
+			mpGeometry = std::make_shared<Geometry>(geometry);
 		}
 		~Scene() {}
 
 		void setModelMatrix(glm::mat4 &modelMatrix)
 		{
-			mmodelMatrix = modelMatrix;
+			*mpModelMatrix = modelMatrix;
 		}
 
-		friend class SceneUtil;
-	private:
-		ShaderCodes mshaderCodes;
-		Geometry mgeometry;
-		glm::mat4 mmodelMatrix;
+	protected:
+		Scene(){}
+
+		std::shared_ptr<ShaderCodes> mpShaderCodes;
+		std::shared_ptr<Geometry> mpGeometry;
+		std::shared_ptr<glm::mat4> mpModelMatrix;
 	};
 
-	class SceneUtil
+	class SceneUtil : public Scene
 	{
 	public:
 		SceneUtil(Scene &scene)
-			: mshaderUtil(new ShaderUtil(scene.mshaderCodes)),
-			mgeometryUtil(new GeometryUtil(scene.mgeometry)),
-			mmodelMatrix(scene.mmodelMatrix)
+			: Scene(scene)
 		{
+			mpShaderUtil = std::make_shared<ShaderUtil>(*mpShaderCodes);
+			mpGeometryUtil = std::make_shared<GeometryUtil>(*mpGeometry);
 			GLuint programID = getProgramID();
 			mmodelLoc = glGetUniformLocation(programID, "model");
 		}
@@ -45,26 +45,23 @@ namespace SP
 
 		void show()
 		{
-			glUniformMatrix4fv(mmodelLoc, 1, GL_FALSE, glm::value_ptr(mmodelMatrix));
+			glUniformMatrix4fv(mmodelLoc, 1, GL_FALSE, glm::value_ptr(*mpModelMatrix));
 
-			mshaderUtil->useProgram();
+			mpShaderUtil->useProgram();
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			mgeometryUtil->show();
+			mpGeometryUtil->show();
 		}
 
 		GLuint getProgramID()
 		{
-			return mshaderUtil->getProgramID();
+			return mpShaderUtil->getProgramID();
 		}
 
 	private:
-		
-
-		std::shared_ptr<ShaderUtil> mshaderUtil;
-		std::shared_ptr<GeometryUtil> mgeometryUtil;
+		std::shared_ptr<ShaderUtil> mpShaderUtil;
+		std::shared_ptr<GeometryUtil> mpGeometryUtil;
 
 		GLint mmodelLoc;
-		glm::mat4 mmodelMatrix;
 	};
 }
 

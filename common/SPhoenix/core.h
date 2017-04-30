@@ -152,7 +152,7 @@ namespace SP
 		{
 			SceneUtil sceneUtil(scene);
 			mvSceneUtil.push_back(sceneUtil);
-			return mvSceneUtil.size() - 1;
+			return int(mvSceneUtil.size()) - 1;
 		}
 
 		void setFrustum(float fovyDeg = 45.f, float aspect = 1.0, float zNear = 0.01, float zFar = 100.f)
