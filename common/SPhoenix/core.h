@@ -3,6 +3,8 @@
 #include <SPhoenix/utils.h>
 #include <SPhoenix/Shader.h>
 #include <SPhoenix/Scene.h>
+//#include <SPhoenix/Manipulator.h>
+
 
 namespace SP
 {
@@ -56,6 +58,11 @@ namespace SP
 			}
 		}
 
+		GLFWwindow *getGLFWWinPtr()
+		{
+			return mglfwWinPtr;
+		}
+
 		bool run()
 		{
 			/*if (prepare() == GL_FALSE)
@@ -81,10 +88,10 @@ namespace SP
 			return glfwWindowShouldClose(mglfwWinPtr);
 		}
 
-	protected:
+	
 		//virtual bool prepare() = 0;
 
-	private:
+	protected:
 		/**GLFW window pointer*/
 		GLFWwindow * mglfwWinPtr;
 
@@ -97,12 +104,14 @@ namespace SP
 		/**indicate the window state, TODO : maybe change to a enum*/
 		bool mopened;
 
+	private:
 		GLFWwindow * _initWindow()
 		{
 			{
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 				glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+				glfwWindowHint(GLFW_SAMPLES, 8);
 				glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 			}
 
@@ -143,6 +152,10 @@ namespace SP
 
 			//mprojectionMatrix = glm::mat4(1.0f);
 			mprojectionMatrix = glm::perspective(mfovy, maspect, mzNear, mzFar);
+
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glEnable(GL_MULTISAMPLE);
+			glEnable(GL_DEPTH_TEST);
 		}
 
 		~Camera(){}
@@ -165,6 +178,23 @@ namespace SP
 			mprojectionMatrix = glm::perspective(mfovy, maspect, mzNear, mzFar);
 		}
 
+		void setKeyCallback(GLFWkeyfun keyCallBack)
+		{
+			glfwSetKeyCallback(mglfwWinPtr, keyCallBack);
+		}
+
+		SceneUtil& getSceneUtil(int index)
+		{
+			if (index < 0 || index >= mvSceneUtil.size())
+			{
+				SP_CERR("Invalid index to mvSceneUtil");
+				exit(-1);
+			}
+			return mvSceneUtil[index];
+		}
+
+		glm::mat4 mviewMatrix;
+
 	protected:
 		/*virtual bool prepare()
 		{
@@ -179,6 +209,8 @@ namespace SP
 
 		virtual void runOnce()
 		{
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 			for (size_t i = 0; i < mvSceneUtil.size(); i++)
 			{
 				GLuint programID = mvSceneUtil[i].getProgramID();
@@ -197,7 +229,6 @@ namespace SP
 		std::vector<SceneUtil> mvSceneUtil;
 
 		glm::mat4 mprojectionMatrix;
-		glm::mat4 mviewMatrix;
 
 		float mfovy, maspect, mzNear, mzFar;
 	};

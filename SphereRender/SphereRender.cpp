@@ -1,4 +1,5 @@
 #include <SPhoenix/core.h>
+#include <SPhoenix/Manipulator.h>
 
 using namespace SP;
 
@@ -178,15 +179,37 @@ int main(int argc, char *argv[])
 
 	ShaderCodes shaderCodes("SphereRender.vert", "SphereRender.frag");
 	Geometry geometry(vertices, normals, color);
-	Scene scene(shaderCodes, geometry);
+	vertices = {
+		-1.5f, -1.5f, 0.0f,
+		1.5f, -1.5f, 0.0f,
+		0.0f,  1.5f, 0.0f
+	};
+
+	normals =
+	{
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f
+	};
+	color = glm::vec4(0.0f, 0.5f, 0.6f, 1.0f);
+	Geometry triangle(vertices, normals, color);
+
+	Scene scene(shaderCodes);
+	scene.addGeometry(geometry);
+	scene.addGeometry(triangle);
+	
 
 	glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
 	scene.setModelMatrix(translate);
 
-	Camera cam(640, 480, "SphereRender");
+	Camera cam(1280, 720, "SphereRender");
+
+	Manipulator manip;
+	cam.setKeyCallback(manip.getCallBack(&cam));
 
 	cam.addScene(scene);
 	cam.run();
+	
 
 	return 0;
 }

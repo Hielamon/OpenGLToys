@@ -8,24 +8,33 @@ namespace SP
 	class Scene
 	{
 	public:
-		Scene(ShaderCodes &shaderCodes, Geometry &geometry)
+		Scene(ShaderCodes &shaderCodes)
 		{
 			mpModelMatrix =std::make_shared<glm::mat4>(1.0f);
 			mpShaderCodes = std::make_shared<ShaderCodes>(shaderCodes);
-			mpGeometry = std::make_shared<Geometry>(geometry);
 		}
 		~Scene() {}
+
+		void addGeometry(Geometry &geometry)
+		{
+			mvpGeometry.push_back(std::make_shared<Geometry>(geometry));
+		}
 
 		void setModelMatrix(glm::mat4 &modelMatrix)
 		{
 			*mpModelMatrix = modelMatrix;
 		}
 
+		glm::mat4 getModelMatrix()
+		{
+			return *mpModelMatrix;
+		}
+
 	protected:
 		Scene(){}
 
 		std::shared_ptr<ShaderCodes> mpShaderCodes;
-		std::shared_ptr<Geometry> mpGeometry;
+		std::vector<std::shared_ptr<Geometry>> mvpGeometry;
 		std::shared_ptr<glm::mat4> mpModelMatrix;
 	};
 
@@ -36,7 +45,13 @@ namespace SP
 			: Scene(scene)
 		{
 			mpShaderUtil = std::make_shared<ShaderUtil>(*mpShaderCodes);
-			mpGeometryUtil = std::make_shared<GeometryUtil>(*mpGeometry);
+
+			std::for_each(mvpGeometry.begin(), mvpGeometry.end(),
+						  [&](std::shared_ptr<Geometry> &pGeom) {
+				mvpGeometryUtil.push_back(std::make_shared<GeometryUtil>(*pGeom));
+			}
+			);
+
 			GLuint programID = getProgramID();
 			mmodelLoc = glGetUniformLocation(programID, "model");
 		}
@@ -48,8 +63,9 @@ namespace SP
 			glUniformMatrix4fv(mmodelLoc, 1, GL_FALSE, glm::value_ptr(*mpModelMatrix));
 
 			mpShaderUtil->useProgram();
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			mpGeometryUtil->show();
+			std::for_each(mvpGeometryUtil.begin(), mvpGeometryUtil.end(),
+						  [](std::shared_ptr<GeometryUtil> &pGeom) {pGeom->show(); }
+			);
 		}
 
 		GLuint getProgramID()
@@ -59,7 +75,7 @@ namespace SP
 
 	private:
 		std::shared_ptr<ShaderUtil> mpShaderUtil;
-		std::shared_ptr<GeometryUtil> mpGeometryUtil;
+		std::vector<std::shared_ptr<GeometryUtil>> mvpGeometryUtil;
 
 		GLint mmodelLoc;
 	};
