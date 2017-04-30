@@ -58,7 +58,6 @@ namespace SP
 		}
 
 	private:
-		
 
 		std::shared_ptr<ShaderUtil> mshaderUtil;
 		std::shared_ptr<GeometryUtil> mgeometryUtil;
