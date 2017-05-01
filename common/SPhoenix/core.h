@@ -65,11 +65,6 @@ namespace SP
 
 		bool run()
 		{
-			/*if (prepare() == GL_FALSE)
-			{
-				return GL_FALSE;
-			}*/
-
 			while (!isShutdown())
 			{
 				runOnce();
@@ -87,9 +82,6 @@ namespace SP
 		{
 			return glfwWindowShouldClose(mglfwWinPtr);
 		}
-
-	
-		//virtual bool prepare() = 0;
 
 	protected:
 		/**GLFW window pointer*/
@@ -146,7 +138,8 @@ namespace SP
 			mviewMatrix = glm::mat4(1.0f);
 
 			mfovy = glm::radians(45.f);
-			maspect = 1.0f;
+			//maspect = 1.0f;
+			maspect = width / float(height);
 			mzNear = 0.01;
 			mzFar = 100.f;
 
@@ -183,6 +176,11 @@ namespace SP
 			glfwSetKeyCallback(mglfwWinPtr, keyCallBack);
 		}
 
+		void setScrollCallback(GLFWscrollfun scrollCallBack)
+		{
+			glfwSetScrollCallback(mglfwWinPtr, scrollCallBack);
+		}
+
 		SceneUtil& getSceneUtil(int index)
 		{
 			if (index < 0 || index >= mvSceneUtil.size())
@@ -195,17 +193,9 @@ namespace SP
 
 		glm::mat4 mviewMatrix;
 
-	protected:
-		/*virtual bool prepare()
-		{
-			if (mvSceneUtil.empty())
-			{
-				SP_CERR("There isn't any scene for preparation");
-				return GL_FALSE;
-			}
+		float mfovy, maspect, mzNear, mzFar;
 
-			return GL_TRUE;
-		}*/
+	protected:
 
 		virtual void runOnce()
 		{
@@ -229,7 +219,5 @@ namespace SP
 		std::vector<SceneUtil> mvSceneUtil;
 
 		glm::mat4 mprojectionMatrix;
-
-		float mfovy, maspect, mzNear, mzFar;
 	};
 }

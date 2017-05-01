@@ -1,5 +1,6 @@
 #include <SPhoenix/core.h>
 #include <SPhoenix/Manipulator.h>
+//#include <assimp/>
 
 using namespace SP;
 
@@ -182,11 +183,18 @@ int main(int argc, char *argv[])
 	vertices = {
 		-1.5f, -1.5f, 0.0f,
 		1.5f, -1.5f, 0.0f,
-		0.0f,  1.5f, 0.0f
+		1.5f,  1.5f, 0.0f,
+
+		-1.5f, -1.5f, 0.0f,
+		1.5f,  1.5f, 0.0f,
+		-1.5f,  1.5f, 0.0f
 	};
 
 	normals =
 	{
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f
@@ -205,7 +213,8 @@ int main(int argc, char *argv[])
 	Camera cam(1280, 720, "SphereRender");
 
 	Manipulator manip;
-	cam.setKeyCallback(manip.getCallBack(&cam));
+	cam.setKeyCallback(manip.getKeyCallBack(&cam));
+	cam.setScrollCallback(manip.getScrollCallBack(&cam));
 
 	cam.addScene(scene);
 	cam.run();

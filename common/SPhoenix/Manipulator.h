@@ -11,7 +11,7 @@ namespace SP
 		Manipulator() {}
 		~Manipulator() {}
 
-		GLFWkeyfun getCallBack(Camera *pCam)
+		GLFWkeyfun getKeyCallBack(Camera *pCam)
 		{
 			if (!pCam)
 			{
@@ -26,6 +26,26 @@ namespace SP
 			{
 				static_cast<Manipulator*>(glfwGetWindowUserPointer(window))->keyCallBackImpl(
 					window, key, scancode, action, mode
+				);
+			};
+			return result;
+		}
+
+		GLFWscrollfun getScrollCallBack(Camera *pCam)
+		{
+			if (!pCam)
+			{
+				SP_CERR("Cannot get callback for a empty camera pointer");
+				exit(-1);
+			}
+			mpCam = pCam;
+
+			glfwSetWindowUserPointer(mpCam->getGLFWWinPtr(), this);
+
+			GLFWscrollfun result = [](GLFWwindow *window, double xoffset, double yoffset)
+			{
+				static_cast<Manipulator*>(glfwGetWindowUserPointer(window))->scrollCallBack(
+					window, xoffset, yoffset
 				);
 			};
 			return result;
@@ -85,6 +105,18 @@ namespace SP
 					break;
 				}*/
 			}
+		}
+
+		void scrollCallBack(GLFWwindow *window, double xoffset, double yoffset)
+		{
+			float curFovy = glm::degrees(mpCam->mfovy);
+
+			curFovy -= yoffset;
+
+			curFovy = std::max(1.0f, std::min(curFovy, 180.0f));
+			
+			mpCam->setFrustum(curFovy, mpCam->maspect);
+
 		}
 
 	private:
