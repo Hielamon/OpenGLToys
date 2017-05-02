@@ -41,7 +41,7 @@ namespace SP
 
 			mprimmitiveNum = mpVertices->size() / 3;
 
-			mvVBO.resize(2);
+			mvVBO.resize(3);
 			glGenBuffers(1, &mvVBO[0]);
 			glBindBuffer(GL_ARRAY_BUFFER, mvVBO[0]);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(vertices[0])*pointsNum, &vertices[0], GL_STATIC_DRAW);
