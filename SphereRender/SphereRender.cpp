@@ -11,7 +11,7 @@ using namespace SP;
 
 
 void createTexturedSphere(std::vector<GLfloat> &vertices,
-						  std::vector<GLfloat> &normals,
+						  //std::vector<GLfloat> &normals,
 						  std::vector<GLfloat> &colors,
 						  const std::string &imgName)
 {
@@ -20,7 +20,7 @@ void createTexturedSphere(std::vector<GLfloat> &vertices,
 
 	int numTmp = SLICE_Y * SLICE_X * 2 * 3;
 	float rpp = M_PI / SLICE_Y;
-	std::vector<GLfloat> verticesTmp(numTmp), normalsTmp(numTmp), colorsTmp(numTmp);
+	std::vector<GLfloat> verticesTmp(numTmp), /*normalsTmp(numTmp),*/ colorsTmp(numTmp);
 	for (int i = 0; i < SLICE_Y; i++)
 	{
 		for (int j = 0; j < SLICE_X; j++)
@@ -39,9 +39,9 @@ void createTexturedSphere(std::vector<GLfloat> &vertices,
 			verticesTmp[idx + 1] = sin(phi);
 			verticesTmp[idx + 2] = cos(phi)*cos(theta);
 
-			normalsTmp[idx] = verticesTmp[idx];
+			/*normalsTmp[idx] = verticesTmp[idx];
 			normalsTmp[idx + 1] = verticesTmp[idx + 1];
-			normalsTmp[idx + 2] = verticesTmp[idx + 2];
+			normalsTmp[idx + 2] = verticesTmp[idx + 2];*/
 
 			/*colorsTmp[idx] = verticesTmp[idx];
 			colorsTmp[idx + 1] = verticesTmp[idx + 1];
@@ -55,7 +55,7 @@ void createTexturedSphere(std::vector<GLfloat> &vertices,
 
 	numTmp = (SLICE_Y - 1) * SLICE_X * 6 * 3;
 	vertices.resize(numTmp);
-	normals.resize(numTmp);
+	//normals.resize(numTmp);
 	colors.resize(numTmp);
 	
 	for (int i = 0; i < (SLICE_Y - 1); i++)
@@ -79,9 +79,9 @@ void createTexturedSphere(std::vector<GLfloat> &vertices,
 				vertices[idx_tmp + 1] = verticesTmp[idx_pt + 1];
 				vertices[idx_tmp + 2] = verticesTmp[idx_pt + 2];
 
-				normals[idx_tmp] = normalsTmp[idx_pt];
+				/*normals[idx_tmp] = normalsTmp[idx_pt];
 				normals[idx_tmp + 1] = normalsTmp[idx_pt + 1];
-				normals[idx_tmp + 2] = normalsTmp[idx_pt + 2];
+				normals[idx_tmp + 2] = normalsTmp[idx_pt + 2];*/
 
 				colors[idx_tmp] = colorsTmp[idx_pt];
 				colors[idx_tmp + 1] = colorsTmp[idx_pt + 1];
@@ -100,43 +100,12 @@ int main(int argc, char *argv[])
 
 
 	ShaderCodes shaderCodes("SphereRender.vert", "SphereRender.frag");
-	vertices = {
-		-1.5f, -1.5f, 0.0f,
-		1.5f, -1.5f, 0.0f,
-		1.5f,  1.5f, 0.0f,
-
-		-1.5f, -1.5f, 0.0f,
-		1.5f,  1.5f, 0.0f,
-		1.5f,  1.5f, 0.0f
-	};
-
-	normals =
-	{
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f
-	};
-
-	colors =
-	{
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f
-	};
-
-	Geometry triangle(vertices, normals, colors);
 
 	Scene scene(shaderCodes);
 	//scene.addGeometry(triangle);
 
-	createTexturedSphere(vertices, normals, colors, "result.jpg");
-	Geometry sphere(vertices, normals, colors);
+	createTexturedSphere(vertices, /*normals,*/ colors, "result.jpg");
+	Geometry sphere(vertices, colors);
 
 	scene.addGeometry(sphere);
 	

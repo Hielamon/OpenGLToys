@@ -9,11 +9,11 @@ namespace SP
 	{
 	public:
 		Geometry(const std::vector<GLfloat> &vertices,
-				 const std::vector<GLfloat> &normals,
+				 //const std::vector<GLfloat> &normals,
 				 const std::vector<GLfloat> &colors)
 		{
 			mpVertices = std::make_shared<std::vector<GLfloat>>(vertices);
-			mpNormals = std::make_shared<std::vector<GLfloat>>(normals);
+			//mpNormals = std::make_shared<std::vector<GLfloat>>(normals);
 			mpColors = std::make_shared<std::vector<GLfloat>>(colors);
 		}
 
@@ -23,7 +23,7 @@ namespace SP
 		Geometry() {}
 
 		std::shared_ptr<std::vector<GLfloat>> mpVertices;
-		std::shared_ptr<std::vector<GLfloat>> mpNormals;
+		//std::shared_ptr<std::vector<GLfloat>> mpNormals;
 		std::shared_ptr<std::vector<GLfloat>> mpColors;
 	};
 
@@ -34,26 +34,26 @@ namespace SP
 			: Geometry(geom)
 		{
 			std::vector<GLfloat> &vertices = *mpVertices;
-			std::vector<GLfloat> &normals = *mpNormals;
+			//std::vector<GLfloat> &normals = *mpNormals;
 			std::vector<GLfloat> &colors = *mpColors;
 			GLuint pointsNum = vertices.size();
 			assert(pointsNum == normals.size() && pointsNum % 3 == 0);
 
 			mprimmitiveNum = mpVertices->size() / 3;
 
-			mvVBO.resize(3);
+			mvVBO.resize(2);
 			glGenBuffers(1, &mvVBO[0]);
 			glBindBuffer(GL_ARRAY_BUFFER, mvVBO[0]);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(vertices[0])*pointsNum, &vertices[0], GL_STATIC_DRAW);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-			glGenBuffers(1, &mvVBO[1]);
+			/*glGenBuffers(1, &mvVBO[1]);
 			glBindBuffer(GL_ARRAY_BUFFER, mvVBO[1]);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(normals[0])*pointsNum, &normals[0], GL_STATIC_DRAW);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);*/
 
-			glGenBuffers(1, &mvVBO[2]);
-			glBindBuffer(GL_ARRAY_BUFFER, mvVBO[2]);
+			glGenBuffers(1, &mvVBO[1]);
+			glBindBuffer(GL_ARRAY_BUFFER, mvVBO[1]);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(colors[0])*pointsNum, &colors[0], GL_STATIC_DRAW);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -68,9 +68,9 @@ namespace SP
 				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 				glEnableVertexAttribArray(1);
 
-				glBindBuffer(GL_ARRAY_BUFFER, mvVBO[2]);
+				/*glBindBuffer(GL_ARRAY_BUFFER, mvVBO[2]);
 				glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-				glEnableVertexAttribArray(2);
+				glEnableVertexAttribArray(2);*/
 			}
 			glBindVertexArray(0);
 		}
