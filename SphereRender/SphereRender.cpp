@@ -1,172 +1,94 @@
 #include <SPhoenix/core.h>
 #include <SPhoenix/Manipulator.h>
+#include <cmath>
 //#include <assimp/>
 
 using namespace SP;
 
-bool LoadObjFile(const std::string &obj_filename, std::vector<GLfloat> &vertices,
-				 std::vector<GLfloat> &normals)
+#define SLICE_Y 4000
+#define SLICE_Y_2 2000
+#define SLICE_X 8000
+
+
+void createTexturedSphere(std::vector<GLfloat> &vertices,
+						  std::vector<GLfloat> &normals,
+						  std::vector<GLfloat> &colors,
+						  const std::string &imgName)
 {
-	std::ifstream OBJStream(obj_filename, std::ios::in);
-	if (!OBJStream.is_open())
+	int width, height, channels;
+	unsigned char* image = SOIL_load_image(imgName.c_str(), &width, &height, &channels, SOIL_LOAD_AUTO);
+
+	int numTmp = SLICE_Y * SLICE_X * 2 * 3;
+	float rpp = M_PI / SLICE_Y;
+	std::vector<GLfloat> verticesTmp(numTmp), normalsTmp(numTmp), colorsTmp(numTmp);
+	for (int i = 0; i < SLICE_Y; i++)
 	{
-		SP_CERR("Failed to open the OBJ file: " + obj_filename);
-		return false;
+		for (int j = 0; j < SLICE_X; j++)
+		{
+			float dcoord_x =  j;
+			float dcoord_y = SLICE_Y_2 - i;
+
+			float theta = dcoord_x * rpp;
+			float phi = dcoord_y * rpp;
+
+			int idx = SLICE_X * i + j;
+			idx *= 3;
+
+			// Vector in 3D space
+			verticesTmp[idx] = cos(phi)*sin(theta);
+			verticesTmp[idx + 1] = sin(phi);
+			verticesTmp[idx + 2] = cos(phi)*cos(theta);
+
+			normalsTmp[idx] = verticesTmp[idx];
+			normalsTmp[idx + 1] = verticesTmp[idx + 1];
+			normalsTmp[idx + 2] = verticesTmp[idx + 2];
+
+			/*colorsTmp[idx] = verticesTmp[idx];
+			colorsTmp[idx + 1] = verticesTmp[idx + 1];
+			colorsTmp[idx + 2] = verticesTmp[idx + 2];*/
+
+			colorsTmp[idx] = image[idx] / 255.0f;
+			colorsTmp[idx + 1] = image[idx + 1] / 255.0f;
+			colorsTmp[idx + 2] = image[idx + 2] / 255.0f;
+		}
 	}
 
-	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
-	std::vector< glm::vec3 > temp_vertices;
-	std::vector< glm::vec2 > temp_texcoords;
-	std::string texture_name;
-	std::vector< glm::vec3 > temp_normals;
-
-	std::string line_header, Line;
-	bool start_face = false;
-	while (OBJStream >> line_header)
+	numTmp = (SLICE_Y - 1) * SLICE_X * 6 * 3;
+	vertices.resize(numTmp);
+	normals.resize(numTmp);
+	colors.resize(numTmp);
+	
+	for (int i = 0; i < (SLICE_Y - 1); i++)
 	{
-		if (line_header == "v")
+		for (int j = 0; j < SLICE_X; j++)
 		{
-			glm::vec3 vertex;
-			OBJStream >> vertex[0] >> vertex[1] >> vertex[2];
-			temp_vertices.push_back(vertex);
-		}
-		else if (line_header == "vt")
-		{
-			glm::vec2 texcoord;
-			OBJStream >> texcoord[0] >> texcoord[1];
-			temp_texcoords.push_back(texcoord);
-		}
-		else if (line_header == "vn")
-		{
-			glm::vec3 normal;
-			OBJStream >> normal[0] >> normal[1] >> normal[2];
-			temp_normals.push_back(normal);
-		}
-		else if (line_header == "usemtl")
-		{
-			OBJStream >> texture_name;
-		}
-		else if (line_header == "s")
-		{
-			if (start_face == true)
+			int idx = (SLICE_X * i + j) * 3 * 6;
+			int idx_orgin = (SLICE_X * i + j) * 3;
+			int idx_right = ((j + 1) % SLICE_X + SLICE_X * i) * 3;
+			int idx_down = (j + SLICE_X * (i + 1)) * 3;
+			int j_tmp = j == 0 ? SLICE_X - 1 : j - 1;
+			int idx_ltdn = (j_tmp + SLICE_X * (i + 1)) * 3;
+
+			int idx_array[6] = { idx_orgin, idx_right, idx_down, idx_orgin, idx_down, idx_ltdn };
+
+			for (size_t k = 0; k < 6; k++)
 			{
-				SP_CERR("the flag 's' in a OBJ file shouldn't occur more than onece");
-				return false;
-			}
-			start_face = true;
-		}
-		else if (line_header == "f")
-		{
-			if (start_face == false)
-			{
-				SP_CERR("the 's' flag need before start the face indices");
-				return false;
-			}
-			for (size_t i = 0; i < 3; i++)
-			{
-				std::string indices_str, temp_str;
-				OBJStream >> indices_str;
-				for (size_t j = 0, p = 0; j < indices_str.size(); j++)
-				{
-					if (indices_str[j] == '\/')
-					{
-						if (!temp_str.empty())
-						{
-							switch (p)
-							{
-							case 0:vertexIndices.push_back(atoi(temp_str.c_str()) - 1); break;
-							case 1:uvIndices.push_back(atoi(temp_str.c_str()) - 1); break;
-							case 2:normalIndices.push_back(atoi(temp_str.c_str()) - 1); break;
-							default:
-								break;
-							}
-							temp_str.clear();
-						}
-						p++;
-					}
-					else
-					{
-						temp_str += indices_str[j];
-					}
-				}
-				if (!temp_str.empty())
-				{
-					normalIndices.push_back(atoi(temp_str.c_str()) - 1);
-				}
+				int &idx_pt = idx_array[k];
+				int idx_tmp = idx + 3 * k;
+				vertices[idx_tmp] = verticesTmp[idx_pt];
+				vertices[idx_tmp + 1] = verticesTmp[idx_pt + 1];
+				vertices[idx_tmp + 2] = verticesTmp[idx_pt + 2];
+
+				normals[idx_tmp] = normalsTmp[idx_pt];
+				normals[idx_tmp + 1] = normalsTmp[idx_pt + 1];
+				normals[idx_tmp + 2] = normalsTmp[idx_pt + 2];
+
+				colors[idx_tmp] = colorsTmp[idx_pt];
+				colors[idx_tmp + 1] = colorsTmp[idx_pt + 1];
+				colors[idx_tmp + 2] = colorsTmp[idx_pt + 2];
 			}
 		}
-		else
-		{
-			std::getline(OBJStream, Line);
-		}
-
-
 	}
-
-	int npoint = vertexIndices.size();
-	if (npoint == 0 || npoint % 3 != 0)
-	{
-		SP_CERR("The OBJ file have no point indices");
-		return false;
-	}
-	if (uvIndices.size() != 0 && uvIndices.size() != npoint)
-	{
-		SP_CERR("The OBJ file with unequal uvIndices.size() != npoint");
-		return false;
-	}
-	if (normalIndices.size() != 0 && normalIndices.size() != npoint)
-	{
-		SP_CERR("The OBJ file with unequal normalIndices.size() != npoint");
-		return false;
-	}
-
-	std::vector< GLfloat> texcoords;
-	for (auto vertex_index : vertexIndices)
-	{
-		if (vertex_index < 0 || vertex_index >= temp_vertices.size())
-		{
-			SP_CERR("The vertex_index is out the valid range");
-			return false;
-		}
-		vertices.push_back(temp_vertices[vertex_index][0]);
-		vertices.push_back(temp_vertices[vertex_index][1]);
-		vertices.push_back(temp_vertices[vertex_index][2]);
-	}
-
-	if (uvIndices.size() != 0 && !texture_name.empty())
-	{
-
-		for (auto texcoord_index : uvIndices)
-		{
-			if (texcoord_index < 0 || texcoord_index >= temp_texcoords.size())
-			{
-				SP_CERR("The texcoord_index is out the valid range");
-				return false;
-			}
-			texcoords.push_back(temp_texcoords[texcoord_index][0]);
-			texcoords.push_back(temp_texcoords[texcoord_index][1]);
-		}
-	}
-
-	if (normalIndices.size() != 0)
-	{
-
-		for (auto normal_index : normalIndices)
-		{
-			if (normal_index < 0 || normal_index >= temp_normals.size())
-			{
-				SP_CERR("The normal_index is out the valid range");
-				return false;
-			}
-			normals.push_back(temp_normals[normal_index][0]);
-			normals.push_back(temp_normals[normal_index][1]);
-			normals.push_back(temp_normals[normal_index][2]);
-		}
-	}
-
-	OBJStream.close();
-
-	return true;
 }
 
 
@@ -174,12 +96,10 @@ int main(int argc, char *argv[])
 {
 	std::vector<GLfloat> vertices;
 	std::vector<GLfloat> normals;
-	glm::vec4 color(1.0f, 0.5f, 0.6f, 1.0f);
+	std::vector<GLfloat> colors;
 
-	LoadObjFile("wt_teapot.obj", vertices, normals);
 
 	ShaderCodes shaderCodes("SphereRender.vert", "SphereRender.frag");
-	Geometry geometry(vertices, normals, color);
 	vertices = {
 		-1.5f, -1.5f, 0.0f,
 		1.5f, -1.5f, 0.0f,
@@ -187,7 +107,7 @@ int main(int argc, char *argv[])
 
 		-1.5f, -1.5f, 0.0f,
 		1.5f,  1.5f, 0.0f,
-		-1.5f,  1.5f, 0.0f
+		1.5f,  1.5f, 0.0f
 	};
 
 	normals =
@@ -199,15 +119,29 @@ int main(int argc, char *argv[])
 		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f
 	};
-	color = glm::vec4(0.0f, 0.5f, 0.6f, 1.0f);
-	Geometry triangle(vertices, normals, color);
+
+	colors =
+	{
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f
+	};
+
+	Geometry triangle(vertices, normals, colors);
 
 	Scene scene(shaderCodes);
-	scene.addGeometry(geometry);
-	scene.addGeometry(triangle);
+	//scene.addGeometry(triangle);
+
+	createTexturedSphere(vertices, normals, colors, "result.jpg");
+	Geometry sphere(vertices, normals, colors);
+
+	scene.addGeometry(sphere);
 	
 
-	glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
+	glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
 	scene.setModelMatrix(translate);
 
 	Camera cam(1280, 720, "SphereRender");

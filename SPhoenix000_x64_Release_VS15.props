@@ -11,7 +11,7 @@
       <AdditionalDependencies>opengl32.lib;D:/Code-Libraries/OpenGL/assimp-master/build_x64_vs15/code/Release/assimp-vc140-mt.lib;D:/Code-Libraries/OpenGL/glew-2.0.0/lib/Release/x64/glew32s.lib;D:/Code-Libraries/OpenGL/glfw-master/build_x64_vs15/src/Release/glfw3.lib;D:/Code-Libraries/OpenGL/SOIL/projects/VC9/x64/Release/SOIL.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <PreprocessorDefinitions>GLEW_STATIC;GLM_ENABLE_EXPERIMENTAL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLEW_STATIC;GLM_ENABLE_EXPERIMENTAL;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />

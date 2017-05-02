@@ -2,9 +2,9 @@
 
 out vec4 color;
 
-uniform vec4 indicatedColor;
+in vec4 colorVert;
 
 void main()
 {
-	color = indicatedColor;
+	color = colorVert;
 }
