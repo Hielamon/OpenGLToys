@@ -145,7 +145,7 @@ namespace SP
 		Camera(int width, int height, const std::string &camName = "Untitled")
 			: GLWindowBase(camName, width, height)
 		{
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEPTH_TEST);
 

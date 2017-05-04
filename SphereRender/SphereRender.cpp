@@ -169,12 +169,11 @@ bool LoadObjFile(const std::string &obj_filename, std::vector<GLfloat> &vertices
 	return true;
 }
 
-
 int main(int argc, char *argv[])
 {
 	std::vector<GLfloat> vertices;
 	std::vector<GLfloat> normals;
-	glm::vec4 color(1.0f, 0.5f, 0.6f, 1.0f);
+	glm::vec4 color(1.0f, 1.0f, 1.0f, 1.0f);
 
 	LoadObjFile("wt_teapot.obj", vertices, normals);
 
@@ -187,7 +186,15 @@ int main(int argc, char *argv[])
 
 		-1.5f, -1.5f, 0.0f,
 		1.5f,  1.5f, 0.0f,
-		-1.5f,  1.5f, 0.0f
+		-1.5f,  1.5f, 0.0f,
+
+		- 1.5f, -1.5f, -0.01f,
+		1.5f, -1.5f, -0.01f,
+		1.5f,  1.5f, -0.01f,
+
+		-1.5f, -1.5f, -0.01f,
+		1.5f,  1.5f, -0.01f,
+		-1.5f,  1.5f, -0.01f
 	};
 
 	normals =
@@ -197,7 +204,13 @@ int main(int argc, char *argv[])
 		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, -1.0f,
+		0.0f, 0.0f, -1.0f,
+		0.0f, 0.0f, -1.0f,
+		0.0f, 0.0f, -1.0f,
+		0.0f, 0.0f, -1.0f,
+		0.0f, 0.0f, -1.0f
 	};
 	color = glm::vec4(0.0f, 0.5f, 0.6f, 1.0f);
 	Geometry triangle(vertices, normals, color);
