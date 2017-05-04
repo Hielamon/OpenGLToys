@@ -34,5 +34,17 @@ inline glm::u32vec2 GetScreenResolution()
 	return glm::u32vec2(mode->width, mode->height);
 }
 
+inline void RigidTransformLookAt(glm::mat4 &rigid, glm::vec3 &eye, glm::vec3 &center, glm::vec3 &up)
+{
+	glm::vec4 eyeHomo(eye, 1.0f);
+	eye = glm::vec3(rigid * eyeHomo);
+
+	glm::vec4 centerHomo(center, 1.0f);
+	center = glm::vec3(rigid * centerHomo);
+
+	glm::vec4 upHomo(up, 0.0f);
+	up = glm::vec3(rigid * upHomo);
+}
+
 
 

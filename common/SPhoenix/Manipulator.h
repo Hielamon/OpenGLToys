@@ -81,8 +81,41 @@ namespace SP
 					glPolygonMode(GL_FRONT_AND_BACK, GL_POINT + bias);
 				}
 				break;
+			
 			default:
 				break;
+			}
+
+			//Press the mouse right button for move camera on XZ-plane
+			if(mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
+			{
+				glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
+				glm::vec3 direction(0.0f);
+
+				switch (key)
+				{
+				case GLFW_KEY_W:
+					direction = glm::vec3(0.0f, 0.0f, -1.0f);
+					break;
+				case GLFW_KEY_S:
+					direction = glm::vec3(0.0f, 0.0f, 1.0f);
+					break;
+				case GLFW_KEY_A:
+					direction = glm::vec3(-1.0f, 0.0f, 0.0f);
+					break;
+				case GLFW_KEY_D:
+					direction = glm::vec3(1.0f, 0.0f, 0.0f);
+					break;
+				default:
+					break;
+				}
+
+				if (direction != glm::vec3(0.0f))
+				{
+					glm::mat4 translate = glm::translate(glm::mat4(1.0f), direction);
+					RigidTransformLookAt(translate, eye, center, up);
+					mpCam->setViewMatrix(eye, center, up);
+				}
 			}
 		}
 
@@ -111,17 +144,25 @@ namespace SP
 				
 				float dxRad = glm::radians(dx);
 				float dyRad = glm::radians(dy);
+
+				//TODO : try to draw some tips icon on the screen
+				//TODO : actually, a pick up mechanism need be installed
 				if (mmouseButtonState[GLFW_MOUSE_BUTTON_LEFT])
 				{
-					std::cout << "dx = " << dx << std::endl;
-					std::cout << "dy = " << dy << std::endl;
-
-					glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), dxRad, glm::vec3(0.0f, 1.0f, 0.0f));
-					rotate = glm::rotate(rotate, dyRad, glm::vec3(1.0f, 0.0f, 0.0f));
+					glm::mat4 rotate;
+					if (abs(dx) > abs(dy))
+					{
+						rotate = glm::rotate(glm::mat4(1.0f), -dxRad, glm::vec3(0.0f, 1.0f, 0.0f));
+					}
+					else
+					{
+						rotate = glm::rotate(rotate, -dyRad, glm::vec3(1.0f, 0.0f, 0.0f));
+					}
 
 					glm::vec4 eyeHomo(mpCam->meye, 1.0f);
 					eyeHomo = rotate * eyeHomo;
 					glm::vec3 eye(eyeHomo);
+					//std::cout << "eye point = " << glm::to_string(eye) << std::endl;
 
 					glm::vec4 upHomo(mpCam->mup, 0.0f);
 					upHomo = rotate * upHomo;
@@ -130,10 +171,15 @@ namespace SP
 					mpCam->setViewMatrix(eye, mpCam->mcenter, up);
 
 				}
-				else if (mmouseButtonState[GLFW_MOUSE_BUTTON_MIDDLE])
-				{
 
+				if (mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
+				{
+					glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
+					glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f * (-dy * 0.05), 0.0f));
+					RigidTransformLookAt(translate, eye, center, up);
+					mpCam->setViewMatrix(eye, center, up);
 				}
+
 				mpreX = xpos;
 				mpreY = ypos;
 			}
