@@ -37,7 +37,7 @@ namespace SP
 			//std::vector<GLfloat> &normals = *mpNormals;
 			std::vector<GLfloat> &colors = *mpColors;
 			GLuint pointsNum = vertices.size();
-			assert(pointsNum == normals.size() && pointsNum % 3 == 0);
+			assert(pointsNum == colors.size() && pointsNum % 3 == 0);
 
 			mprimmitiveNum = mpVertices->size() / 3;
 
