@@ -207,14 +207,11 @@ int main(int argc, char *argv[])
 	scene.addGeometry(triangle);
 	
 
-	glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
-	scene.setModelMatrix(translate);
-
 	Camera cam(1280, 720, "SphereRender");
+	cam.setViewMatrix(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-	Manipulator manip;
-	cam.setKeyCallback(manip.getKeyCallBack(&cam));
-	cam.setScrollCallback(manip.getScrollCallBack(&cam));
+	std::shared_ptr<Manipulator> pManip = std::make_shared<Manipulator>(&cam);
+	cam.setManipulator(std::static_pointer_cast<ManipulatorBase>(pManip));
 
 	cam.addScene(scene);
 	cam.run();

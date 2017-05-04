@@ -10,7 +10,6 @@ namespace SP
 	public:
 		Scene(ShaderCodes &shaderCodes)
 		{
-			mpModelMatrix =std::make_shared<glm::mat4>(1.0f);
 			mpShaderCodes = std::make_shared<ShaderCodes>(shaderCodes);
 		}
 		~Scene() {}
@@ -20,22 +19,14 @@ namespace SP
 			mvpGeometry.push_back(std::make_shared<Geometry>(geometry));
 		}
 
-		void setModelMatrix(glm::mat4 &modelMatrix)
-		{
-			*mpModelMatrix = modelMatrix;
-		}
-
-		glm::mat4 getModelMatrix()
-		{
-			return *mpModelMatrix;
-		}
+	public:
+		glm::mat4 mModelMatrix;
 
 	protected:
 		Scene(){}
 
 		std::shared_ptr<ShaderCodes> mpShaderCodes;
 		std::vector<std::shared_ptr<Geometry>> mvpGeometry;
-		std::shared_ptr<glm::mat4> mpModelMatrix;
 	};
 
 	class SceneUtil : public Scene
@@ -60,7 +51,7 @@ namespace SP
 
 		void show()
 		{
-			glUniformMatrix4fv(mmodelLoc, 1, GL_FALSE, glm::value_ptr(*mpModelMatrix));
+			glUniformMatrix4fv(mmodelLoc, 1, GL_FALSE, glm::value_ptr(mModelMatrix));
 
 			mpShaderUtil->useProgram();
 			std::for_each(mvpGeometryUtil.begin(), mvpGeometryUtil.end(),
