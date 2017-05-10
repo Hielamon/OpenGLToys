@@ -169,16 +169,22 @@ bool LoadObjFile(const std::string &obj_filename, std::vector<GLfloat> &vertices
 	return true;
 }
 
+void createWorldPlane(const std::string &obj_filename, std::vector<GLfloat> &vertices,
+					  std::vector<GLfloat> &normals)
+{
+	
+}
+
 int main(int argc, char *argv[])
 {
 	std::vector<GLfloat> vertices;
 	std::vector<GLfloat> normals;
-	glm::vec4 color(1.0f, 1.0f, 1.0f, 1.0f);
+	(1.0f, 1.0f, 1.0f, 1.0f);
 
 	LoadObjFile("wt_teapot.obj", vertices, normals);
 
 	ShaderCodes shaderCodes("SphereRender.vert", "SphereRender.frag");
-	Geometry geometry(vertices, normals, color);
+	Geometry teapot(vertices, normals);
 	vertices = {
 		-1.5f, -1.5f, 0.0f,
 		1.5f, -1.5f, 0.0f,
@@ -188,13 +194,6 @@ int main(int argc, char *argv[])
 		1.5f,  1.5f, 0.0f,
 		-1.5f,  1.5f, 0.0f,
 
-		- 1.5f, -1.5f, -0.01f,
-		1.5f, -1.5f, -0.01f,
-		1.5f,  1.5f, -0.01f,
-
-		-1.5f, -1.5f, -0.01f,
-		1.5f,  1.5f, -0.01f,
-		-1.5f,  1.5f, -0.01f
 	};
 
 	normals =
@@ -205,23 +204,16 @@ int main(int argc, char *argv[])
 		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, -1.0f,
-		0.0f, 0.0f, -1.0f,
-		0.0f, 0.0f, -1.0f,
-		0.0f, 0.0f, -1.0f,
-		0.0f, 0.0f, -1.0f,
-		0.0f, 0.0f, -1.0f
 	};
-	color = glm::vec4(0.0f, 0.5f, 0.6f, 1.0f);
+	glm::vec4 color= glm::vec4(0.0f, 0.5f, 0.6f, 1.0f);
 	Geometry triangle(vertices, normals, color);
 
 	Scene scene(shaderCodes);
-	scene.addGeometry(geometry);
-	scene.addGeometry(triangle);
-	
+	scene.addGeometry(teapot);
+	//scene.addGeometry(triangle);
 
 	Camera cam(1280, 720, "SphereRender");
-	cam.setViewMatrix(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	cam.setViewMatrix(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	std::shared_ptr<Manipulator> pManip = std::make_shared<Manipulator>(&cam);
 	cam.setManipulator(std::static_pointer_cast<ManipulatorBase>(pManip));

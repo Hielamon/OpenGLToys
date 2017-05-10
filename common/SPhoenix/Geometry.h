@@ -9,7 +9,7 @@ namespace SP
 	public:
 		Geometry(const std::vector<GLfloat> &vertices,
 				 const std::vector<GLfloat> &normals,
-				 glm::vec4 color)
+				 glm::vec4 color = glm::vec4(1.0f,1.0f,1.0f,1.0f))
 		{
 			mpVertices = std::make_shared<std::vector<GLfloat>>(vertices);
 			mpNormals = std::make_shared<std::vector<GLfloat>>(normals);

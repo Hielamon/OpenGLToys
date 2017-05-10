@@ -23,8 +23,9 @@ void main()
 	vec3 lightDir = normalize(lightPos - mpos.xyz);
 	vec3 norm = normalize(normalVec);
 
-	float diff =min(1.0f, max(dot(norm, lightDir), 0.0f));
-	float ambient = 0.2;
-	vec3 result = indicatedColor.xyz * (diff + ambient);
+	//float diff =abs(dot(norm, lightDir));
+	float diff =max(dot(norm, lightDir), 0.0f);
+	float ambient = 0.3;
+	vec3 result = indicatedColor.xyz * min(diff + ambient, 1.0f);
 	lightedColor = vec4(result, 1.0f);
 }
