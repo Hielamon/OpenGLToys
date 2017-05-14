@@ -86,8 +86,8 @@ namespace SP
 				break;
 			}
 
-			//Press the mouse right button for move camera on XZ-plane
-			if(mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
+			//Press move camera on XZ-plane
+			//if(mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
 			{
 				glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
 				glm::vec3 direction(0.0f);
