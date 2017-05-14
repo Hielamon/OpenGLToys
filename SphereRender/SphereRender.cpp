@@ -47,9 +47,11 @@ void createTexturedSphere(std::vector<GLfloat> &vertices,
 			colorsTmp[idx + 1] = verticesTmp[idx + 1];
 			colorsTmp[idx + 2] = verticesTmp[idx + 2];*/
 
-			colorsTmp[idx] = image[idx] / 255.0f;
-			colorsTmp[idx + 1] = image[idx + 1] / 255.0f;
-			colorsTmp[idx + 2] = image[idx + 2] / 255.0f;
+			int idx_color = 3*(SLICE_X * i + (SLICE_X - j));
+
+			colorsTmp[idx] = image[idx_color] / 255.0f;
+			colorsTmp[idx + 1] = image[idx_color + 1] / 255.0f;
+			colorsTmp[idx + 2] = image[idx_color + 2] / 255.0f;
 		}
 	}
 
