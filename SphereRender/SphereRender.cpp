@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	Scene scene(shaderCodes);
 	//scene.addGeometry(triangle);
 
-	createTexturedSphere(vertices, /*normals,*/ colors, "result.jpg");
+	createTexturedSphere(vertices, /*normals,*/ colors, "result2.jpg");
 	Geometry sphere(vertices, colors);
 
 	scene.addGeometry(sphere);
