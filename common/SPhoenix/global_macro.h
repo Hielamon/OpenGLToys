@@ -9,3 +9,6 @@
 #define FAILED_RETURN 0
 
 #define SHADER_KINDS 3
+
+#define KEY_COUNT 349
+#define MOUSE_COUNT 8

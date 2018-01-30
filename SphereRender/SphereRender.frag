@@ -2,9 +2,8 @@
 
 out vec4 color;
 
-uniform vec4 indicatedColor;
-
+in vec4 lightedColor;
 void main()
 {
-	color = indicatedColor;
+	color = lightedColor;
 }

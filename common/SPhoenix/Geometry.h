@@ -4,36 +4,40 @@
 
 namespace SP
 {
-	class GeometryUtil;
-
 	class Geometry
 	{
 	public:
 		Geometry(const std::vector<GLfloat> &vertices,
 				 const std::vector<GLfloat> &normals,
-				 glm::vec4 color) : mvertices(vertices),
-				 mnormals(normals), mcolor(color){}
+				 glm::vec4 color = glm::vec4(1.0f,1.0f,1.0f,1.0f))
+		{
+			mpVertices = std::make_shared<std::vector<GLfloat>>(vertices);
+			mpNormals = std::make_shared<std::vector<GLfloat>>(normals);
+			mpColor = std::make_shared<glm::vec4>(color);
+		}
+
 		~Geometry() {}
 
-		friend class GeometryUtil;
-	private:
-		std::vector<GLfloat> mvertices;
-		std::vector<GLfloat> mnormals;
-		glm::vec4 mcolor;
+	protected:
+		Geometry() {}
+
+		std::shared_ptr<std::vector<GLfloat>> mpVertices;
+		std::shared_ptr<std::vector<GLfloat>> mpNormals;
+		std::shared_ptr<glm::vec4> mpColor;
 	};
 
-	class GeometryUtil
+	class GeometryUtil : public Geometry
 	{
 	public:
 		GeometryUtil(Geometry &geom)
+			: Geometry(geom)
 		{
-			std::vector<GLfloat> &vertices = geom.mvertices;
-			std::vector<GLfloat> &normals = geom.mnormals;
-
+			std::vector<GLfloat> &vertices = *mpVertices;
+			std::vector<GLfloat> &normals = *mpNormals;
 			GLuint pointsNum = vertices.size();
 			assert(pointsNum == normals.size() && pointsNum % 3 == 0);
 
-			mprimmitiveNum = vertices.size() / 3;
+			mprimmitiveNum = mpVertices->size() / 3;
 
 			mvVBO.resize(2);
 			glGenBuffers(1, &mvVBO[0]);
@@ -58,8 +62,6 @@ namespace SP
 				glEnableVertexAttribArray(1);
 			}
 			glBindVertexArray(0);
-
-			mcolor = geom.mcolor;
 		}
 
 		~GeometryUtil()
@@ -74,7 +76,7 @@ namespace SP
 			glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
 
 			GLint colorLoc = glGetUniformLocation(programID, "indicatedColor");
-			glUniform4fv(colorLoc, 1, glm::value_ptr(mcolor));
+			glUniform4fv(colorLoc, 1, glm::value_ptr(*mpColor));
 
 			glBindVertexArray(mVAO);
 			glDrawArrays(GL_TRIANGLES, 0, mprimmitiveNum);
@@ -85,7 +87,6 @@ namespace SP
 		GLuint mVAO;
 		std::vector<GLuint> mvVBO;
 		GLuint mprimmitiveNum;
-		glm::vec4 mcolor;
 	};
 }
 

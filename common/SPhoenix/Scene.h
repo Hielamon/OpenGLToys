@@ -5,38 +5,44 @@
 
 namespace SP
 {
-	class SceneUtil;
-
 	class Scene
 	{
 	public:
-		Scene(ShaderCodes &shaderCodes, Geometry &geometry)
-			: mshaderCodes(shaderCodes), mgeometry(geometry)
+		Scene(ShaderCodes &shaderCodes)
 		{
-			mmodelMatrix = glm::mat4(1.0f);
+			mpShaderCodes = std::make_shared<ShaderCodes>(shaderCodes);
 		}
 		~Scene() {}
 
-		void setModelMatrix(glm::mat4 &modelMatrix)
+		void addGeometry(Geometry &geometry)
 		{
-			mmodelMatrix = modelMatrix;
+			mvpGeometry.push_back(std::make_shared<Geometry>(geometry));
 		}
 
-		friend class SceneUtil;
-	private:
-		ShaderCodes mshaderCodes;
-		Geometry mgeometry;
-		glm::mat4 mmodelMatrix;
+	public:
+		glm::mat4 mModelMatrix;
+
+	protected:
+		Scene(){}
+
+		std::shared_ptr<ShaderCodes> mpShaderCodes;
+		std::vector<std::shared_ptr<Geometry>> mvpGeometry;
 	};
 
-	class SceneUtil
+	class SceneUtil : public Scene
 	{
 	public:
 		SceneUtil(Scene &scene)
-			: mshaderUtil(new ShaderUtil(scene.mshaderCodes)),
-			mgeometryUtil(new GeometryUtil(scene.mgeometry)),
-			mmodelMatrix(scene.mmodelMatrix)
+			: Scene(scene)
 		{
+			mpShaderUtil = std::make_shared<ShaderUtil>(*mpShaderCodes);
+
+			std::for_each(mvpGeometry.begin(), mvpGeometry.end(),
+						  [&](std::shared_ptr<Geometry> &pGeom) {
+				mvpGeometryUtil.push_back(std::make_shared<GeometryUtil>(*pGeom));
+			}
+			);
+
 			GLuint programID = getProgramID();
 			mmodelLoc = glGetUniformLocation(programID, "model");
 		}
@@ -45,25 +51,24 @@ namespace SP
 
 		void show()
 		{
-			glUniformMatrix4fv(mmodelLoc, 1, GL_FALSE, glm::value_ptr(mmodelMatrix));
+			glUniformMatrix4fv(mmodelLoc, 1, GL_FALSE, glm::value_ptr(mModelMatrix));
 
-			mshaderUtil->useProgram();
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			mgeometryUtil->show();
+			mpShaderUtil->useProgram();
+			std::for_each(mvpGeometryUtil.begin(), mvpGeometryUtil.end(),
+						  [](std::shared_ptr<GeometryUtil> &pGeom) {pGeom->show(); }
+			);
 		}
 
 		GLuint getProgramID()
 		{
-			return mshaderUtil->getProgramID();
+			return mpShaderUtil->getProgramID();
 		}
 
 	private:
-
-		std::shared_ptr<ShaderUtil> mshaderUtil;
-		std::shared_ptr<GeometryUtil> mgeometryUtil;
+		std::shared_ptr<ShaderUtil> mpShaderUtil;
+		std::vector<std::shared_ptr<GeometryUtil>> mvpGeometryUtil;
 
 		GLint mmodelLoc;
-		glm::mat4 mmodelMatrix;
 	};
 }
 

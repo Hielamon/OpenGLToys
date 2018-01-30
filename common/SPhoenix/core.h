@@ -3,6 +3,8 @@
 #include <SPhoenix/utils.h>
 #include <SPhoenix/Shader.h>
 #include <SPhoenix/Scene.h>
+#include <SPhoenix/ManipulatorBase.h>
+
 
 namespace SP
 {
@@ -41,7 +43,7 @@ namespace SP
 			mheight = height == 0 ? screenSize[1] *0.5 : height;
 			mwinName = win_name;
 
-			mglfwWinPtr = _initWindow();
+			mglfwWinPtr = _initWindow(mwidth, mheight, mwinName);
 			assert(mglfwWinPtr != nullptr);
 
 			mopened = GL_TRUE;
@@ -56,13 +58,28 @@ namespace SP
 			}
 		}
 
+		GLFWwindow *getGLFWWinPtr()
+		{
+			return mglfwWinPtr;
+		}
+
+		glm::i32vec2 getWindowSize()
+		{
+			return glm::i32vec2(mwidth, mheight);
+		}
+
+		bool isOpened()
+		{
+			return mopened;
+		}
+
+		virtual bool isShutdown()
+		{
+			return glfwWindowShouldClose(mglfwWinPtr);
+		}
+
 		bool run()
 		{
-			/*if (prepare() == GL_FALSE)
-			{
-				return GL_FALSE;
-			}*/
-
 			while (!isShutdown())
 			{
 				runOnce();
@@ -76,15 +93,7 @@ namespace SP
 
 		virtual void runOnce() = 0;
 
-		virtual bool isShutdown()
-		{
-			return glfwWindowShouldClose(mglfwWinPtr);
-		}
-
 	protected:
-		//virtual bool prepare() = 0;
-
-	private:
 		/**GLFW window pointer*/
 		GLFWwindow * mglfwWinPtr;
 
@@ -97,16 +106,18 @@ namespace SP
 		/**indicate the window state, TODO : maybe change to a enum*/
 		bool mopened;
 
-		GLFWwindow * _initWindow()
+	private:
+		GLFWwindow * _initWindow(int &width, int &height, std::string &winName)
 		{
 			{
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 				glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+				glfwWindowHint(GLFW_SAMPLES, 8);
 				glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 			}
 
-			GLFWwindow *window = glfwCreateWindow(mwidth, mheight, mwinName.c_str(), NULL, NULL);
+			GLFWwindow *window = glfwCreateWindow(width, height, winName.c_str(), NULL, NULL);
 			if (window == nullptr)
 			{
 				SP_CERR("Failed to CreateWindow ect...");
@@ -134,54 +145,71 @@ namespace SP
 		Camera(int width, int height, const std::string &camName = "Untitled")
 			: GLWindowBase(camName, width, height)
 		{
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			glEnable(GL_MULTISAMPLE);
+			glEnable(GL_DEPTH_TEST);
+
+			setProjectionMatrix();
 			mviewMatrix = glm::mat4(1.0f);
-
-			mfovy = glm::radians(45.f);
-			maspect = 1.0f;
-			mzNear = 0.01;
-			mzFar = 100.f;
-
-			//mprojectionMatrix = glm::mat4(1.0f);
-			mprojectionMatrix = glm::perspective(mfovy, maspect, mzNear, mzFar);
 		}
 
 		~Camera(){}
 
-		/**Set a scene to show mass*/
+		std::shared_ptr<SceneUtil> getSceneUtil(int index)
+		{
+			if (index < 0 || index >= mvpSceneUtil.size())
+			{
+				SP_CERR("Invalid index to mvSceneUtil");
+				exit(-1);
+			}
+			return mvpSceneUtil[index];
+		}
+
+		std::vector<std::shared_ptr<SceneUtil>> getSceneUtil()
+		{
+			return mvpSceneUtil;
+		}
+
+		void setProjectionMatrix(float fovy = 45.f, float aspect = 0.0f, float zNear = 0.01, float zFar = 100.f)
+		{
+			mfovy = fovy; mzNear = zNear; mzFar = zFar;
+			maspect = aspect == 0.0f ? mwidth / float(mheight) : aspect;
+
+			mprojectionMatrix = glm::perspective(glm::radians(mfovy), maspect, mzNear, mzFar);
+		}
+
+		void setViewMatrix(glm::vec3 &eye, glm::vec3 &center, glm::vec3 &up)
+		{
+			meye = eye; mcenter = center; mup = up;
+
+			mviewMatrix = glm::lookAt(meye, mcenter, mup);
+		}
+
+		void setManipulator(std::shared_ptr<ManipulatorBase> pManipulator)
+		{
+			mpManipulator = pManipulator;
+			mpManipulator->registerCallBacks();
+		}
+
+		/**Add a Scene to a Camera's SceneUtil pointer vector, and return the SceneUtil ID*/
 		GLuint addScene(Scene &scene)
 		{
-			SceneUtil sceneUtil(scene);
-			mvSceneUtil.push_back(sceneUtil);
-			return mvSceneUtil.size() - 1;
+			mvpSceneUtil.push_back(std::make_shared<SceneUtil>(scene));
+			return int(mvpSceneUtil.size()) - 1;
 		}
 
-		void setFrustum(float fovyDeg = 45.f, float aspect = 1.0, float zNear = 0.01, float zFar = 100.f)
-		{
-			mfovy = glm::radians(fovyDeg);
-			maspect = aspect;
-			mzNear = zNear;
-			mzFar = zFar;
-
-			mprojectionMatrix = glm::perspective(mfovy, maspect, mzNear, mzFar);
-		}
+		float mfovy, maspect, mzNear, mzFar;
+		glm::vec3 meye, mcenter, mup;
 
 	protected:
-		/*virtual bool prepare()
-		{
-			if (mvSceneUtil.empty())
-			{
-				SP_CERR("There isn't any scene for preparation");
-				return GL_FALSE;
-			}
-
-			return GL_TRUE;
-		}*/
 
 		virtual void runOnce()
 		{
-			for (size_t i = 0; i < mvSceneUtil.size(); i++)
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			for (size_t i = 0; i < mvpSceneUtil.size(); i++)
 			{
-				GLuint programID = mvSceneUtil[i].getProgramID();
+				GLuint programID = mvpSceneUtil[i]->getProgramID();
 
 				GLint projectionLoc = glGetUniformLocation(programID, "projection");
 				glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(mprojectionMatrix));
@@ -189,16 +217,15 @@ namespace SP
 				GLint viewLoc = glGetUniformLocation(programID, "view");
 				glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(mviewMatrix));
 
-				mvSceneUtil[i].show();
+				mvpSceneUtil[i]->show();
 			}
 		}
 
 	private:
-		std::vector<SceneUtil> mvSceneUtil;
+		std::vector<std::shared_ptr<SceneUtil>> mvpSceneUtil;
+		std::shared_ptr<ManipulatorBase> mpManipulator;
 
-		glm::mat4 mprojectionMatrix;
 		glm::mat4 mviewMatrix;
-
-		float mfovy, maspect, mzNear, mzFar;
+		glm::mat4 mprojectionMatrix;
 	};
 }
