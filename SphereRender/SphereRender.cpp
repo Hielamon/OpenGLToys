@@ -5,7 +5,7 @@
 
 using namespace SP;
 
-#define SLICE_Y 4000
+#define SLICE_Y 5000
 #define SLICE_Y_2 2000
 #define SLICE_X 8000
 
