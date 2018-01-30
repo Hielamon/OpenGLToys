@@ -64,8 +64,10 @@
     <ClInclude Include="..\common\SPhoenix\Geometry.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\SPhoenix\Manipulator.h">
-      <Filter>Header Files\SPhoenix</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Readme.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

@@ -161,10 +161,12 @@
     <ClInclude Include="..\common\SPhoenix\core.h" />
     <ClInclude Include="..\common\SPhoenix\Geometry.h" />
     <ClInclude Include="..\common\SPhoenix\global_macro.h" />
-    <ClInclude Include="..\common\SPhoenix\Manipulator.h" />
     <ClInclude Include="..\common\SPhoenix\Scene.h" />
     <ClInclude Include="..\common\SPhoenix\Shader.h" />
     <ClInclude Include="..\common\SPhoenix\utils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Readme.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
