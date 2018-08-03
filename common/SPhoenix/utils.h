@@ -19,7 +19,7 @@
 #include <glm\gtc\matrix_access.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#include <SPhoenix/global_macro.h>
+#include "global_macro.h"
 
 
 /**Get the resolution of primary screen*/

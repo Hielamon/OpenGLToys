@@ -27,21 +27,18 @@
     <ClCompile Include="SphereRender.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\SPhoenix\core.cpp">
-      <Filter>Source Files\SPhoenix</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\SPhoenix\Shader.cpp">
-      <Filter>Source Files\SPhoenix</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\SPhoenix\Scene.cpp">
-      <Filter>Source Files\SPhoenix</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="SphereRender.frag">
       <Filter>Source Files\Shader</Filter>
     </None>
     <None Include="SphereRender.vert">
+      <Filter>Source Files\Shader</Filter>
+    </None>
+    <None Include="SphereRenderTest.vert">
+      <Filter>Source Files\Shader</Filter>
+    </None>
+    <None Include="SphereRenderTest.frag">
       <Filter>Source Files\Shader</Filter>
     </None>
   </ItemGroup>
@@ -68,6 +65,9 @@
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Mesh.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,15 +1,16 @@
 #pragma once
-#include <SPhoenix/utils.h>
+#include "utils.h"
 
 namespace SP
 {
 	class ManipulatorBase
 	{
 	public:
+		virtual void registerCallBacks() = 0;
+
+	protected:
 		ManipulatorBase() {}
 		~ManipulatorBase() {}
-
-		virtual void registerCallBacks() = 0;
 	};
 }
 

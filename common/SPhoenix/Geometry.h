@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SPhoenix/utils.h>
+#include "utils.h"
 
 namespace SP
 {
@@ -16,11 +16,11 @@ namespace SP
 			mpColor = std::make_shared<glm::vec4>(color);
 		}
 
+		Geometry() = delete;
+
 		~Geometry() {}
 
 	protected:
-		Geometry() {}
-
 		std::shared_ptr<std::vector<GLfloat>> mpVertices;
 		std::shared_ptr<std::vector<GLfloat>> mpNormals;
 		std::shared_ptr<glm::vec4> mpColor;

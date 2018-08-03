@@ -148,14 +148,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\common\SPhoenix\core.cpp" />
-    <ClCompile Include="..\common\SPhoenix\Scene.cpp" />
-    <ClCompile Include="..\common\SPhoenix\Shader.cpp" />
     <ClCompile Include="SphereRender.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SphereRender.frag" />
     <None Include="SphereRender.vert" />
+    <None Include="SphereRenderTest.frag" />
+    <None Include="SphereRenderTest.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\SPhoenix\core.h" />
@@ -163,6 +162,7 @@
     <ClInclude Include="..\common\SPhoenix\global_macro.h" />
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h" />
+    <ClInclude Include="..\common\SPhoenix\Mesh.h" />
     <ClInclude Include="..\common\SPhoenix\Scene.h" />
     <ClInclude Include="..\common\SPhoenix\Shader.h" />
     <ClInclude Include="..\common\SPhoenix\utils.h" />

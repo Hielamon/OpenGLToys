@@ -184,6 +184,7 @@ int main(int argc, char *argv[])
 	LoadObjFile("wt_teapot.obj", vertices, normals);
 
 	ShaderCodes shaderCodes("SphereRender.vert", "SphereRender.frag");
+	ShaderCodes shaderCodesTest("SphereRenderTest.vert", "SphereRenderTest.frag");
 	Geometry teapot(vertices, normals);
 	vertices = {
 		-1.5f, -1.5f, 0.0f,
@@ -218,7 +219,12 @@ int main(int argc, char *argv[])
 	std::shared_ptr<Manipulator> pManip = std::make_shared<Manipulator>(&cam);
 	cam.setManipulator(std::static_pointer_cast<ManipulatorBase>(pManip));
 
+	Scene scene2 = scene;
+	scene2.setShaderCodes(shaderCodesTest);
+	scene2.mModelMatrix = glm::translate(scene2.mModelMatrix, glm::vec3(0.0f, 1.0f, 0.0f));
+
 	cam.addScene(scene);
+	cam.addScene(scene2);
 	cam.run();
 	
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <SPhoenix/utils.h>
-#include <SPhoenix/core.h>
-#include <SPhoenix/ManipulatorBase.h>
+#include "utils.h"
+#include "core.h"
+#include "ManipulatorBase.h"
 
 namespace SP
 {
@@ -30,6 +30,8 @@ namespace SP
 			memset(mmouseButtonState, GL_FALSE, MOUSE_COUNT);
 			
 		}
+
+		Manipulator() = delete;
 
 		~Manipulator() {}
 
@@ -233,6 +235,9 @@ namespace SP
 				static_cast<Manipulator*>(glfwGetWindowUserPointer(window))->keyCallBackImpl(
 					window, key, scancode, action, mode
 				);
+				/*static_cast<Manipulator*>(0)->keyCallBackImpl(
+					window, key, scancode, action, mode
+				);*/
 			};
 			glfwSetKeyCallback(curWinPtr, keyfun);
 		}

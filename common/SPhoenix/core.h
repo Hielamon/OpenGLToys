@@ -1,9 +1,9 @@
 #pragma once
 
-#include <SPhoenix/utils.h>
-#include <SPhoenix/Shader.h>
-#include <SPhoenix/Scene.h>
-#include <SPhoenix/ManipulatorBase.h>
+#include "utils.h"
+#include "Shader.h"
+#include "Scene.h"
+#include "ManipulatorBase.h"
 
 
 namespace SP
@@ -11,6 +11,12 @@ namespace SP
 	class GlfwConfigure
 	{
 	public:
+		static void Setup()
+		{
+			static GlfwConfigure glfwConf;
+		}
+
+	private:
 
 		GlfwConfigure()
 		{
@@ -24,12 +30,16 @@ namespace SP
 				SP_LOG("Succeed to Init the glfw library");
 			}
 
-			atexit(glfwTerminate);
+			//atexit(glfwTerminate);
 		}
 
-		~GlfwConfigure() {}
+		~GlfwConfigure() 
+		{  
+			SP_LOG("Terminate the glfw library");
+			glfwTerminate(); 
+		}
 	};
-	extern GlfwConfigure _glfwconfig;
+	//extern GlfwConfigure _glfwconfig;
 
 	/**OpenGL window base*/
 	class GLWindowBase
@@ -37,6 +47,8 @@ namespace SP
 	public:
 		GLWindowBase(const std::string &win_name = "Untitled", int width = 0, int height = 0)
 		{
+			GlfwConfigure::Setup();
+
 			glm::u32vec2 screenSize = GetScreenResolution();
 			assert(screenSize[0] != -1);
 			mwidth = width == 0 ? screenSize[0] * 0.5 : width;
@@ -92,7 +104,6 @@ namespace SP
 		}
 
 		virtual void runOnce() = 0;
-
 	protected:
 		/**GLFW window pointer*/
 		GLFWwindow * mglfwWinPtr;
@@ -136,6 +147,8 @@ namespace SP
 
 			return window;
 		}
+
+		
 	};
 
 	/**Camera class : execute the rendering loop*/

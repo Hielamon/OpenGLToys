@@ -1,7 +1,8 @@
 #pragma once
 
-#include <SPhoenix/Shader.h>
-#include <SPhoenix/Geometry.h>
+#include "Shader.h"
+#include "Geometry.h"
+#include <assimp\scene.h>
 
 namespace SP
 {
@@ -10,8 +11,9 @@ namespace SP
 	public:
 		Scene(ShaderCodes &shaderCodes)
 		{
-			mpShaderCodes = std::make_shared<ShaderCodes>(shaderCodes);
+			setShaderCodes(shaderCodes);
 		}
+		Scene() = delete;
 		~Scene() {}
 
 		void addGeometry(Geometry &geometry)
@@ -19,12 +21,15 @@ namespace SP
 			mvpGeometry.push_back(std::make_shared<Geometry>(geometry));
 		}
 
+		void setShaderCodes(ShaderCodes &shaderCodes)
+		{
+			mpShaderCodes = std::make_shared<ShaderCodes>(shaderCodes);
+		}
+
 	public:
 		glm::mat4 mModelMatrix;
 
 	protected:
-		Scene(){}
-
 		std::shared_ptr<ShaderCodes> mpShaderCodes;
 		std::vector<std::shared_ptr<Geometry>> mvpGeometry;
 	};
