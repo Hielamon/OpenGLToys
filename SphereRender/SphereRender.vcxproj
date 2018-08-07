@@ -163,9 +163,12 @@
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h" />
     <ClInclude Include="..\common\SPhoenix\Mesh.h" />
+    <ClInclude Include="..\common\SPhoenix\Model.h" />
     <ClInclude Include="..\common\SPhoenix\Scene.h" />
     <ClInclude Include="..\common\SPhoenix\Shader.h" />
+    <ClInclude Include="..\common\SPhoenix\Texture.h" />
     <ClInclude Include="..\common\SPhoenix\utils.h" />
+    <ClInclude Include="..\common\SPhoenix\VertexArray.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
