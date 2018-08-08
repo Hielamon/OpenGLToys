@@ -157,10 +157,8 @@ namespace SP
 	public:
 		Model(const std::vector<std::shared_ptr<Mesh>> &pMeshes,
 			  const std::vector<int> &instanceNs,
-			  const std::vector<std::vector<glm::mat4>> &modelMatrixes,
-			  const std::shared_ptr<ShaderCodes> &pShaderCodes)
-			: mvpMesh(pMeshes), mvInstanceN(instanceNs), mvvModelMatrix(modelMatrixes),
-			mpShaderCodes(pShaderCodes) {}
+			  const std::vector<std::vector<glm::mat4>> &modelMatrixes)
+			: mvpMesh(pMeshes), mvInstanceN(instanceNs), mvvModelMatrix(modelMatrixes) {}
 
 		Model() {}
 		
@@ -179,7 +177,7 @@ namespace SP
 		std::vector<std::shared_ptr<Mesh>> mvpMesh;
 		std::vector<int> mvInstanceN;
 		std::vector<std::vector<glm::mat4>> mvvModelMatrix;
-		std::shared_ptr<ShaderCodes> mpShaderCodes;
+
 		std::string modelPath;
 		bool mbLoadSuccess;
 
