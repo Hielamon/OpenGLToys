@@ -147,8 +147,6 @@ namespace SP
 
 			return window;
 		}
-
-		
 	};
 
 	/**Camera class : execute the rendering loop*/
@@ -162,8 +160,16 @@ namespace SP
 			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEPTH_TEST);
 
+			//Using uniform buffers
+			glGenBuffers(1, &mViewUBO);
+			glBindBuffer(GL_UNIFORM_BUFFER, mViewUBO);
+			glBufferData(GL_UNIFORM_BUFFER, 144, NULL, GL_DYNAMIC_DRAW);
+			glGenBuffers(GL_UNIFORM_BUFFER, 0);
+			glBindBufferBase(GL_UNIFORM_BUFFER, VIEWUBO_BINDING_POINT, mViewUBO);
+			
+			//Set the default projection matrix and view matrix
 			setProjectionMatrix();
-			mviewMatrix = glm::mat4(1.0f);
+			setViewMatrix();
 		}
 
 		~Camera(){}
@@ -189,13 +195,22 @@ namespace SP
 			maspect = aspect == 0.0f ? mwidth / float(mheight) : aspect;
 
 			mprojectionMatrix = glm::perspective(glm::radians(mfovy), maspect, mzNear, mzFar);
+			glBindBuffer(GL_UNIFORM_BUFFER, mViewUBO);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, 64, glm::value_ptr(mprojectionMatrix));
+			glBindBuffer(GL_UNIFORM_BUFFER, 0);
 		}
 
-		void setViewMatrix(glm::vec3 &eye, glm::vec3 &center, glm::vec3 &up)
+		void setViewMatrix(glm::vec3 &eye = glm::vec3(0.0f, 0.0f, 0.0f),
+						   glm::vec3 &center = glm::vec3(0.0f, 0.0f, -1.0f),
+						   glm::vec3 &up = glm::vec3(0.0f, 1.0f, 0.0f))
 		{
 			meye = eye; mcenter = center; mup = up;
 
 			mviewMatrix = glm::lookAt(meye, mcenter, mup);
+			glBindBuffer(GL_UNIFORM_BUFFER, mViewUBO);
+			glBufferSubData(GL_UNIFORM_BUFFER, 64, 64, glm::value_ptr(mviewMatrix));
+			glBufferSubData(GL_UNIFORM_BUFFER, 128, 12, glm::value_ptr(meye));
+			glBindBuffer(GL_UNIFORM_BUFFER, 0);
 		}
 
 		void setManipulator(std::shared_ptr<ManipulatorBase> pManipulator)
@@ -205,9 +220,9 @@ namespace SP
 		}
 
 		/**Add a Scene to a Camera's SceneUtil pointer vector, and return the SceneUtil ID*/
-		GLuint addScene(Scene &scene)
+		GLuint addScene(std::shared_ptr<Scene> &pScene)
 		{
-			mvpSceneUtil.push_back(std::make_shared<SceneUtil>(scene));
+			mvpSceneUtil.push_back(std::make_shared<SceneUtil>(pScene));
 			return int(mvpSceneUtil.size()) - 1;
 		}
 
@@ -222,15 +237,15 @@ namespace SP
 
 			for (size_t i = 0; i < mvpSceneUtil.size(); i++)
 			{
-				GLuint programID = mvpSceneUtil[i]->getProgramID();
+				/*GLuint programID = mvpSceneUtil[i]->getProgramID();
 
 				GLint projectionLoc = glGetUniformLocation(programID, "projection");
 				glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(mprojectionMatrix));
 
 				GLint viewLoc = glGetUniformLocation(programID, "view");
-				glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(mviewMatrix));
+				glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(mviewMatrix));*/
 
-				mvpSceneUtil[i]->show();
+				mvpSceneUtil[i]->draw();
 			}
 		}
 
@@ -240,5 +255,6 @@ namespace SP
 
 		glm::mat4 mviewMatrix;
 		glm::mat4 mprojectionMatrix;
+		GLuint mViewUBO;
 	};
 }

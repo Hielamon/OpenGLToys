@@ -4,6 +4,8 @@
 
 namespace SP
 {
+	class ShaderUtil;
+
 	enum ShaderType
 	{
 		VERTEX, FRAGMENT, GEOMETRY
@@ -13,94 +15,124 @@ namespace SP
 	class ShaderCodes
 	{
 	public:
+		ShaderCodes() = delete;
+
 		ShaderCodes(const std::string &vertFilePath, const std::string &fragFilePath)
 		{
-			std::vector<std::string> fileNames = { vertFilePath, fragFilePath };
-
-			_initCommon(fileNames);
+			_readFromFile(vertFilePath, ShaderType::VERTEX);
+			_readFromFile(fragFilePath, ShaderType::FRAGMENT);
 		}
+
 		ShaderCodes(const std::string &vertFilePath, const std::string &fragFilePath, const std::string &geomFilePath)
 		{
-			std::vector<std::string> fileNames = { vertFilePath, fragFilePath, geomFilePath };
-
-			_initCommon(fileNames);
+			_readFromFile(vertFilePath, ShaderType::VERTEX);
+			_readFromFile(fragFilePath, ShaderType::FRAGMENT);
+			_readFromFile(geomFilePath, ShaderType::GEOMETRY);
 		}
+
+		void addMacros(const std::string &macros)
+		{
+			for (size_t i = 0; i < SHADER_KINDS; i++)
+			{
+				std::string &code = mcodes[i];
+				if (!code.empty())
+				{
+					int start = code.find("#version");
+					int insertPos = code.find("\n", start);
+					code.insert(insertPos + 2, macros);
+				}
+			}
+		}
+
 		~ShaderCodes(){}
 
+		friend class ShaderUtil;
+
 	protected:
-		ShaderCodes()
-		{
-			std::vector<std::string> fileNames;
-			_initCommon(fileNames);
-		}
-		std::vector<std::shared_ptr<std::string>> mcodes;
+		std::string mcodes[SHADER_KINDS];
 
 	private:
-		void _initCommon(std::vector<std::string> &filenames)
+		bool _readFromFile(const std::string &filename, ShaderType type)
 		{
-			mcodes.resize(SHADER_KINDS);
-
-			for (size_t i = 0; i < filenames.size(); i++)
+			std::string &shaderCode = mcodes[type], line = "";
+			std::ifstream shaderStream(filename, std::ios::in);
+			if (!shaderStream.is_open())
 			{
-				mcodes[i] = std::make_shared<std::string>();
-				std::string &shaderCode = *mcodes[i], line = "";
-				std::ifstream shaderStream(filenames[i], std::ios::in);
-				if (!shaderStream.is_open())
-				{
-					SP_CERR("Failed to Open File: " + filenames[i]);
-					exit(-1);
-				}
-				while (std::getline(shaderStream, line))
-					shaderCode += "\n" + line;
-				shaderStream.close();
+				SP_CERR("Failed to Open File: " + filename);
+				exit(-1);
 			}
+			shaderCode = "";
+
+			while (std::getline(shaderStream, line))
+				shaderCode += line + "\n";
+
+			shaderStream.close();
+			return true;
 		}
 	};
 
 	/**Create , Compile Shaders and Give interface to access the programID*/
-	class ShaderUtil : public ShaderCodes
+	class ShaderUtil
 	{
 	public:
-		ShaderUtil(ShaderCodes &shaderCodes) : ShaderCodes(shaderCodes)
-		{
-			std::vector<GLuint> shaderIDs;
+		ShaderUtil() = delete;
 
+		ShaderUtil(std::shared_ptr<ShaderCodes> &pShaderCodes) 
+			: mpShaderCodes(pShaderCodes)
+		{
 			for (size_t i = 0; i < SHADER_KINDS; i++)
 			{
-				if (mcodes[i] != nullptr)
+				if (!pShaderCodes->mcodes[i].empty())
 				{
-					GLuint shaderID = _createAndCompile(*mcodes[i], (ShaderType)i);
-					shaderIDs.push_back(shaderID);
+					mvshaderID[i] = _createAndCompile(pShaderCodes->mcodes[i], (ShaderType)i);
 				}
 				else
 				{
-					shaderIDs.push_back(FAILED_RETURN);
+					mvshaderID[i] = FAILED_RETURN;
 				}
 			}
 
-			mprogramID = _linkShaders(shaderIDs);
+			mprogramID = _linkShaders(mvshaderID);
 			mopened = mprogramID == FAILED_RETURN ? false : true;
 		}
-		ShaderUtil() {}
+
 		~ShaderUtil()
 		{
 			if (mopened)
 			{
 				glDeleteProgram(mprogramID);
 			}
+
+			for (size_t i = 0; i < SHADER_KINDS; i++)
+			{
+				if (mvshaderID[i] != FAILED_RETURN)
+				{
+					glDeleteShader(mvshaderID[i]);
+				}
+			}
 		}
+
 		bool isOpen()
 		{
 			return mopened;
 		}
+
 		void useProgram()
 		{
 			glUseProgram(mprogramID);
 		}
+
 		GLuint getProgramID()
 		{
 			return mprogramID;
 		}
+
+	protected:
+		std::shared_ptr<ShaderCodes> mpShaderCodes;
+
+		GLuint mvshaderID[SHADER_KINDS];
+		GLuint mprogramID;
+		bool mopened;
 
 	private:
 		GLuint _createAndCompile(const std::string &shaderCode, ShaderType type)
@@ -125,17 +157,16 @@ namespace SP
 			}
 			return shaderID;
 		}
-		GLuint _linkShaders(const std::vector<GLuint> &shaderIDs)
-		{
-			assert(shaderIDs.size() == SHADER_KINDS);
 
+		GLuint _linkShaders(GLuint (&vshaderID)[SHADER_KINDS] )
+		{
 			GLuint shaderProgram = glCreateProgram();
 
 			for (size_t i = 0; i < SHADER_KINDS; i++)
 			{
-				if (shaderIDs[i] != 0)
+				if (vshaderID[i] != FAILED_RETURN)
 				{
-					glAttachShader(shaderProgram, shaderIDs[i]);
+					glAttachShader(shaderProgram, vshaderID[i]);
 				}
 			}
 
@@ -154,9 +185,7 @@ namespace SP
 
 			return shaderProgram;
 		}
-
-		GLuint mprogramID;
-		bool mopened;
+		
 	};
 }
 

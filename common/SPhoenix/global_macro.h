@@ -12,3 +12,7 @@
 
 #define KEY_COUNT 349
 #define MOUSE_COUNT 8
+
+//When using the uniform buffer object
+//the UMatrices binging point set to 1
+#define VIEWUBO_BINDING_POINT 1

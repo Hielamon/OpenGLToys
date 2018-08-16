@@ -151,6 +151,8 @@
     <ClCompile Include="SphereRender.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.frag" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.vert" />
     <None Include="SphereRender.frag" />
     <None Include="SphereRender.vert" />
     <None Include="SphereRenderTest.frag" />
@@ -162,6 +164,7 @@
     <ClInclude Include="..\common\SPhoenix\global_macro.h" />
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h" />
+    <ClInclude Include="..\common\SPhoenix\Material.h" />
     <ClInclude Include="..\common\SPhoenix\Mesh.h" />
     <ClInclude Include="..\common\SPhoenix\Model.h" />
     <ClInclude Include="..\common\SPhoenix\Scene.h" />

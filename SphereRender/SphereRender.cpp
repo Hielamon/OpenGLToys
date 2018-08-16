@@ -4,229 +4,63 @@
 
 using namespace SP;
 
-bool LoadObjFile(const std::string &obj_filename, std::vector<GLfloat> &vertices,
-				 std::vector<GLfloat> &normals)
-{
-	std::ifstream OBJStream(obj_filename, std::ios::in);
-	if (!OBJStream.is_open())
-	{
-		SP_CERR("Failed to open the OBJ file: " + obj_filename);
-		return false;
-	}
-
-	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
-	std::vector< glm::vec3 > temp_vertices;
-	std::vector< glm::vec2 > temp_texcoords;
-	std::string texture_name;
-	std::vector< glm::vec3 > temp_normals;
-
-	std::string line_header, Line;
-	bool start_face = false;
-	while (OBJStream >> line_header)
-	{
-		if (line_header == "v")
-		{
-			glm::vec3 vertex;
-			OBJStream >> vertex[0] >> vertex[1] >> vertex[2];
-			temp_vertices.push_back(vertex);
-		}
-		else if (line_header == "vt")
-		{
-			glm::vec2 texcoord;
-			OBJStream >> texcoord[0] >> texcoord[1];
-			temp_texcoords.push_back(texcoord);
-		}
-		else if (line_header == "vn")
-		{
-			glm::vec3 normal;
-			OBJStream >> normal[0] >> normal[1] >> normal[2];
-			temp_normals.push_back(normal);
-		}
-		else if (line_header == "usemtl")
-		{
-			OBJStream >> texture_name;
-		}
-		else if (line_header == "s")
-		{
-			if (start_face == true)
-			{
-				SP_CERR("the flag 's' in a OBJ file shouldn't occur more than onece");
-				return false;
-			}
-			start_face = true;
-		}
-		else if (line_header == "f")
-		{
-			if (start_face == false)
-			{
-				SP_CERR("the 's' flag need before start the face indices");
-				return false;
-			}
-			for (size_t i = 0; i < 3; i++)
-			{
-				std::string indices_str, temp_str;
-				OBJStream >> indices_str;
-				for (size_t j = 0, p = 0; j < indices_str.size(); j++)
-				{
-					if (indices_str[j] == '\/')
-					{
-						if (!temp_str.empty())
-						{
-							switch (p)
-							{
-							case 0:vertexIndices.push_back(atoi(temp_str.c_str()) - 1); break;
-							case 1:uvIndices.push_back(atoi(temp_str.c_str()) - 1); break;
-							case 2:normalIndices.push_back(atoi(temp_str.c_str()) - 1); break;
-							default:
-								break;
-							}
-							temp_str.clear();
-						}
-						p++;
-					}
-					else
-					{
-						temp_str += indices_str[j];
-					}
-				}
-				if (!temp_str.empty())
-				{
-					normalIndices.push_back(atoi(temp_str.c_str()) - 1);
-				}
-			}
-		}
-		else
-		{
-			std::getline(OBJStream, Line);
-		}
-
-
-	}
-
-	int npoint = vertexIndices.size();
-	if (npoint == 0 || npoint % 3 != 0)
-	{
-		SP_CERR("The OBJ file have no point indices");
-		return false;
-	}
-	if (uvIndices.size() != 0 && uvIndices.size() != npoint)
-	{
-		SP_CERR("The OBJ file with unequal uvIndices.size() != npoint");
-		return false;
-	}
-	if (normalIndices.size() != 0 && normalIndices.size() != npoint)
-	{
-		SP_CERR("The OBJ file with unequal normalIndices.size() != npoint");
-		return false;
-	}
-
-	std::vector< GLfloat> texcoords;
-	for (auto vertex_index : vertexIndices)
-	{
-		if (vertex_index < 0 || vertex_index >= temp_vertices.size())
-		{
-			SP_CERR("The vertex_index is out the valid range");
-			return false;
-		}
-		vertices.push_back(temp_vertices[vertex_index][0]);
-		vertices.push_back(temp_vertices[vertex_index][1]);
-		vertices.push_back(temp_vertices[vertex_index][2]);
-	}
-
-	if (uvIndices.size() != 0 && !texture_name.empty())
-	{
-
-		for (auto texcoord_index : uvIndices)
-		{
-			if (texcoord_index < 0 || texcoord_index >= temp_texcoords.size())
-			{
-				SP_CERR("The texcoord_index is out the valid range");
-				return false;
-			}
-			texcoords.push_back(temp_texcoords[texcoord_index][0]);
-			texcoords.push_back(temp_texcoords[texcoord_index][1]);
-		}
-	}
-
-	if (normalIndices.size() != 0)
-	{
-
-		for (auto normal_index : normalIndices)
-		{
-			if (normal_index < 0 || normal_index >= temp_normals.size())
-			{
-				SP_CERR("The normal_index is out the valid range");
-				return false;
-			}
-			normals.push_back(temp_normals[normal_index][0]);
-			normals.push_back(temp_normals[normal_index][1]);
-			normals.push_back(temp_normals[normal_index][2]);
-		}
-	}
-
-	OBJStream.close();
-
-	return true;
-}
-
-void createWorldPlane(const std::string &obj_filename, std::vector<GLfloat> &vertices,
-					  std::vector<GLfloat> &normals)
-{
-	
-}
-
 int main(int argc, char *argv[])
 {
-	std::vector<GLfloat> vertices;
-	std::vector<GLfloat> normals;
-	(1.0f, 1.0f, 1.0f, 1.0f);
+	std::shared_ptr<Scene> pScene = std::make_shared<Scene>();
+	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
+	////std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\4nlnidkes4g0-C\\The-City\\The-City.obj";
+	//{
+	//	SceneAssimpLoader loader(fileFullPath, pScene);
+	//	if (!loader.IsLoadSuccess())
+	//	{
+	//		SP_CERR("The scene (" + fileFullPath + ") is failed to load");
+	//		exit(-1);
+	//	}
+	//}
 
-	LoadObjFile("wt_teapot.obj", vertices, normals);
-
-	ShaderCodes shaderCodes("SphereRender.vert", "SphereRender.frag");
-	ShaderCodes shaderCodesTest("SphereRenderTest.vert", "SphereRenderTest.frag");
-	Geometry teapot(vertices, normals);
-	vertices = {
-		-1.5f, -1.5f, 0.0f,
-		1.5f, -1.5f, 0.0f,
-		1.5f,  1.5f, 0.0f,
-
-		-1.5f, -1.5f, 0.0f,
-		1.5f,  1.5f, 0.0f,
-		-1.5f,  1.5f, 0.0f,
-
-	};
-
-	normals =
+	std::vector<glm::vec3> vertices(4), normals(4);
+	std::vector<glm::vec2> texcoords(4);
+	std::vector<GLuint> indices;
 	{
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,
-	};
-	glm::vec4 color= glm::vec4(0.0f, 0.5f, 0.6f, 1.0f);
-	Geometry triangle(vertices, normals, color);
+		
+		vertices[0] = glm::vec3(1.0f, 1.0f, -1.0f);
+		vertices[1] = glm::vec3(1.0f, -1.0f, -1.0f);
+		vertices[2] = glm::vec3(-1.0f, -1.0f, -1.0f);
+		vertices[3] = glm::vec3(-1.0f, 1.0f, -1.0f);
 
-	Scene scene(shaderCodes);
-	scene.addGeometry(teapot);
-	//scene.addGeometry(triangle);
+		normals[0] = glm::vec3(0.0f, 0.0f, 1.0f);
+		normals[1] = glm::vec3(0.0f, 0.0f, 1.0f);
+		normals[2] = glm::vec3(0.0f, 0.0f, 1.0f);
+		normals[3] = glm::vec3(0.0f, 0.0f, 1.0f);
 
-	Camera cam(1280, 720, "SphereRender");
+		texcoords[0] = glm::vec2(1.0f, 1.0f);
+		texcoords[1] = glm::vec2(1.0f, 0.0f);
+		texcoords[2] = glm::vec2(0.0f, 0.0f);
+		texcoords[3] = glm::vec2(0.0f, 1.0f);
+
+		indices =
+		{
+			0, 2, 1,
+			0, 3, 2
+		};
+	}
+	std::vector<glm::mat4> mmatrixs(1, glm::mat4());
+	std::shared_ptr<VertexArrayTc> pVATc = std::make_shared<VertexArrayTc>(vertices, normals, texcoords, indices);
+	std::shared_ptr<VertexArray> pVA = std::static_pointer_cast<VertexArray>(pVATc);
+	std::shared_ptr<Texture> pTex = std::make_shared<Texture>("./timg.jpg", TextureType::Tex_DIFFUSE);
+	std::shared_ptr<Material> pMatrial = std::make_shared<Material>();
+	pMatrial->addTexture(pTex);
+	//pMatrial->addTexture(pTex);
+	std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(pVA, pMatrial, mmatrixs);
+	pScene->addMesh(pMesh);
+
+	Camera cam(1280, 720, "SPhoenixTest");
 	cam.setViewMatrix(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	std::shared_ptr<Manipulator> pManip = std::make_shared<Manipulator>(&cam);
 	cam.setManipulator(std::static_pointer_cast<ManipulatorBase>(pManip));
 
-	Scene scene2 = scene;
-	scene2.setShaderCodes(shaderCodesTest);
-	scene2.mModelMatrix = glm::translate(scene2.mModelMatrix, glm::vec3(0.0f, 1.0f, 0.0f));
-
-	cam.addScene(scene);
-	cam.addScene(scene2);
+	cam.addScene(pScene);
 	cam.run();
-	
-
 	return 0;
 }

@@ -22,6 +22,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\SPhoenix\Shaders">
+      <UniqueIdentifier>{fa9dbb25-78cb-4a19-86f4-5b5a35972917}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SphereRender.cpp">
@@ -40,6 +43,12 @@
     </None>
     <None Include="SphereRenderTest.frag">
       <Filter>Source Files\Shader</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.frag">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.vert">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -70,13 +79,16 @@
     <ClInclude Include="..\common\SPhoenix\Mesh.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\SPhoenix\Model.h">
-      <Filter>Header Files\SPhoenix</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\SPhoenix\Texture.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\VertexArray.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Material.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Model.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
   </ItemGroup>
