@@ -91,5 +91,11 @@
     <ClInclude Include="..\common\SPhoenix\Model.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\BBox.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\BBoxMesh.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

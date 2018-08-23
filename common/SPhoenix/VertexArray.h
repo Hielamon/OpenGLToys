@@ -1,38 +1,70 @@
 #pragma once
 #include "utils.h"
+#include "BBox.h"
 
 namespace SP
 {
 	class VertexArrayUtil;
 	class VertexArrayTcUtil;
 
-	//The basic vertexarray, just holds the vertices, normals(, indices) and a global object color
+	enum PrimitiveType
+	{
+		POINTS, LINES, LINE_STRIP, TRIANGLES
+	};
+
+	//some global variables for vertex array:
+	//such as the map between the PrimitiveType and the GL model
+	class VAGlobal
+	{
+	public:
+		~VAGlobal() {}
+
+		static VAGlobal& getInstance()
+		{
+			static VAGlobal vaglobal;
+			return vaglobal;
+		}
+
+		//The map between our primitive type and the opengl mode
+		std::map<PrimitiveType, GLenum> PTypeModeMap;
+
+	private:
+		VAGlobal()
+		{
+			PTypeModeMap = {
+				{ POINTS, GL_POINTS },
+				{ LINES, GL_LINES },
+				{ LINE_STRIP, GL_LINE_STRIP },
+				{ TRIANGLES, GL_TRIANGLES }
+			};
+		}
+	};
+
+	//The basic vertexarray, just holds the vertices(, indices) and a global object color
 	//And now we consider just the triangle drawing vertexarray
 	class VertexArray
 	{
 	public:
-		//VertexArray() = delete;
 		~VertexArray() {}
-
-		VertexArray(const std::vector<glm::vec3> &vertices,
-					const std::vector<glm::vec3> &normals,
+		
+		VertexArray(const std::vector<glm::vec3> &vertices, 
+					const PrimitiveType &pType = POINTS,
 					const std::vector<GLuint> &indices = std::vector<GLuint>(),
 					const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
-			: mNumExistedAttri(2)
+			: mNumExistedAttri(1), mPrimitiveType(pType)
 		{
 			mpvVertice = std::make_shared<std::vector<glm::vec3>>(vertices);
-			mpvNormal = std::make_shared<std::vector<glm::vec3>>(normals);
 			mpvIndice = std::make_shared<std::vector<GLuint>>(indices);
 			mColor = color;
 		}
 
 		VertexArray(const std::shared_ptr<std::vector<glm::vec3>> &pVertices,
-					const std::shared_ptr<std::vector<glm::vec3>> &pNormals,
+					const PrimitiveType &pType = POINTS,
 					const std::shared_ptr<std::vector<GLuint>> &pIndices = 
 					std::make_shared<std::vector<GLuint>>(),
 					const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
-			: mpvVertice(pVertices), mpvNormal(pNormals), mpvIndice(pIndices), 
-			mColor(color), mNumExistedAttri(2) {}
+			: mpvVertice(pVertices), mpvIndice(pIndices), 
+			mColor(color), mNumExistedAttri(1), mPrimitiveType(pType) {}
 
 		friend class VertexArrayUtil;
 		
@@ -40,7 +72,6 @@ namespace SP
 		{
 			return std::string("#define UNIFORM_COLOR\n");
 		}
-
 
 		virtual std::shared_ptr<VertexArrayUtil> createUtil(const std::shared_ptr<VertexArray>
 															&pVertexArray)
@@ -56,6 +87,18 @@ namespace SP
 			}
 
 			return pVertexArrayUtil;
+		}
+
+		//Get the number of existed attributions
+		int getNumExistedAttri()
+		{
+			return mNumExistedAttri;
+		}
+
+		//Get the bounding box
+		BBox getBoundingBox()
+		{
+			return BBox(*mpvVertice);
 		}
 
 		//For indicating whether the VertexArray has been uploaded to the GPU memory
@@ -77,21 +120,17 @@ namespace SP
 			return pVAUtil.use_count() != 0;
 		}
 
-		//Get the number of existed attributions
-		int getNumExistedAttri()
-		{
-			return mNumExistedAttri;
-		}
-
 	protected:
+		VertexArray() {};
+
 		std::shared_ptr<std::vector<glm::vec3>> mpvVertice;
-		std::shared_ptr<std::vector<glm::vec3>> mpvNormal;
 		std::shared_ptr<std::vector<GLuint>> mpvIndice;
 		glm::vec3 mColor;
+		PrimitiveType mPrimitiveType;
 
 		//The number of existed attributions;
-		//For the VertexArray , there are only vertice and normal ,
-		//So that the value for the VertexArray is 2
+		//For the VertexArray , there are only vertice ,
+		//So that the value for the VertexArray is 1
 		int mNumExistedAttri;
 
 		//For indicating whether the VertexArray has been uploaded to the GPU memory
@@ -106,16 +145,13 @@ namespace SP
 		VertexArrayUtil(const std::shared_ptr<VertexArray> &pVertexArray)
 			: mpVertexArray(pVertexArray)
 		{
+			std::map<PrimitiveType, GLenum> &typeMap = VAGlobal::getInstance().PTypeModeMap;
+			mDrawMode = typeMap[pVertexArray->mPrimitiveType];
+
 			std::vector<glm::vec3> &vVertice = *(pVertexArray->mpvVertice);
 			glGenBuffers(1, &mVerticeVBO);
 			glBindBuffer(GL_ARRAY_BUFFER, mVerticeVBO);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(vVertice[0])*vVertice.size(), &vVertice[0], GL_STATIC_DRAW);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-			std::vector<glm::vec3> &vNormal = *(pVertexArray->mpvNormal);
-			glGenBuffers(1, &mNormalVBO);
-			glBindBuffer(GL_ARRAY_BUFFER, mNormalVBO);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(vNormal[0])*vNormal.size(), &vNormal[0], GL_STATIC_DRAW);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 			mNumDrawVertice = vVertice.size();
@@ -133,15 +169,12 @@ namespace SP
 			}
 
 			glGenVertexArrays(1, &mVAO);
+			glBindVertexArray(mVAO);
 			{
-				glBindVertexArray(mVAO);
+				//GLuint attriIndex = pVertexArray->mNumExistedAttri - 1;
 				glBindBuffer(GL_ARRAY_BUFFER, mVerticeVBO);
 				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (GLvoid*)0);
 				glEnableVertexAttribArray(0);
-
-				glBindBuffer(GL_ARRAY_BUFFER, mNormalVBO);
-				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (GLvoid*)0);
-				glEnableVertexAttribArray(1);
 
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mEBO);
 			}
@@ -154,7 +187,6 @@ namespace SP
 		{
 			glDeleteVertexArrays(1, &mVAO);
 			glDeleteBuffers(1, &mVerticeVBO);
-			glDeleteBuffers(1, &mNormalVBO);
 			if (mbDrawElements)
 			{
 				glDeleteBuffers(1, &mEBO);
@@ -175,11 +207,11 @@ namespace SP
 			glBindVertexArray(mVAO);
 			if (mbDrawElements)
 			{
-				glDrawElements(GL_TRIANGLES, mNumDrawVertice, GL_UNSIGNED_INT, 0);
+				glDrawElements(mDrawMode, mNumDrawVertice, GL_UNSIGNED_INT, 0);
 			}
 			else
 			{
-				glDrawArrays(GL_TRIANGLES, 0, mNumDrawVertice);
+				glDrawArrays(mDrawMode, 0, mNumDrawVertice);
 			}
 		}
 
@@ -199,11 +231,11 @@ namespace SP
 			glBindVertexArray(mVAO);
 			if (mbDrawElements)
 			{
-				glDrawElementsInstanced(GL_TRIANGLES, mNumDrawVertice, GL_UNSIGNED_INT, 0, count);
+				glDrawElementsInstanced(mDrawMode, mNumDrawVertice, GL_UNSIGNED_INT, 0, count);
 			}
 			else
 			{
-				glDrawArraysInstanced(GL_TRIANGLES, 0, mNumDrawVertice, count);
+				glDrawArraysInstanced(mDrawMode, 0, mNumDrawVertice, count);
 			}
 		}
 
@@ -223,6 +255,7 @@ namespace SP
 
 		GLuint mVAO;
 		GLuint mVerticeVBO, mNormalVBO, mEBO;
+		GLenum mDrawMode;
 
 		bool mbDrawElements;
 		bool mbUploadUColor;
@@ -230,88 +263,195 @@ namespace SP
 		int mNumDrawVertice;
 	};
 
-	//The vertexarray holds the texture coords
-	class VertexArrayTc : public VertexArray
+	class VertexArrayN : public VertexArray
 	{
 	public:
-		VertexArrayTc() = delete;
-		~VertexArrayTc() {}
+		~VertexArrayN() {}
 
-		VertexArrayTc(const std::vector<glm::vec3> &vertices,
-					  const std::vector<glm::vec3> &normals,
-					  const std::vector<glm::vec2> &texcoords,
-					  const std::vector<GLuint> &indices = std::vector<GLuint>())
-			: VertexArray(vertices, normals, indices)
+		VertexArrayN(const std::vector<glm::vec3> &vertices,
+					 const std::vector<glm::vec3> &normals,
+					 const std::vector<GLuint> &indices = std::vector<GLuint>(),
+					 const PrimitiveType &pType = TRIANGLES,
+					 const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
+			: VertexArray(vertices, pType, indices, color)
 		{
-			mpvTexCoord = std::make_shared<std::vector<glm::vec2>>(texcoords);
+			mpvNormal = std::make_shared<std::vector<glm::vec3>>(normals);
 			mNumExistedAttri++;
 		}
 
-		VertexArrayTc(const std::shared_ptr<std::vector<glm::vec3>> &pVertices,
-					  const std::shared_ptr<std::vector<glm::vec3>> &pNormals,
-					  const std::shared_ptr<std::vector<glm::vec2>> &pTexcoords,
-					  const std::shared_ptr<std::vector<GLuint>> &pIndices =
-					  std::make_shared<std::vector<GLuint>>())
-			: VertexArray(pVertices, pNormals, pIndices), mpvTexCoord(pTexcoords)
+		VertexArrayN(const std::shared_ptr<std::vector<glm::vec3>> &pVertices,
+					 const std::shared_ptr<std::vector<glm::vec3>> &pNormals,
+					 const std::shared_ptr<std::vector<GLuint>> &pIndices =
+					 std::make_shared<std::vector<GLuint>>(),
+					 const PrimitiveType &pType = TRIANGLES,
+					 const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
+			: VertexArray(pVertices, pType, pIndices, color), mpvNormal(pNormals)
 		{
 			mNumExistedAttri++;
 		}
 
-		friend class VertexArrayTcUtil;
+		friend class VertexArrayNUtil;
 
 		virtual std::string getShaderMacros()
 		{
-			return std::string("#define HAVE_TEXCOORD\n");
+			return VertexArray::getShaderMacros() + std::string("#define HAVE_NORMAL\n");
 		}
 
 		virtual std::shared_ptr<VertexArrayUtil> createUtil(const std::shared_ptr<VertexArray>
 															&pVertexArray)
 		{
-			std::string VertexArrayTcName = typeid(VertexArrayTc).name();
+			std::string VertexArrayNName = typeid(VertexArrayN).name();
 			std::string currentVAName = typeid(*pVertexArray).name();
-			if (VertexArrayTcName != currentVAName)
+			if (VertexArrayNName != currentVAName)
 			{
 				SP_CERR("The current type of pVertexArray (" + currentVAName + ") is \
-						not consistent with the VertexArrayTc type (" + VertexArrayTcName
+						not consistent with the VertexArrayN type (" + VertexArrayNName
 						+ ")");
 				exit(-1);
 			}
 
-			std::shared_ptr<VertexArrayTc> pVertexArrayTc =
-				std::dynamic_pointer_cast<VertexArrayTc>(pVertexArray);
+			std::shared_ptr<VertexArrayN> pVertexArrayN =
+				std::dynamic_pointer_cast<VertexArrayN>(pVertexArray);
 
 			std::shared_ptr<VertexArrayUtil> pVertexArrayUtil;
-
-			if (pVertexArrayTc->IsUploaded())
+			if (pVertexArrayN->IsUploaded())
 			{
-				pVertexArrayUtil = pVertexArrayTc->mpVertexArrayUtil.lock();
+				pVertexArrayUtil = pVertexArrayN->mpVertexArrayUtil.lock();
 			}
 			else
 			{
-				std::shared_ptr<VertexArrayTcUtil> pVertexArrayTcUtil = 
-					std::make_shared<VertexArrayTcUtil>(pVertexArrayTc);
+				std::shared_ptr<VertexArrayNUtil> pVertexArrayNUtil =
+					std::make_shared<VertexArrayNUtil>(pVertexArrayN);
 
-				pVertexArrayUtil = std::static_pointer_cast<VertexArrayUtil>(pVertexArrayTcUtil);
+				pVertexArrayUtil = std::static_pointer_cast<VertexArrayUtil>(pVertexArrayNUtil);
+			}
+
+			return pVertexArrayUtil;
+		}
+
+	protected:
+		VertexArrayN() {};
+
+		std::shared_ptr<std::vector<glm::vec3>> mpvNormal;
+	};
+
+	class VertexArrayNUtil : public VertexArrayUtil
+	{
+	public:
+		VertexArrayNUtil() = delete;
+
+		VertexArrayNUtil(const std::shared_ptr<VertexArrayN> &pVertexArrayN)
+			: VertexArrayUtil(pVertexArrayN)
+		{
+			std::vector<glm::vec3> &vNormal = *(pVertexArrayN->mpvNormal);
+			glGenBuffers(1, &mNormalVBO);
+			glBindBuffer(GL_ARRAY_BUFFER, mNormalVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(vNormal[0])*vNormal.size(), &vNormal[0], GL_STATIC_DRAW);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			glBindVertexArray(mVAO);
+			{
+				//GLuint attriIndex = pVertexArrayN->mNumExistedAttri - 1;
+				glBindBuffer(GL_ARRAY_BUFFER, mNormalVBO);
+				glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (GLvoid*)0);
+				glEnableVertexAttribArray(1);
+			}
+			glBindVertexArray(0);
+		}
+
+		~VertexArrayNUtil()
+		{
+			glDeleteBuffers(1, &mNormalVBO);
+		}
+
+	protected:
+		GLuint mNormalVBO;
+	};
+
+	//The vertexarray holds normals and texture coords
+	class VertexArrayNTc : public VertexArrayN
+	{
+	public:
+		~VertexArrayNTc() {}
+
+		VertexArrayNTc(const std::vector<glm::vec3> &vertices,
+					   const std::vector<glm::vec3> &normals,
+					   const std::vector<glm::vec2> &texcoords,
+					   const std::vector<GLuint> &indices = std::vector<GLuint>(),
+					   const PrimitiveType &pType = TRIANGLES)
+			: VertexArrayN(vertices, normals, indices, pType)
+		{
+			mpvTexCoord = std::make_shared<std::vector<glm::vec2>>(texcoords);
+			mNumExistedAttri++;
+		}
+
+		VertexArrayNTc(const std::shared_ptr<std::vector<glm::vec3>> &pVertices,
+					   const std::shared_ptr<std::vector<glm::vec3>> &pNormals,
+					   const std::shared_ptr<std::vector<glm::vec2>> &pTexcoords,
+					   const std::shared_ptr<std::vector<GLuint>> &pIndices =
+					   std::make_shared<std::vector<GLuint>>(),
+					   const PrimitiveType &pType = TRIANGLES)
+			: VertexArrayN(pVertices, pNormals, pIndices, pType), mpvTexCoord(pTexcoords)
+		{
+			mNumExistedAttri++;
+		}
+
+		friend class VertexArrayNTcUtil;
+
+		virtual std::string getShaderMacros()
+		{
+			return VertexArrayN::getShaderMacros() + std::string("#define HAVE_TEXCOORD\n");
+		}
+
+		virtual std::shared_ptr<VertexArrayUtil> createUtil(const std::shared_ptr<VertexArray>
+															&pVertexArray)
+		{
+			std::string VertexArrayNTcName = typeid(VertexArrayNTc).name();
+			std::string currentVAName = typeid(*pVertexArray).name();
+			if (VertexArrayNTcName != currentVAName)
+			{
+				SP_CERR("The current type of pVertexArray (" + currentVAName + ") is \
+						not consistent with the VertexArrayNTc type (" + VertexArrayNTcName
+						+ ")");
+				exit(-1);
+			}
+
+			std::shared_ptr<VertexArrayNTc> pVertexArrayNTc =
+				std::dynamic_pointer_cast<VertexArrayNTc>(pVertexArray);
+
+			std::shared_ptr<VertexArrayUtil> pVertexArrayUtil;
+
+			if (pVertexArrayNTc->IsUploaded())
+			{
+				pVertexArrayUtil = pVertexArrayNTc->mpVertexArrayUtil.lock();
+			}
+			else
+			{
+				std::shared_ptr<VertexArrayNTcUtil> pVertexArrayNTcUtil =
+					std::make_shared<VertexArrayNTcUtil>(pVertexArrayNTc);
+
+				pVertexArrayUtil = std::static_pointer_cast<VertexArrayUtil>(pVertexArrayNTcUtil);
 			}
 				
 			return pVertexArrayUtil;
 		}
 
 	protected:
+		VertexArrayNTc() {};
+
 		std::shared_ptr<std::vector<glm::vec2>> mpvTexCoord;
 	};
 
-	class VertexArrayTcUtil : public VertexArrayUtil
+	class VertexArrayNTcUtil : public VertexArrayNUtil
 	{
 	public:
-		VertexArrayTcUtil() = delete;
+		VertexArrayNTcUtil() = delete;
 
 		//The pVertexArray must point to the VertexArrayTI
-		VertexArrayTcUtil(const std::shared_ptr<VertexArrayTc> &pVertexArrayTc)
-			: VertexArrayUtil(pVertexArrayTc)
+		VertexArrayNTcUtil(const std::shared_ptr<VertexArrayNTc> &pVertexArrayNTc)
+			: VertexArrayNUtil(pVertexArrayNTc)
 		{
-			
-			std::vector<glm::vec2> &vTexCoord = *(pVertexArrayTc->mpvTexCoord);
+			std::vector<glm::vec2> &vTexCoord = *(pVertexArrayNTc->mpvTexCoord);
 			glGenBuffers(1, &mTexCoordVBO);
 			glBindBuffer(GL_ARRAY_BUFFER, mTexCoordVBO);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(vTexCoord[0])*vTexCoord.size(), &vTexCoord[0], GL_STATIC_DRAW);
@@ -319,17 +459,16 @@ namespace SP
 
 			glBindVertexArray(mVAO);
 			{
+				//GLuint attriIndex = pVertexArrayNTc->mNumExistedAttri - 1;
 				glBindBuffer(GL_ARRAY_BUFFER, mTexCoordVBO);
 				glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (GLvoid*)0);
 				glEnableVertexAttribArray(2);
 			}
 			glBindVertexArray(0);
-
 		}
 
-		~VertexArrayTcUtil()
+		~VertexArrayNTcUtil()
 		{
-			glDeleteVertexArrays(1, &mVAO);
 			glDeleteBuffers(1, &mTexCoordVBO);
 		}
 

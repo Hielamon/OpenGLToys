@@ -153,26 +153,26 @@ namespace SP
 				//TODO : actually, a pick up mechanism need be installed
 				if (mmouseButtonState[GLFW_MOUSE_BUTTON_LEFT])
 				{
-					//glm::mat4 rotate;
-					//if (abs(dx) > abs(dy))
-					//{
-					//	rotate = glm::rotate(glm::mat4(1.0f), -dxRad, glm::vec3(0.0f, 1.0f, 0.0f));
-					//}
-					//else
-					//{
-					//	rotate = glm::rotate(rotate, -dyRad, glm::vec3(1.0f, 0.0f, 0.0f));
-					//}
+					glm::mat4 rotate;
+					if (abs(dx) > abs(dy))
+					{
+						rotate = glm::rotate(glm::mat4(1.0f), -dxRad, glm::vec3(0.0f, 1.0f, 0.0f));
+					}
+					else
+					{
+						rotate = glm::rotate(rotate, -dyRad, glm::vec3(1.0f, 0.0f, 0.0f));
+					}
 
-					//glm::vec4 eyeHomo(mpCam->meye, 1.0f);
-					//eyeHomo = rotate * eyeHomo;
-					//glm::vec3 eye(eyeHomo);
-					////std::cout << "eye point = " << glm::to_string(eye) << std::endl;
+					glm::vec4 eyeHomo(mpCam->meye, 1.0f);
+					eyeHomo = rotate * eyeHomo;
+					glm::vec3 eye(eyeHomo);
+					//std::cout << "eye point = " << glm::to_string(eye) << std::endl;
 
-					//glm::vec4 upHomo(mpCam->mup, 0.0f);
-					//upHomo = rotate * upHomo;
-					//glm::vec3 up(upHomo);
+					glm::vec4 upHomo(mpCam->mup, 0.0f);
+					upHomo = rotate * upHomo;
+					glm::vec3 up(upHomo);
 
-					//mpCam->setViewMatrix(eye, mpCam->mcenter, up);
+					mpCam->setViewMatrix(eye, mpCam->mcenter, up);
 
 				}
 

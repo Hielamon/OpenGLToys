@@ -34,11 +34,6 @@ namespace SP
 		friend class SceneAssimpLoader;
 		friend class SceneUtil;
 
-		/*void addGeometry(Geometry &geometry)
-		{
-			mvpGeometry.push_back(std::make_shared<Geometry>(geometry));
-		}*/
-
 		void addMesh(const std::shared_ptr<Mesh>& pMesh,
 					 const std::shared_ptr<ShaderCodes> &pShaderCodes = nullptr)
 		{
@@ -61,6 +56,45 @@ namespace SP
 		void setCommonShaderCodes(ShaderCodes &shaderCodes)
 		{
 			mpCommonShaderCodes = std::make_shared<ShaderCodes>(shaderCodes);
+		}
+
+		void setTopModelMatrix(const glm::mat4 &modelmatrix)
+		{
+			mTopModelMatrix = modelmatrix;
+		}
+
+		//Get the total bounding box of all meshes
+		BBox getBoundingBox()
+		{
+			BBox resBBox;
+			for (size_t i = 0; i < mvpMesh.size(); i++)
+			{
+				resBBox += mvpMesh[i]->getBoundingBox();
+			}
+			return resBBox;
+		}
+
+		std::vector<BBox> getAllMeshBBoxes()
+		{
+			std::vector<BBox> vBBox;
+			for (size_t i = 0; i < mvpMesh.size(); i++)
+			{
+				vBBox.push_back(mvpMesh[i]->getBoundingBox());
+			}
+
+			return vBBox;
+		}
+
+		std::vector<BBox> getAllInstanceBBoxes()
+		{
+			std::vector<BBox> vBBox;
+			for (size_t i = 0; i < mvpMesh.size(); i++)
+			{
+				std::vector<BBox> vBBoxTmp = mvpMesh[i]->getAllBoundingBoxes();
+				vBBox.insert(vBBox.end(), vBBoxTmp.begin(), vBBoxTmp.end());
+			}
+
+			return vBBox;
 		}
 
 	protected:
@@ -126,6 +160,11 @@ namespace SP
 				 iter != mmLabelToShader.end(); iter++)
 			{
 				iter->second->useProgram();
+				GLint programID = iter->second->getProgramID();
+				GLint tMMatrixLoc = glGetUniformLocation(programID, "topMMatrix");
+				glUniformMatrix4fv(tMMatrixLoc, 1, GL_FALSE,
+								   glm::value_ptr(mpScene->mTopModelMatrix));
+
 				std::vector<std::shared_ptr<MeshUtil>> &vpMeshUtil = 
 					mmLabelToMeshes[iter->first];
 
@@ -207,13 +246,14 @@ namespace SP
 				aiMesh *aimesh = aiscene->mMeshes[i];
 				std::shared_ptr<VertexArray> pVertexArray = _loadVertexArray(aimesh);
 				std::shared_ptr<Material> pMaterial = vpMaterial[aimesh->mMaterialIndex];
-
+				
 				//Add the model to mScene, but the instanceN are still zero
 				mpScene->addMesh(std::make_shared<Mesh>(pVertexArray, pMaterial));
 			}
 
 			//Traveling the scene tree for retrieving the instanceN vector and model matrix array
-			_processNode(aiscene->mRootNode, mpScene->mTopModelMatrix);
+			glm::mat4 initModelMatrix;
+			_processNode(aiscene->mRootNode, initModelMatrix);
 		}
 
 		std::shared_ptr<VertexArray> _loadVertexArray(const aiMesh *aimesh)
@@ -224,19 +264,12 @@ namespace SP
 			std::shared_ptr<std::vector<glm::vec2>> pvTexCoord = std::make_shared<std::vector<glm::vec2>>();
 			std::shared_ptr<std::vector<GLuint>> pvIndice = std::make_shared<std::vector<GLuint>>();
 
+			pvVertice->reserve(aimesh->mNumVertices);
+			pvNormal->reserve(aimesh->mNumVertices);
 			for (size_t i = 0; i < aimesh->mNumVertices; i++)
 			{
 				pvVertice->push_back(glm::vec3(aimesh->mVertices[i].x, aimesh->mVertices[i].y, aimesh->mVertices[i].z));
 				pvNormal->push_back(glm::vec3(aimesh->mNormals[i].x, aimesh->mNormals[i].y, aimesh->mNormals[i].z));
-
-			}
-
-			if (aimesh->mTextureCoords[0])
-			{
-				for (size_t i = 0; i < aimesh->mNumVertices; i++)
-				{
-					pvTexCoord->push_back(glm::vec2(aimesh->mTextureCoords[0][i].x, aimesh->mTextureCoords[0][i].y));
-				}
 			}
 
 			for (size_t i = 0; i < aimesh->mNumFaces; i++)
@@ -248,10 +281,30 @@ namespace SP
 				}
 			}
 
-			std::shared_ptr<VertexArrayTc> pVertexArrayTc =
-				std::make_shared<VertexArrayTc>(pvVertice, pvNormal, pvTexCoord, pvIndice);
+			std::shared_ptr<VertexArray> pVertexArray;
 
-			return std::static_pointer_cast<VertexArray>(pVertexArrayTc);
+			if (aimesh->mTextureCoords[0])
+			{
+				pvTexCoord->reserve(aimesh->mNumVertices);
+				for (size_t i = 0; i < aimesh->mNumVertices; i++)
+				{
+					pvTexCoord->push_back(glm::vec2(aimesh->mTextureCoords[0][i].x, aimesh->mTextureCoords[0][i].y));
+				}
+
+				std::shared_ptr<VertexArrayNTc> pVertexArrayNTc =
+					std::make_shared<VertexArrayNTc>(pvVertice, pvNormal, pvTexCoord, pvIndice);
+
+				pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayNTc);
+			}
+			else
+			{
+				std::shared_ptr<VertexArrayN> pVertexArrayN =
+					std::make_shared<VertexArrayN>(pvVertice, pvNormal, pvIndice);
+
+				pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayN);
+			}
+
+			return pVertexArray;
 		}
 
 		std::shared_ptr<Material>  _loadMaterial(const aiMaterial *aimaterial)
@@ -294,10 +347,10 @@ namespace SP
 								 T.a3, T.b3, T.c3, T.d3,
 								 T.a4, T.b4, T.c4, T.d4);
 
-			glm::mat4 curMMatrix = relMMatrix * topMMatrix;
+			glm::mat4 curMMatrix = topMMatrix * relMMatrix;
 			for (size_t i = 0; i < ainode->mNumMeshes; i++)
 			{
-				mpScene->mvpMesh[i + mExistedMeshNum]->addInstance(curMMatrix);
+				mpScene->mvpMesh[ainode->mMeshes[i] + mExistedMeshNum]->addInstance(curMMatrix);
 			}
 
 			for (size_t i = 0; i < ainode->mNumChildren; i++)

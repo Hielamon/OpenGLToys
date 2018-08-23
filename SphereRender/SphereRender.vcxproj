@@ -159,6 +159,7 @@
     <None Include="SphereRenderTest.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\SPhoenix\BBoxMesh.h" />
     <ClInclude Include="..\common\SPhoenix\core.h" />
     <ClInclude Include="..\common\SPhoenix\Geometry.h" />
     <ClInclude Include="..\common\SPhoenix\global_macro.h" />
@@ -169,6 +170,7 @@
     <ClInclude Include="..\common\SPhoenix\Model.h" />
     <ClInclude Include="..\common\SPhoenix\Scene.h" />
     <ClInclude Include="..\common\SPhoenix\Shader.h" />
+    <ClInclude Include="..\common\SPhoenix\BBox.h" />
     <ClInclude Include="..\common\SPhoenix\Texture.h" />
     <ClInclude Include="..\common\SPhoenix\utils.h" />
     <ClInclude Include="..\common\SPhoenix\VertexArray.h" />

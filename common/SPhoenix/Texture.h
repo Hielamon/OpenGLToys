@@ -16,6 +16,46 @@ namespace SP
 		Tex_AMBIENT, Tex_DIFFUSE, Tex_SPECULAR/*, Tex_NORMALS*/
 	};
 
+	class TextureGlobal
+	{
+	public:
+		~TextureGlobal() {}
+
+		static TextureGlobal& getInstance()
+		{
+			static TextureGlobal texGSet;
+			return texGSet;
+		}
+
+		std::map<aiTextureType, TextureType> aiTypeMap;
+		std::map<TextureType, std::string> typeMacroMap;
+		std::map<TextureType, std::string> typeMaterialNameMap;
+
+	private:
+		TextureGlobal()
+		{
+			aiTypeMap = {
+				{ aiTextureType_AMBIENT, Tex_AMBIENT },
+				{ aiTextureType_DIFFUSE, Tex_DIFFUSE },
+				{ aiTextureType_SPECULAR, Tex_SPECULAR }/*,
+														{ aiTextureType_NORMALS, Tex_NORMALS }*/
+			};
+
+			typeMacroMap = {
+				{ Tex_AMBIENT , "#define AMBIENT_TEXTURE \n" },
+				{ Tex_DIFFUSE , "#define DIFFUSE_TEXTURE \n" },
+				{ Tex_SPECULAR, "#define SPECULAR_TEXTURE\n" }
+			};
+
+			typeMaterialNameMap =
+			{
+				{ Tex_AMBIENT , "material.ambient_maps" },
+				{ Tex_DIFFUSE , "material.diffuse_maps" },
+				{ Tex_SPECULAR, "material.specular_maps" }
+			};
+		}
+	};
+
 	class Texture
 	{
 	public:
@@ -70,45 +110,5 @@ namespace SP
 		std::string mimagePath;
 		TextureType mtype;
 		std::shared_ptr<unsigned char> mpData;
-	};
-
-	class TextureGlobal
-	{
-	public:
-		TextureGlobal()
-		{
-			aiTypeMap = {
-				{ aiTextureType_AMBIENT, Tex_AMBIENT },
-				{ aiTextureType_DIFFUSE, Tex_DIFFUSE },
-				{ aiTextureType_SPECULAR, Tex_SPECULAR }/*,
-				{ aiTextureType_NORMALS, Tex_NORMALS }*/
-			};
-
-			typeMacroMap = {
-				{ Tex_AMBIENT , "#define AMBIENT_TEXTURE \n" },
-				{ Tex_DIFFUSE , "#define DIFFUSE_TEXTURE \n" },
-				{ Tex_SPECULAR, "#define SPECULAR_TEXTURE\n" }
-			};
-
-			typeMaterialNameMap = 
-			{
-				{ Tex_AMBIENT , "material.ambient_maps" },
-				{ Tex_DIFFUSE , "material.diffuse_maps" },
-				{ Tex_SPECULAR, "material.specular_maps" }
-			};
-		}
-
-		~TextureGlobal() {}
-
-		static TextureGlobal& getInstance()
-		{
-			static TextureGlobal texGSet;
-			return texGSet;
-		}
-
-		std::map<aiTextureType, TextureType> aiTypeMap;
-		std::map<TextureType, std::string> typeMacroMap;
-		std::map<TextureType, std::string> typeMaterialNameMap;
-		
 	};
 }

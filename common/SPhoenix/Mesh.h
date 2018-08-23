@@ -11,8 +11,6 @@ namespace SP
 	class Mesh
 	{
 	public:
-		Mesh() = delete;
-
 		Mesh(const std::shared_ptr<VertexArray> &pVertexArray,
 			 const std::shared_ptr<Material> &pMaterial,
 			 const std::vector<glm::mat4> &vInstanceMMatrix =
@@ -20,29 +18,16 @@ namespace SP
 			: mpVertexArray(pVertexArray), mpMaterial(pMaterial),
 			mInstanceN(vInstanceMMatrix.size()), mvInstanceMMatrix(vInstanceMMatrix)
 		{
-			if (pVertexArray.use_count() == 0)
-			{
-				//mpVertexArrayUtil cannot be empty
-				SP_CERR("The vertexArray is empty, this situation is not permitted");
-				exit(-1);
-			}
-			mMMatrixAttri = pVertexArray->getNumExistedAttri();
+			setVertexArray(pVertexArray);
 		}
 
 		Mesh(const std::shared_ptr<VertexArray> &pVertexArray,
 			 const std::vector<glm::mat4> &vInstanceMMatrix =
 			 std::vector<glm::mat4>())
-			: mpVertexArray(pVertexArray),
-			mInstanceN(vInstanceMMatrix.size()),
+			: mInstanceN(vInstanceMMatrix.size()),
 			mvInstanceMMatrix(vInstanceMMatrix)
 		{
-			if (pVertexArray.use_count() == 0)
-			{
-				//mpVertexArrayUtil cannot be empty
-				SP_CERR("The vertexArray is empty, this situation is not permitted");
-				exit(-1);
-			}
-			mMMatrixAttri = pVertexArray->getNumExistedAttri();
+			setVertexArray(pVertexArray);
 		}
 		
 		~Mesh() {}
@@ -62,6 +47,16 @@ namespace SP
 				   const std::vector<glm::mat4> &vInstanceMMatrix = 
 				   std::vector<glm::mat4>())
 		{
+			setVertexArray(pVertexArray);
+
+			mpMaterial = pMaterial;
+			mvInstanceMMatrix = vInstanceMMatrix;
+			mInstanceN = mvInstanceMMatrix.size();
+			assert(mInstanceN == 0);
+		}
+
+		void setVertexArray(const std::shared_ptr<VertexArray> &pVertexArray)
+		{
 			if (pVertexArray.use_count() == 0)
 			{
 				//mpVertexArrayUtil cannot be empty
@@ -69,15 +64,10 @@ namespace SP
 				exit(-1);
 			}
 			mMMatrixAttri = pVertexArray->getNumExistedAttri();
-
-			mpMaterial = pMaterial;
 			mpVertexArray = pVertexArray;
-			mvInstanceMMatrix = vInstanceMMatrix;
-			mInstanceN = mvInstanceMMatrix.size();
-			assert(mInstanceN == 0);
 		}
 
-		void addInstance(const glm::mat4 &instanceMMatrix)
+		void addInstance(const glm::mat4 &instanceMMatrix = glm::mat4())
 		{
 			mvInstanceMMatrix.push_back(instanceMMatrix);
 			mInstanceN++;
@@ -118,6 +108,33 @@ namespace SP
 
 			return pMeshUtil;
 		}
+		//Get the total bounding box of all instances 
+		BBox getBoundingBox()
+		{
+			BBox resBBox, oriBBox = mpVertexArray->getBoundingBox();
+			
+			for (size_t i = 0; i < mInstanceN; i++)
+			{
+				BBox currBBox = TransformBBox(mvInstanceMMatrix[i], oriBBox);
+				resBBox += currBBox;
+			}
+
+			return resBBox;
+		}
+
+		//Get the all bounding boxes of all instances 
+		std::vector<BBox> getAllBoundingBoxes()
+		{
+			std::vector<BBox> vBBox;
+			BBox oriBBox = mpVertexArray->getBoundingBox();
+			for (size_t i = 0; i < mInstanceN; i++)
+			{
+				BBox currBBox = TransformBBox(mvInstanceMMatrix[i], oriBBox);
+				vBBox.push_back(currBBox);
+			}
+
+			return vBBox;
+		}
 
 		//For indicating whether the VertexArray has been uploaded to the GPU memory
 		void setMeshUtil(const std::shared_ptr<MeshUtil> &pMeshUtil)
@@ -139,6 +156,8 @@ namespace SP
 		}
 
 	protected:
+		Mesh() : mInstanceN(0), mMMatrixAttri(-1) {}
+
 		std::shared_ptr<Material> mpMaterial;
 		std::shared_ptr<VertexArray> mpVertexArray;
 
@@ -185,8 +204,8 @@ namespace SP
 				//For deciding whether to setup the uniform color
 				if ((mpMesh->mpMaterial.use_count() == 0 ||
 					 mpMesh->mpMaterial->getAllTexturesNum() == 0) &&
-					mpMesh->mpVertexArray->getShaderMacros() ==
-					"#define HAVE_TEXCOORD\n")
+					mpMesh->mpVertexArray->getShaderMacros().find(
+					"#define HAVE_COLORS\n") == std::string::npos)
 				{
 					mpVertexArrayUtil->setUColor(true);
 				}

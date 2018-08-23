@@ -159,6 +159,7 @@ namespace SP
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEPTH_TEST);
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 			//Using uniform buffers
 			glGenBuffers(1, &mViewUBO);
@@ -174,20 +175,6 @@ namespace SP
 
 		~Camera(){}
 
-		std::shared_ptr<SceneUtil> getSceneUtil(int index)
-		{
-			if (index < 0 || index >= mvpSceneUtil.size())
-			{
-				SP_CERR("Invalid index to mvSceneUtil");
-				exit(-1);
-			}
-			return mvpSceneUtil[index];
-		}
-
-		std::vector<std::shared_ptr<SceneUtil>> getSceneUtil()
-		{
-			return mvpSceneUtil;
-		}
 
 		void setProjectionMatrix(float fovy = 45.f, float aspect = 0.0f, float zNear = 0.01, float zFar = 100.f)
 		{
@@ -220,12 +207,40 @@ namespace SP
 		}
 
 		/**Add a Scene to a Camera's SceneUtil pointer vector, and return the SceneUtil ID*/
-		GLuint addScene(std::shared_ptr<Scene> &pScene)
+		void setScene(std::shared_ptr<Scene> &pScene)
 		{
-			mvpSceneUtil.push_back(std::make_shared<SceneUtil>(pScene));
-			return int(mvpSceneUtil.size()) - 1;
+			mpSceneUtil = std::make_shared<SceneUtil>(pScene);
+
+			//Update the model matrix according the scene bounding box
+			BBox sceneBBox = pScene->getBoundingBox();
+			glm::vec3 minVertex = sceneBBox.getMinVertex();
+			glm::vec3 maxVertex = sceneBBox.getMaxVertex();
+			glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
+			glm::mat4 mt;
+			mt = glm::translate(mt, -sceneCenter);
+			
+
+			glm::vec3 center(0.0f, 0.0f, 0.0f);
+			glm::vec3 up(0.0f, 1.0f, 0.0f);
+			float boxDepth = maxVertex.z - minVertex.z;
+			float boxWidth = maxVertex.x - minVertex.x;
+			float boxHeight = maxVertex.y - minVertex.y;
+			float tanHalfFovy = tan(glm::radians(mfovy)*0.5f);
+			float fy = boxDepth*0.5f + boxHeight*0.5f / tanHalfFovy;
+			float fx = boxDepth*0.5f + boxWidth*0.5f / (tanHalfFovy*maspect);
+			float f = std::max(fx, fy);
+
+			float scale = mzFar / (f*10);
+			f *= scale;
+			glm::mat4 ms;
+			ms = glm::scale(ms, glm::vec3(scale, scale, scale));
+			pScene->setTopModelMatrix(ms*mt);
+
+			glm::vec3 eye(0.0f, 0.0f, f);
+			setViewMatrix(eye, center, up);
 		}
 
+		//mfovy is the angle FOV in y direction
 		float mfovy, maspect, mzNear, mzFar;
 		glm::vec3 meye, mcenter, mup;
 
@@ -235,22 +250,20 @@ namespace SP
 		{
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			for (size_t i = 0; i < mvpSceneUtil.size(); i++)
-			{
-				/*GLuint programID = mvpSceneUtil[i]->getProgramID();
+			
+			/*GLuint programID = mvpSceneUtil[i]->getProgramID();
 
-				GLint projectionLoc = glGetUniformLocation(programID, "projection");
-				glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(mprojectionMatrix));
+			GLint projectionLoc = glGetUniformLocation(programID, "projection");
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(mprojectionMatrix));
 
-				GLint viewLoc = glGetUniformLocation(programID, "view");
-				glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(mviewMatrix));*/
+			GLint viewLoc = glGetUniformLocation(programID, "view");
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(mviewMatrix));*/
 
-				mvpSceneUtil[i]->draw();
-			}
+			mpSceneUtil->draw();
 		}
 
 	private:
-		std::vector<std::shared_ptr<SceneUtil>> mvpSceneUtil;
+		std::shared_ptr<SceneUtil> mpSceneUtil;
 		std::shared_ptr<ManipulatorBase> mpManipulator;
 
 		glm::mat4 mviewMatrix;

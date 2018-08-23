@@ -11,7 +11,6 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
 #include <SOIL.h>
 
 #include <glm\glm.hpp>
@@ -72,6 +71,8 @@ inline void RigidTransformLookAt(glm::mat4 &rigid, glm::vec3 &eye, glm::vec3 &ce
 	glm::vec4 upHomo(up, 0.0f);
 	up = glm::vec3(rigid * upHomo);*/
 }
+
+
 
 
 
