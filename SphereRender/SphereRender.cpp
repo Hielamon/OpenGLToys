@@ -10,8 +10,13 @@ int main(int argc, char *argv[])
 	std::shared_ptr<Scene> pScene = std::make_shared<Scene>();
 	
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\GLRelatedCodes\\Freedom3D\\LearnOpenGL\\LoadModel\\nanosuit\\nanosuit.obj";
-	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
-	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\4nlnidkes4g0-C\\The-City\\The-City.obj";
+	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
+	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\4nlnidkes4g0-C\\The-City\\The-City.obj";
+	if (argc == 2)
+	{
+		fileFullPath = argv[1];
+	}
+
 	{
 		SceneAssimpLoader loader(fileFullPath, pScene);
 		if (!loader.IsLoadSuccess())

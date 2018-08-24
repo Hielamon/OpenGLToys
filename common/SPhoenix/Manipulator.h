@@ -83,6 +83,12 @@ namespace SP
 					glPolygonMode(GL_FRONT_AND_BACK, GL_POINT + bias);
 				}
 				break;
+			case GLFW_KEY_C:
+				if (action == GLFW_PRESS)
+				{
+					mpCam->mbShowIDColor = !mpCam->mbShowIDColor;
+				}
+				break;
 			
 			default:
 				break;

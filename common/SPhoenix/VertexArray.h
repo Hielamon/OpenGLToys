@@ -179,8 +179,6 @@ namespace SP
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mEBO);
 			}
 			glBindVertexArray(0);
-
-			mbUploadUColor = mpVertexArray->getShaderMacros() == std::string("#define UNIFORM_COLOR\n");
 		}
 
 		~VertexArrayUtil()
@@ -195,15 +193,6 @@ namespace SP
 
 		virtual void draw()
 		{
-			if (mbUploadUColor)
-			{
-				GLint programID;
-				glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
-				GLint uColorLoc = glGetUniformLocation(programID, "uColor");
-				glm::vec3 &uColor = mpVertexArray->mColor;
-				glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);
-			}
-
 			glBindVertexArray(mVAO);
 			if (mbDrawElements)
 			{
@@ -218,15 +207,6 @@ namespace SP
 		virtual void drawInstanced(int count)
 		{
 			if (count <= 0) return;
-
-			if (mbUploadUColor)
-			{
-				GLint programID;
-				glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
-				GLint uColorLoc = glGetUniformLocation(programID, "uColor");
-				glm::vec3 &uColor = mpVertexArray->mColor;
-				glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);
-			}
 
 			glBindVertexArray(mVAO);
 			if (mbDrawElements)
@@ -244,10 +224,9 @@ namespace SP
 			return	mVAO;
 		}
 
-		//Set the state of whether to upload the ucolor
-		void setUColor(bool bUploadUColor)
+		const glm::vec3 & getUniformColor()
 		{
-			mbUploadUColor = bUploadUColor;
+			return mpVertexArray->mColor;
 		}
 
 	protected:
@@ -258,7 +237,6 @@ namespace SP
 		GLenum mDrawMode;
 
 		bool mbDrawElements;
-		bool mbUploadUColor;
 
 		int mNumDrawVertice;
 	};
@@ -341,7 +319,7 @@ namespace SP
 		VertexArrayNUtil() = delete;
 
 		VertexArrayNUtil(const std::shared_ptr<VertexArrayN> &pVertexArrayN)
-			: VertexArrayUtil(pVertexArrayN)
+			: VertexArrayUtil(std::static_pointer_cast<VertexArray>(pVertexArrayN))
 		{
 			std::vector<glm::vec3> &vNormal = *(pVertexArrayN->mpvNormal);
 			glGenBuffers(1, &mNormalVBO);
@@ -449,7 +427,7 @@ namespace SP
 
 		//The pVertexArray must point to the VertexArrayTI
 		VertexArrayNTcUtil(const std::shared_ptr<VertexArrayNTc> &pVertexArrayNTc)
-			: VertexArrayNUtil(pVertexArrayNTc)
+			: VertexArrayNUtil(std::static_pointer_cast<VertexArrayN>(pVertexArrayNTc))
 		{
 			std::vector<glm::vec2> &vTexCoord = *(pVertexArrayNTc->mpvTexCoord);
 			glGenBuffers(1, &mTexCoordVBO);

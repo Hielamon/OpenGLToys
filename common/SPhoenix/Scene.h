@@ -26,6 +26,9 @@ namespace SP
 			ShaderCodes defaultShader(__currentPATH + "/Shaders/SPhoenixScene.vert", 
 									  __currentPATH + "/Shaders/SPhoenixScene.frag");
 
+			/*ShaderCodes defaultShader(__currentPATH + "/Shaders/SPhoenixScene-MeshID.vert",
+									  __currentPATH + "/Shaders/SPhoenixScene-MeshID.frag");*/
+
 			setCommonShaderCodes(defaultShader);
 		}
 
@@ -148,12 +151,21 @@ namespace SP
 				}
 
 				mmLabelToMeshes[label].push_back(pMeshUtil);
+				mvMeshUtil.push_back(pMeshUtil);
+
 			}
 		}
 
 		~SceneUtil() {}
 
-		void draw()
+		void reset()
+		{
+			mmLabelToShader.clear();
+			mmLabelToMeshes.clear();
+			mvMeshUtil.clear();
+		}
+
+		virtual void draw()
 		{
 			std::map<std::string, std::shared_ptr<ShaderUtil>>::iterator iter;
 			for (iter = mmLabelToShader.begin();
@@ -175,9 +187,49 @@ namespace SP
 			}
 		}
 
-	private:
+		void addMeshUtil(const std::shared_ptr<MeshUtil>& pMeshUtil,
+						 const std::shared_ptr<ShaderCodes> &pShaderCodes = nullptr)
+		{
+			const std::shared_ptr<ShaderCodes> &pShaderCodesUsed =
+				pShaderCodes.use_count() == 0 ?
+				mpScene->mpCommonShaderCodes : pShaderCodes;
+
+			std::stringstream ioStr;
+			std::string macros = pMeshUtil->getShaderMacros();
+			ioStr << macros << "//" << pShaderCodes;
+			std::string label = ioStr.str();
+
+			if (mmLabelToShader.find(label) == mmLabelToShader.end())
+			{
+				std::shared_ptr<ShaderCodes> pShaderCodes_ =
+					std::make_shared<ShaderCodes>(*pShaderCodesUsed);
+				pShaderCodes_->addMacros(macros);
+
+				mmLabelToShader[label] = std::make_shared<ShaderUtil>(pShaderCodes_);
+				mmLabelToMeshes[label] = std::vector<std::shared_ptr<MeshUtil>>();
+
+				// Using uniform buffers & Bind the UMatrices uniform block 
+				// index to 1
+				GLuint programID = mmLabelToShader[label]->getProgramID();
+				GLuint ViewUBOIndex = glGetUniformBlockIndex(programID, "ViewUBO");
+				glUniformBlockBinding(programID, ViewUBOIndex, VIEWUBO_BINDING_POINT);
+			}
+
+			mmLabelToMeshes[label].push_back(pMeshUtil);
+			mvMeshUtil.push_back(pMeshUtil);
+		}
+
+		std::vector<std::shared_ptr<MeshUtil>> getMeshUtils()
+		{
+			return mvMeshUtil;
+		}
+
+	protected:
+		SceneUtil() {}
+
 		std::shared_ptr<Scene> mpScene;
 		
+		std::vector<std::shared_ptr<MeshUtil>> mvMeshUtil;
 		std::map<std::string, std::shared_ptr<ShaderUtil>> mmLabelToShader;
 		std::map<std::string, std::vector<std::shared_ptr<MeshUtil>>> mmLabelToMeshes;
 	};

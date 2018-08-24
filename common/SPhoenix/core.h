@@ -154,7 +154,7 @@ namespace SP
 	{
 	public:
 		Camera(int width, int height, const std::string &camName = "Untitled")
-			: GLWindowBase(camName, width, height)
+			: GLWindowBase(camName, width, height), mbShowIDColor(false)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_MULTISAMPLE);
@@ -243,27 +243,52 @@ namespace SP
 		//mfovy is the angle FOV in y direction
 		float mfovy, maspect, mzNear, mzFar;
 		glm::vec3 meye, mcenter, mup;
+		bool mbShowIDColor;
 
 	protected:
-
 		virtual void runOnce()
 		{
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			if (mpSceneUtil.use_count() == 0) return;
 
-			
-			/*GLuint programID = mvpSceneUtil[i]->getProgramID();
+			if (mbShowIDColor)
+			{
+				if (mpColorSceneUtil.use_count() == 0)
+				{
+					//Initialize the mpColorSceneUtil;
+					std::string __currentPATH = __FILE__;
+					__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+					std::shared_ptr<ShaderCodes> pColorIDShader = std::make_shared<ShaderCodes>(
+						__currentPATH + "/Shaders/SPhoenixScene-MeshIDColor.vert",
+						__currentPATH + "/Shaders/SPhoenixScene-MeshIDColor.frag");
 
-			GLint projectionLoc = glGetUniformLocation(programID, "projection");
-			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(mprojectionMatrix));
+					mpColorSceneUtil = std::make_shared<SceneUtil>(*mpSceneUtil);
+					mpColorSceneUtil->reset();
+					std::vector<std::shared_ptr<MeshUtil>> vExistedMesh = mpSceneUtil->getMeshUtils();
+					for (size_t i = 0; i < vExistedMesh.size(); i++)
+					{
+						std::shared_ptr<MeshColorIDUtil> pMeshColorIDUtil =
+							std::make_shared<MeshColorIDUtil>(vExistedMesh[i]);
+						mpColorSceneUtil->addMeshUtil(
+							std::static_pointer_cast<MeshUtil>(pMeshColorIDUtil),
+							pColorIDShader);
+					}
+				}
 
-			GLint viewLoc = glGetUniformLocation(programID, "view");
-			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(mviewMatrix));*/
-
-			mpSceneUtil->draw();
+				mpColorSceneUtil->draw();
+			}
+			else
+			{
+				mpSceneUtil->draw();
+			}
 		}
 
 	private:
 		std::shared_ptr<SceneUtil> mpSceneUtil;
+
+		//mpColorSceneUtil is used to showing the id colored scene
+		std::shared_ptr<SceneUtil> mpColorSceneUtil;
+
 		std::shared_ptr<ManipulatorBase> mpManipulator;
 
 		glm::mat4 mviewMatrix;

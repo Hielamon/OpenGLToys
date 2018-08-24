@@ -151,6 +151,8 @@
     <ClCompile Include="SphereRender.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshIDColor.frag" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshIDColor.vert" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.frag" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.vert" />
     <None Include="SphereRender.frag" />

@@ -50,6 +50,12 @@
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.vert">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshIDColor.frag">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshIDColor.vert">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\SPhoenix\global_macro.h">
