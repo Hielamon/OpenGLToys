@@ -100,8 +100,12 @@ namespace SP
 				glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
 				glm::vec3 direction(0.0f);
 
-				float velocity = 0.4f;
+				glm::vec3 zDir = eye - center;
+				glm::vec3 zAxis = glm::normalize(zDir);
+				glm::vec3 xAxis = glm::normalize(glm::cross(up, zAxis));
+				glm::vec3 yAxis = glm::cross(zAxis, xAxis);
 
+				float velocity = 0.1f;
 				switch (key)
 				{
 				case GLFW_KEY_W:
@@ -115,6 +119,13 @@ namespace SP
 					break;
 				case GLFW_KEY_D:
 					direction = glm::vec3(velocity, 0.0f, 0.0f);
+					break;
+				case GLFW_KEY_E:
+					direction = velocity* glm::vec3(xAxis.y, yAxis.y, zAxis.y);
+					break;
+				case GLFW_KEY_Q:
+					direction = -velocity* glm::vec3(xAxis.y, yAxis.y, zAxis.y);
+					break;
 					break;
 				default:
 					break;
@@ -185,18 +196,28 @@ namespace SP
 				if (mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
 				{
 					glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
+					glm::vec3 zaxis = glm::normalize(eye - center);
+					glm::vec3 xaxis = glm::normalize(glm::cross(up, zaxis));
 
+					float velocity = 0.05;
 					glm::mat4 rotate;
 					if (abs(dx) > abs(dy))
 					{
-						rotate = glm::rotate(glm::mat4(1.0f), -dxRad * 0.1f, glm::vec3(0.0f, 1.0f, 0.0f));
+						//rotate = glm::rotate(rotate, -dxRad * velocity, up);
+						rotate = glm::rotate(rotate, -dxRad * velocity, glm::vec3(0.0f, 1.0f, 0.0f));
 					}
 					else
 					{
-						rotate = glm::rotate(rotate, -dyRad * 0.1f, glm::vec3(1.0f, 0.0f, 0.0f));
+						rotate = glm::rotate(rotate, -dyRad * velocity, xaxis);
+						//rotate = glm::rotate(rotate, -dyRad * velocity, xaxis);
 					}
 
-					RigidTransformLookAt(rotate, eye, center, up);
+					//RigidTransformLookAt(rotate, eye, center, up);
+					zaxis = glm::mat3(rotate) * zaxis;
+					center = eye - zaxis;
+
+					up = glm::mat3(rotate) * up;
+
 					mpCam->setViewMatrix(eye, center, up);
 				}
 				else if (mmouseButtonState[GLFW_MOUSE_BUTTON_MIDDLE] && abs(dy) >= 1)
