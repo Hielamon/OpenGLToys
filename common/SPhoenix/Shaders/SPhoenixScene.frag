@@ -1,10 +1,6 @@
 #version 330 core
 
-//layout(location = 1) out uint fMeshID;
-layout(location = 1) out float diffuseColor;
-layout(location = 2) out float diffuseColor0;
-
-//out vec4 FragColor;
+out vec4 FragColor;
 
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 in vec2 TexCoord;
@@ -15,8 +11,6 @@ in vec3 ObjectColor;
 #if defined(HAVE_NORMAL)
 in vec3 Normal;
 #endif
-
-
 
 struct Light
 {
@@ -43,7 +37,6 @@ struct Material
 uniform Material material;
 #endif
 uniform Light light;
-uniform uint meshID;
 
 in vec3 FragPos;
 in vec3 ViewPos;
@@ -107,16 +100,11 @@ void main()
 		specular *= vec3(texture(material.specular_maps, vec3(TexCoord, float(i))));
 	}
 #endif
-	result = (/*ambientStrength * */ambient + diffuseStrength * diffuse) * lightColor;
-	//result += specularStrength * specular * lightColor;
+	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;
+	result += specularStrength * specular * lightColor;
 #else
-	result = (/*ambientStrength + */diffuseStrength/* + specularStrength*/) * ObjectColor * lightColor;
+	result = (ambientStrength + diffuseStrength + specularStrength) * ObjectColor * lightColor;
 #endif
 	//result = vec3(1.0f, 1.0f, 1.0f);
-	//FragColor = vec4(result, 1.0f);
-	diffuseColor = result.x;
-	diffuseColor0 = diffuseColor;
-	//diffuseColor = vec4(result, 1.0f);
-
-	//fMeshID = meshID;
+	FragColor = vec4(result, 1.0f);
 }

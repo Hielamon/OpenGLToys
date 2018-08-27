@@ -201,9 +201,6 @@ namespace SP
 				 iter != mmLabelToShader.end(); iter++)
 			{
 				iter->second->useProgram();
-
-				
-
 				GLint programID = iter->second->getProgramID();
 				GLint tMMatrixLoc = glGetUniformLocation(programID, "topMMatrix");
 				glUniformMatrix4fv(tMMatrixLoc, 1, GL_FALSE,

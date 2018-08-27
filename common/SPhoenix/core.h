@@ -157,7 +157,7 @@ namespace SP
 			: GLWindowBase(camName, width, height), mbShowIDColor(false)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			//glEnable(GL_MULTISAMPLE);
+			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEPTH_TEST);
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -168,22 +168,6 @@ namespace SP
 			glGenBuffers(GL_UNIFORM_BUFFER, 0);
 			glBindBufferBase(GL_UNIFORM_BUFFER, VIEWUBO_BINDING_POINT, mViewUBO);
 			
-			//Using the render buffer object to get the clicked meshID
-			/*glGenRenderbuffers(1, &mMeshIDRBO);
-			glBindRenderbuffer(GL_RENDERBUFFER, mMeshIDRBO);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_R32UI, mwidth, mheight);
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_RENDERBUFFER, mMeshIDRBO);
-			glBindRenderbuffer(GL_RENDERBUFFER, 0);*/
-
-			/*GLenum buffers[1] = { GL_COLOR_ATTACHMENT1 };
-			glDrawBuffers(1, buffers);*/
-			GLenum error = glGetError();
-			if (error != GL_NO_ERROR)
-			{
-				std::cout << "The colors buffers is not valid" << std::endl;
-			}
-
 			//Set the default projection matrix and view matrix
 			setProjectionMatrix();
 			setViewMatrix();
@@ -333,7 +317,5 @@ namespace SP
 		glm::mat4 mviewMatrix;
 		glm::mat4 mprojectionMatrix;
 		GLuint mViewUBO;
-
-		GLuint mMeshIDRBO;
 	};
 }
