@@ -309,28 +309,15 @@ namespace SP
 			//Bind the vertexarray and draw
 			if (mpVertexArrayUtil.use_count() != 0)
 			{
-				/*mpVertexArrayUtil->setUColor(false);
+
 				GLint programID;
 				glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
-				GLint uColorLoc = glGetUniformLocation(programID, "uColor");
-				double totalColor = MeshGlobal::getInstance().totalMeshN + 1;
-				int Nc = std::ceil(std::pow(totalColor, 1.0 / 3));
-				int ID = mpMesh->mMeshID + 1;
-				glm::vec3 uColor;
-				for (size_t i = 0; i < 3 && ID >0; i++)
-				{
-					uColor[i] = (ID % Nc) / float(Nc);
-					ID = (ID - ID % Nc) / Nc;
-				}
 
-
+				GLint meshIDLoc = glGetUniformLocation(programID, "meshID");
+				glUniform1ui(meshIDLoc, getMeshID());
 				
-				glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);*/
-
 				if (mbUploadUColor)
 				{
-					GLint programID;
-					glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
 					GLint uColorLoc = glGetUniformLocation(programID, "uColor");
 					const glm::vec3 &uColor = mpVertexArrayUtil->getUniformColor();
 					glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);
