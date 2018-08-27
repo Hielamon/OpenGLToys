@@ -105,7 +105,6 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,7 +161,6 @@
     <None Include="SphereRenderTest.vert" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\common\SPhoenix\AxisMesh.h" />
     <ClInclude Include="..\common\SPhoenix\BBoxMesh.h" />
     <ClInclude Include="..\common\SPhoenix\core.h" />
     <ClInclude Include="..\common\SPhoenix\Geometry.h" />
@@ -171,6 +169,7 @@
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h" />
     <ClInclude Include="..\common\SPhoenix\Material.h" />
     <ClInclude Include="..\common\SPhoenix\Mesh.h" />
+    <ClInclude Include="..\common\SPhoenix\Model.h" />
     <ClInclude Include="..\common\SPhoenix\Scene.h" />
     <ClInclude Include="..\common\SPhoenix\Shader.h" />
     <ClInclude Include="..\common\SPhoenix\BBox.h" />

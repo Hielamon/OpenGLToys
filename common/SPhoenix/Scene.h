@@ -5,7 +5,6 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include <commonMacro.h>
 
 namespace SP
 {
@@ -67,11 +66,6 @@ namespace SP
 			mTopModelMatrix = modelmatrix;
 		}
 
-		glm::mat4 getTopModelMatrix()
-		{
-			return mTopModelMatrix;
-		}
-
 		//Get the total bounding box of all meshes
 		BBox getBoundingBox()
 		{
@@ -106,25 +100,6 @@ namespace SP
 			return vBBox;
 		}
 
-		//For indicating whether the VertexArray has been uploaded to the GPU memory
-		void setSceneUtil(const std::shared_ptr<SceneUtil> &pSceneUtil)
-		{
-			mpSceneUtil = pSceneUtil;
-		}
-
-		//Clearing the state of uploading to the GPU memory
-		void resetSceneUtil()
-		{
-			mpSceneUtil.reset();
-		}
-
-		//Get if the VertexArray has been uploaded by accessing the mpVertexArrayUtil's state
-		bool IsUploaded()
-		{
-			std::shared_ptr<SceneUtil> pSceneUtil = mpSceneUtil.lock();
-			return pSceneUtil.use_count() != 0;
-		}
-
 	protected:
 		std::shared_ptr<ShaderCodes> mpCommonShaderCodes;
 
@@ -136,9 +111,6 @@ namespace SP
 
 		//TODO: whether set the top model matrix
 		glm::mat4 mTopModelMatrix;
-
-		//For indicating whether the Scene has been uploaded to the GPU memory
-		std::weak_ptr<SceneUtil> mpSceneUtil;
 	};
 
 	class SceneUtil
@@ -162,7 +134,6 @@ namespace SP
 				std::string label = ioStr.str();
 
 				std::shared_ptr<MeshUtil> pMeshUtil = std::make_shared<MeshUtil>(pMesh);
-				pMesh->setMeshUtil(pMeshUtil);
 				if (mmLabelToShader.find(label) == mmLabelToShader.end())
 				{
 					std::shared_ptr<ShaderCodes> pShaderCodes_ =
@@ -266,7 +237,7 @@ namespace SP
 	class SceneAssimpLoader
 	{
 	public:
-		SceneAssimpLoader(const std::string &path, std::shared_ptr<Scene> &pScene, bool bFlipUV = false)
+		SceneAssimpLoader(const std::string &path, std::shared_ptr<Scene> &pScene)
 			: mpScene(pScene)
 		{
 			mbLoadSuccess = false;
@@ -274,12 +245,7 @@ namespace SP
 			//mExistedMaterialNum = mScene.mvpMaterial.size();
 
 			Assimp::Importer import;
-			unsigned int flag = aiProcess_Triangulate;
-			if (bFlipUV) flag |= aiProcess_FlipUVs;
-
-			HL_INTERVAL_START;
-			const aiScene *aiscene = import.ReadFile(path.c_str(), flag);
-			HL_INTERVAL_END;
+			const aiScene *aiscene = import.ReadFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
 
 			if (!aiscene || aiscene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiscene->mRootNode)
 			{
@@ -292,9 +258,7 @@ namespace SP
 
 			mTypeMap = TextureGlobal::getInstance().aiTypeMap;
 
-			HL_INTERVAL_START;
 			_loadToScene(aiscene);
-			HL_INTERVAL_END;
 			mbLoadSuccess = true;
 		}
 		~SceneAssimpLoader() {}
@@ -349,41 +313,15 @@ namespace SP
 			//Loading the vertex array information
 			std::shared_ptr<std::vector<glm::vec3>> pvVertice = std::make_shared<std::vector<glm::vec3>>();
 			std::shared_ptr<std::vector<glm::vec3>> pvNormal = std::make_shared<std::vector<glm::vec3>>();
-			std::shared_ptr<std::vector<glm::vec3>> pvColor = std::make_shared<std::vector<glm::vec3>>();
 			std::shared_ptr<std::vector<glm::vec2>> pvTexCoord = std::make_shared<std::vector<glm::vec2>>();
 			std::shared_ptr<std::vector<GLuint>> pvIndice = std::make_shared<std::vector<GLuint>>();
 
 			pvVertice->reserve(aimesh->mNumVertices);
+			pvNormal->reserve(aimesh->mNumVertices);
 			for (size_t i = 0; i < aimesh->mNumVertices; i++)
 			{
 				pvVertice->push_back(glm::vec3(aimesh->mVertices[i].x, aimesh->mVertices[i].y, aimesh->mVertices[i].z));
-			}
-
-			if (aimesh->mNormals)
-			{
-				pvNormal->reserve(aimesh->mNumVertices);
-				for (size_t i = 0; i < aimesh->mNumVertices; i++)
-				{
-					pvNormal->push_back(glm::vec3(aimesh->mNormals[i].x, aimesh->mNormals[i].y, aimesh->mNormals[i].z));
-				}
-			}
-
-			if (aimesh->mColors[0])
-			{
-				pvColor->reserve(aimesh->mNumVertices);
-				for (size_t i = 0; i < aimesh->mNumVertices; i++)
-				{
-					pvColor->push_back(glm::vec3(aimesh->mColors[0][i].r, aimesh->mColors[0][i].g, aimesh->mColors[0][i].b));
-				}
-			}
-
-			if (aimesh->mTextureCoords[0])
-			{
-				pvTexCoord->reserve(aimesh->mNumVertices);
-				for (size_t i = 0; i < aimesh->mNumVertices; i++)
-				{
-					pvTexCoord->push_back(glm::vec2(aimesh->mTextureCoords[0][i].x, aimesh->mTextureCoords[0][i].y));
-				}
+				pvNormal->push_back(glm::vec3(aimesh->mNormals[i].x, aimesh->mNormals[i].y, aimesh->mNormals[i].z));
 			}
 
 			for (size_t i = 0; i < aimesh->mNumFaces; i++)
@@ -397,53 +335,25 @@ namespace SP
 
 			std::shared_ptr<VertexArray> pVertexArray;
 
-			if (pvTexCoord->size() == aimesh->mNumVertices)
+			if (aimesh->mTextureCoords[0])
 			{
-				if (pvNormal->size() == aimesh->mNumVertices)
+				pvTexCoord->reserve(aimesh->mNumVertices);
+				for (size_t i = 0; i < aimesh->mNumVertices; i++)
 				{
-					std::shared_ptr<VertexArrayNTc> pVertexArrayNTc =
-						std::make_shared<VertexArrayNTc>(pvVertice, pvNormal, pvTexCoord, pvIndice);
-
-					pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayNTc);
+					pvTexCoord->push_back(glm::vec2(aimesh->mTextureCoords[0][i].x, aimesh->mTextureCoords[0][i].y));
 				}
-				else
-				{
-					std::shared_ptr<VertexArrayTc> pVertexArrayTc =
-						std::make_shared<VertexArrayTc>(pvVertice, pvTexCoord, pvIndice);
 
-					pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayTc);
-				}
-			}
-			else if(pvColor->size() == aimesh->mNumVertices)
-			{
-				if (pvNormal->size() == aimesh->mNumVertices)
-				{
-					std::shared_ptr<VertexArrayNC> pVertexArrayNC =
-						std::make_shared<VertexArrayNC>(pvVertice, pvNormal, pvColor, pvIndice);
+				std::shared_ptr<VertexArrayNTc> pVertexArrayNTc =
+					std::make_shared<VertexArrayNTc>(pvVertice, pvNormal, pvTexCoord, pvIndice);
 
-					pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayNC);
-				}
-				else
-				{
-					std::shared_ptr<VertexArrayC> pVertexArrayC =
-						std::make_shared<VertexArrayC>(pvVertice, pvColor, pvIndice);
-
-					pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayC);
-				}
+				pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayNTc);
 			}
 			else
 			{
-				if (pvNormal->size() == aimesh->mNumVertices)
-				{
-					std::shared_ptr<VertexArrayN> pVertexArrayN =
-						std::make_shared<VertexArrayN>(pvVertice, pvNormal, pvIndice);
+				std::shared_ptr<VertexArrayN> pVertexArrayN =
+					std::make_shared<VertexArrayN>(pvVertice, pvNormal, pvIndice);
 
-					pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayN);
-				}
-				else
-				{
-					pVertexArray = std::make_shared<VertexArray>(pvVertice, pvIndice);
-				}
+				pVertexArray = std::static_pointer_cast<VertexArray>(pVertexArrayN);
 			}
 
 			return pVertexArray;
@@ -454,23 +364,15 @@ namespace SP
 			std::shared_ptr<Material> pMaterial;
 			for (auto &typePair : mTypeMap)
 			{
-				GLuint textureNum = aimaterial->GetTextureCount(typePair.first);
-				for (size_t i = 0; i < textureNum; i++)
+				for (size_t i = 0; i < aimaterial->GetTextureCount(typePair.first); i++)
 				{
 					aiString filename;
 					aimaterial->GetTexture(typePair.first, i, &filename);
-					std::string path = filename.C_Str();
-					if (path.find(':') != 1)
-					{
-						//The file name is not a absolute path
-						path = mDirectory + "/" + path;
-					}
-
+					std::string path = mDirectory + "/" + std::string(filename.C_Str());
 					std::shared_ptr<Texture> tex;
 					if (mmpPathTextureLoaded.find(path) == mmpPathTextureLoaded.end())
 					{
 						tex = std::make_shared<Texture>(path, typePair.second);
-						if (!tex->IsValid()) continue;
 						mmpPathTextureLoaded[path] = tex;
 					}
 					else

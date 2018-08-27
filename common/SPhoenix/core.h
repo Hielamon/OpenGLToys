@@ -210,7 +210,6 @@ namespace SP
 		void setScene(std::shared_ptr<Scene> &pScene)
 		{
 			mpSceneUtil = std::make_shared<SceneUtil>(pScene);
-			pScene->setSceneUtil(mpSceneUtil);
 
 			//Update the model matrix according the scene bounding box
 			BBox sceneBBox = pScene->getBoundingBox();
@@ -241,27 +240,6 @@ namespace SP
 			setViewMatrix(eye, center, up);
 		}
 
-		void addMeshToScene(const std::shared_ptr<Mesh>& pMesh,
-					 const std::shared_ptr<ShaderCodes> &pShaderCodes = nullptr)
-		{
-			if (mpSceneUtil.use_count() != 0)
-			{
-				std::shared_ptr<MeshUtil> pMeshUtil = std::make_shared<MeshUtil>(pMesh);
-				pMesh->setMeshUtil(pMeshUtil);
-
-				mpSceneUtil->addMeshUtil(pMeshUtil, pShaderCodes);
-
-				if (mpColorSceneUtil.use_count() != 0)
-				{
-					std::shared_ptr<MeshColorIDUtil> pMeshColorIDUtil =
-						std::make_shared<MeshColorIDUtil>(pMeshUtil);
-					mpColorSceneUtil->addMeshUtil(
-						std::static_pointer_cast<MeshUtil>(pMeshColorIDUtil),
-						mpColorIDShader);
-				}
-			}
-		}
-
 		//mfovy is the angle FOV in y direction
 		float mfovy, maspect, mzNear, mzFar;
 		glm::vec3 meye, mcenter, mup;
@@ -280,7 +258,7 @@ namespace SP
 					//Initialize the mpColorSceneUtil;
 					std::string __currentPATH = __FILE__;
 					__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
-					mpColorIDShader = std::make_shared<ShaderCodes>(
+					std::shared_ptr<ShaderCodes> pColorIDShader = std::make_shared<ShaderCodes>(
 						__currentPATH + "/Shaders/SPhoenixScene-MeshIDColor.vert",
 						__currentPATH + "/Shaders/SPhoenixScene-MeshIDColor.frag");
 
@@ -293,7 +271,7 @@ namespace SP
 							std::make_shared<MeshColorIDUtil>(vExistedMesh[i]);
 						mpColorSceneUtil->addMeshUtil(
 							std::static_pointer_cast<MeshUtil>(pMeshColorIDUtil),
-							mpColorIDShader);
+							pColorIDShader);
 					}
 				}
 
@@ -310,7 +288,6 @@ namespace SP
 
 		//mpColorSceneUtil is used to showing the id colored scene
 		std::shared_ptr<SceneUtil> mpColorSceneUtil;
-		std::shared_ptr<ShaderCodes> mpColorIDShader;
 
 		std::shared_ptr<ManipulatorBase> mpManipulator;
 

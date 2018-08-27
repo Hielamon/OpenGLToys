@@ -67,7 +67,7 @@ namespace SP
 			if (!data)
 			{
 				SP_CERR("Failed to Open Texture File: " + imagePath);
-				mbValid = false;
+				exit(-1);
 			}
 
 
@@ -75,7 +75,6 @@ namespace SP
 			mpData = pData;
 			mtype = type;
 			mimagePath = imagePath;
-			mbValid = true;
 		}
 
 		Texture(const std::shared_ptr<unsigned char> &pData, int width, int height, int channels, TextureType type)
@@ -98,11 +97,6 @@ namespace SP
 			return mheight;
 		}
 
-		bool IsValid()
-		{
-			return mbValid;
-		}
-
 		const unsigned char * getData()
 		{
 			return mpData.get();
@@ -112,7 +106,6 @@ namespace SP
 
 		//The mchannels are the original channaels of texture
 		int mwidth, mheight, mchannels;
-		bool mbValid;
 
 		std::string mimagePath;
 		TextureType mtype;

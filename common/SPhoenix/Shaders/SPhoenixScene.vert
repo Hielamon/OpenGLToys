@@ -1,20 +1,17 @@
 #version 330 core
 
 //#define MMATRIX_ATTR 3, this macro must be added
-//#define NORMAL_ATTR 1, if HAVE_NORMAL, this is necessary
-//#define TEXCOORD_ATTR 2, if HAVE_TEXCOORD and HAVE_TEXTURE, this is necessary
-//#define COLOR_ATTR 2, if HAVE_COLOR but not HAVE_TEXCOORD, this is necessary
 
 layout (location = 0) in vec3 aVertice;
 
 #if defined(HAVE_NORMAL)
-layout (location = NORMAL_ATTR) in vec3 aNormal;
+layout (location = 1) in vec3 aNormal;
 #endif
 
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
-layout (location = TEXCOORD_ATTR) in vec2 aTexCoord;
+layout (location = 2) in vec2 aTexCoord;
 #elif defined(HAVE_COLOR)
-layout (location = COLOR_ATTR) in vec3 aColor;
+layout (location = 2) in vec3 aColor;
 #else //defined(UNIFORM_COLOR)
 uniform vec3 uColor;
 #endif

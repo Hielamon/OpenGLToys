@@ -34,7 +34,7 @@ namespace SP
 				{ aiTextureType_AMBIENT, Tex_AMBIENT },
 				{ aiTextureType_DIFFUSE, Tex_DIFFUSE },
 				{ aiTextureType_SPECULAR, Tex_SPECULAR },
-				//{ aiTextureType_NORMALS, Tex_NORMALS }
+				{ aiTextureType_NORMALS, Tex_NORMALS }
 			};
 
 			_loadToModel(scene);
