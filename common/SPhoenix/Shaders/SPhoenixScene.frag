@@ -12,8 +12,6 @@ in vec3 ObjectColor;
 in vec3 Normal;
 #endif
 
-in vec3 FragPos;
-
 struct Light
 {
 	vec3 position;
@@ -39,18 +37,18 @@ struct Material
 uniform Material material;
 #endif
 uniform Light light;
+
+in vec3 FragPos;
 in vec3 ViewPos;
 
 void main()
 {	
-#if defined(HAVE_NORMAL)
 	vec3 lightColor = vec3(1.0f, 1.0f, 1.0f);
+	vec3 result = vec3(0.0f, 0.0f, 0.0f);
+#if defined(HAVE_NORMAL)
+	float ambientStrength = 0.2f;
 
-	float ambientStrength = 0.05f;
-
-	//The diffuseStrength
 	vec3 normal = normalize(Normal);
-	//vec3 normal = vec3(0.0f, 0.0f, 1.0f);
 	vec3 lightDir = normalize(ViewPos - FragPos);
 	//vec3 lightDir = normalize(light.position - FragPos);
 	float diffuseStrength = max(dot(normal, lightDir), 0.0f);
@@ -61,53 +59,52 @@ void main()
 	vec3 halfwayDir = normalize(lightDir + viewDir);
 	float shininess = 32;
 	float specularStrength = pow(max(dot(halfwayDir, normal), 0.0f), shininess);
+#else
+	float ambientStrength = 0.2f;
+	float diffuseStrength = 0.8f;
+	float specularStrength = 0.0f;
+#endif
 
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
-
-	vec3 result = vec3(0.0f, 0.0f, 0.0f);
-#if defined(AMBIENT_TEXTURE)
-	vec3 ambient = vec3(0.0f, 0.0f, 0.0f);
-	ivec3 ambient_size = textureSize(material.ambient_maps, 0);
-	int ambient_layers = ambient_size.z;
-	for(int i = 0; i < ambient_layers; i++)
-	{
-		ambient += vec3(texture(material.ambient_maps, vec3(TexCoord, float(i))));
-	}
-	ambient = ambientStrength * light.lightColor * ambient;
-	result += ambient;
-#endif
-#if defined(DIFFUSE_TEXTURE)
 	vec3 diffuse = vec3(0.0f, 0.0f, 0.0f);
+	vec3 ambient = diffuse;
+	vec3 specular = vec3(0.0f, 0.0f, 0.0f);
+
+#if defined(DIFFUSE_TEXTURE)
+	diffuse = vec3(1.0f, 1.0f, 1.0f);
 	ivec3 diffuse_size = textureSize(material.diffuse_maps, 0);
 	int diffuse_layers = diffuse_size.z;
 	for(int i = 0; i < diffuse_layers; i++)
 	{
-		diffuse += vec3(texture(material.diffuse_maps, vec3(TexCoord, float(i))));
+		diffuse *= vec3(texture(material.diffuse_maps, vec3(TexCoord, float(i))));
 	}
-	diffuse = diffuseStrength * lightColor * diffuse;
-	result += diffuse;
+	ambient = diffuse;
 #endif
+
+#if defined(AMBIENT_TEXTURE)
+	ambient = vec3(1.0f, 1.0f, 1.0f);
+	ivec3 ambient_size = textureSize(material.ambient_maps, 0);
+	int ambient_layers = ambient_size.z;
+	for(int i = 0; i < ambient_layers; i++)
+	{
+		ambient *= vec3(texture(material.ambient_maps, vec3(TexCoord, float(i))));
+	}
+#endif
+
 #if defined(SPECULAR_TEXTURE)
-	vec3 specular = vec3(0.0f, 0.0f, 0.0f);
+	specular = vec3(1.0f, 1.0f, 1.0f);
 	ivec3 specular_size = textureSize(material.specular_maps, 0);
 	int specular_layers = specular_size.z;
 	for(int i = 0; i < specular_layers; i++)
 	{
-		specular += vec3(texture(material.specular_maps, vec3(TexCoord, float(i))));
+		specular *= vec3(texture(material.specular_maps, vec3(TexCoord, float(i))));
 	}
-	specular = specularStrength * light.lightColor * specular;
-	result += specular;
 #endif
-
+	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;
+	result += specularStrength * specular * lightColor;
 #else
-	vec3 ambient = ambientStrength * lightColor;
-	vec3 diffuse = diffuseStrength * lightColor;
-	vec3 result = (ambient + diffuse) * ObjectColor;
+	result = (ambientStrength + diffuseStrength + specularStrength) * ObjectColor * lightColor;
 #endif
 	//result = vec3(1.0f, 1.0f, 1.0f);
 	FragColor = vec4(result, 1.0f);
-#else
-	FragColor = vec4(ObjectColor, 1.0f);
-#endif
-
 }
