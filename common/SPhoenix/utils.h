@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <list>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -19,7 +20,7 @@
 #include <glm\gtc\matrix_access.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#include "global_macro.h"
+#include "Global_macro.h"
 
 
 /**Get the resolution of primary screen*/

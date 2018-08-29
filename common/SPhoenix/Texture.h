@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils.h"
+#include "Utils.h"
 #include <assimp/material.h>
 
 namespace SP

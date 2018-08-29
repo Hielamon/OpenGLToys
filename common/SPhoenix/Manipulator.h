@@ -1,7 +1,7 @@
 #pragma once
 
-#include "utils.h"
-#include "core.h"
+#include "Utils.h"
+#include "Core.h"
 #include "ManipulatorBase.h"
 
 namespace SP
@@ -9,7 +9,7 @@ namespace SP
 	class Manipulator : public ManipulatorBase
 	{
 	public:
-		Manipulator(Camera *pCam)
+		Manipulator(CameraFBO *pCam)
 		{
 			if (!pCam)
 			{
@@ -28,7 +28,6 @@ namespace SP
 
 			memset(mkeyState, GL_FALSE, KEY_COUNT);
 			memset(mmouseButtonState, GL_FALSE, MOUSE_COUNT);
-			
 		}
 
 		Manipulator() = delete;
@@ -71,7 +70,8 @@ namespace SP
 				break;
 			case GLFW_KEY_R:
 				mpCam->setProjectionMatrix(mfovy, maspect, mzNear, mzFar);
-				mpCam->setViewMatrix(meye, mcenter, mup);
+				if(mkeyState[GLFW_KEY_LEFT_CONTROL])
+					mpCam->setViewMatrix(meye, mcenter, mup);
 				break;
 			case GLFW_KEY_TAB:
 				if (action == GLFW_PRESS)
@@ -86,7 +86,7 @@ namespace SP
 			case GLFW_KEY_C:
 				if (action == GLFW_PRESS)
 				{
-					mpCam->mbShowIDColor = !mpCam->mbShowIDColor;
+					mpCam->revertShowIDColor();
 				}
 				break;
 			
@@ -152,6 +152,37 @@ namespace SP
 
 		virtual void mouseButtonCallBackImpl(GLFWwindow *window, int button, int action, int mods)
 		{
+			if (button == GLFW_MOUSE_BUTTON_LEFT &&
+				action == GLFW_PRESS &&
+				mmouseButtonState[button] == GLFW_RELEASE)
+			{
+				double x, y;
+				glfwGetCursorPos(mpCam->getGLFWWinPtr(), &x, &y);
+				//std::cout << "x = " << x << ", y = " << y <<  std::endl;
+				glm::i32vec2 winSize = mpCam->getWindowSize();
+				int bufferx = x, buffery = winSize.y - y;
+				GLuint meshID = 0;
+				meshID = mpCam->getPointMeshID(bufferx, buffery);
+
+				if (mkeyState[GLFW_KEY_LEFT_CONTROL])
+				{
+					mpCam->addSelectedID(meshID);
+					if (meshID > 0)
+					{
+						std::cout << "MeshID = " << meshID << std::endl;
+					}
+				}
+				else if(mkeyState[GLFW_KEY_LEFT_SHIFT])
+				{
+					mpCam->deleteSelectedID(meshID);
+				}
+				else if(meshID == 0)
+				{
+					mpCam->setSelectedID(meshID);
+				}
+				
+			}
+
 			mmouseButtonState[button] = action;
 		}
 
@@ -239,7 +270,7 @@ namespace SP
 		}
 
 	protected:
-		Camera *mpCam;
+		CameraFBO *mpCam;
 
 		float mfovy, maspect, mzNear, mzFar;
 		glm::vec3 meye, mcenter, mup;

@@ -3,7 +3,6 @@
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out uint MeshID;
 
-uniform vec3 uIDColor;
 uniform uint uMeshID;
 
 #if defined(HAVE_NORMAL)
@@ -37,8 +36,7 @@ void main()
 	float specularStrength = 0.0f;
 #endif	
 
-	FragColor = vec4((ambientStrength + diffuseStrength + specularStrength)*uIDColor*lightColor, 1.0f);
-	//FragColor = vec4(uIDColor, 1.0f);
-
+	FragColor = vec4((ambientStrength + diffuseStrength + specularStrength)*lightColor, 1.0f);
 	MeshID = uMeshID;
+	//FragColor = vec4(1.0f, 0.0f, 0.0f, 0.0f);
 }

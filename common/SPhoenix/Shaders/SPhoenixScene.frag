@@ -1,6 +1,9 @@
 #version 330 core
 
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out uint MeshID;
+
+//out vec4 FragColor;
 
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 in vec2 TexCoord;
@@ -37,6 +40,7 @@ struct Material
 uniform Material material;
 #endif
 uniform Light light;
+uniform uint uMeshID;
 
 in vec3 FragPos;
 in vec3 ViewPos;
@@ -103,8 +107,9 @@ void main()
 	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;
 	result += specularStrength * specular * lightColor;
 #else
-	result = (ambientStrength + diffuseStrength + specularStrength) * ObjectColor * lightColor;
+	result = (ambientStrength + diffuseStrength /*+ specularStrength*/) * ObjectColor * lightColor;
 #endif
 	//result = vec3(1.0f, 1.0f, 1.0f);
 	FragColor = vec4(result, 1.0f);
+	MeshID = uMeshID;
 }

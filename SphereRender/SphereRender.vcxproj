@@ -154,6 +154,8 @@
   <ItemGroup>
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshIDColor.frag" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshIDColor.vert" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshSelected.frag" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-MeshSelected.vert" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.frag" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.vert" />
     <None Include="SphereRender.frag" />
@@ -162,11 +164,10 @@
     <None Include="SphereRenderTest.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\SPhoenix\Core.h" />
+    <ClInclude Include="..\common\SPhoenix\Global_macro.h" />
     <ClInclude Include="..\common\SPhoenix\AxisMesh.h" />
     <ClInclude Include="..\common\SPhoenix\BBoxMesh.h" />
-    <ClInclude Include="..\common\SPhoenix\core.h" />
-    <ClInclude Include="..\common\SPhoenix\Geometry.h" />
-    <ClInclude Include="..\common\SPhoenix\global_macro.h" />
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h" />
     <ClInclude Include="..\common\SPhoenix\Material.h" />
@@ -175,7 +176,7 @@
     <ClInclude Include="..\common\SPhoenix\Shader.h" />
     <ClInclude Include="..\common\SPhoenix\BBox.h" />
     <ClInclude Include="..\common\SPhoenix\Texture.h" />
-    <ClInclude Include="..\common\SPhoenix\utils.h" />
+    <ClInclude Include="..\common\SPhoenix\Utils.h" />
     <ClInclude Include="..\common\SPhoenix\VertexArray.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

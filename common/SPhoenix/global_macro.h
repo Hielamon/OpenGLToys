@@ -16,3 +16,38 @@
 //When using the uniform buffer object
 //the UMatrices binging point set to 1
 #define VIEWUBO_BINDING_POINT 1
+
+#define GL_DEBUG_INVALID_ENUM \
+if (glGetError() == GL_INVALID_ENUM)\
+{\
+	std::cout << " ERROR : GL_INVALID_ENUM " << std::endl;\
+}
+
+#define GL_DEBUG_INVALID_OPERATION \
+if (glGetError() == GL_INVALID_OPERATION)\
+{\
+	std::cout << " ERROR : GL_INVALID_OPERATION " << std::endl;\
+}
+
+#define GL_DEBUG_NO_ERROR \
+if (glGetError() == GL_NO_ERROR)\
+{\
+	std::cout << " ERROR : GL_NO_ERROR " << std::endl;\
+}
+
+#define GL_DEBUG_INVALID_ENUM \
+if (glGetError() == GL_INVALID_ENUM)\
+{\
+	std::cout << " ERROR : GL_INVALID_ENUM " << std::endl;\
+}
+
+#define GL_DEBUG_ALL \
+GL_DEBUG_INVALID_ENUM \
+GL_DEBUG_INVALID_OPERATION \
+GL_DEBUG_NO_ERROR \
+GL_DEBUG_INVALID_ENUM
+/*GLenum error = glGetError();
+if (error == GL_NO_ERROR)
+{
+	std::cout << " ERROR :  GL_NO_ERROR" << std::endl;
+}*/

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils.h"
+#include "Utils.h"
 #include "VertexArray.h"
 #include "Material.h"
 
@@ -37,8 +37,8 @@ namespace SP
 		{
 			setVertexArray(pVertexArray);
 
-			mMeshID = MeshGlobal::getInstance().totalMeshN;
 			MeshGlobal::getInstance().totalMeshN++;
+			mMeshID = MeshGlobal::getInstance().totalMeshN;
 		}
 
 		Mesh(const std::shared_ptr<VertexArray> &pVertexArray,
@@ -49,8 +49,8 @@ namespace SP
 		{
 			setVertexArray(pVertexArray);
 
-			mMeshID = MeshGlobal::getInstance().totalMeshN;
 			MeshGlobal::getInstance().totalMeshN++;
+			mMeshID = MeshGlobal::getInstance().totalMeshN;
 		}
 		
 		~Mesh() {}
@@ -181,8 +181,8 @@ namespace SP
 	protected:
 		Mesh() : mInstanceN(0), mMMatrixAttri(-1)
 		{
-			mMeshID = MeshGlobal::getInstance().totalMeshN;
 			MeshGlobal::getInstance().totalMeshN++;
+			mMeshID = MeshGlobal::getInstance().totalMeshN;
 		}
 
 		std::shared_ptr<Material> mpMaterial;
@@ -217,6 +217,8 @@ namespace SP
 					mpMesh->mpMaterial->setMaterialUtil(mpMaterialUtil);
 				}
 			}
+
+			
 
 			//Uploading the vpVertexArray, if not upload
 			if (mpMesh->mpVertexArray.use_count() != 0)
@@ -327,14 +329,18 @@ namespace SP
 				
 				glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);*/
 
+				GLint programID;
+				glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
+
 				if (mbUploadUColor)
 				{
-					GLint programID;
-					glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
 					GLint uColorLoc = glGetUniformLocation(programID, "uColor");
 					const glm::vec3 &uColor = mpVertexArrayUtil->getUniformColor();
 					glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);
 				}
+				GLint uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+				glUniform1ui(uMeshIDLoc, getMeshID());
+
 
 				mpVertexArrayUtil->drawInstanced(mpMesh->mInstanceN);
 			}
@@ -347,6 +353,7 @@ namespace SP
 
 		std::shared_ptr<MaterialUtil> mpMaterialUtil;
 		std::shared_ptr<VertexArrayUtil> mpVertexArrayUtil;
+
 		//If there is not any texture and vertex's colors for the VertexArray
 		//mbUploadUColor will set to the true
 		bool mbUploadUColor;
@@ -378,18 +385,46 @@ namespace SP
 				GLint uIDColorLoc = glGetUniformLocation(programID, "uIDColor");
 				double totalColor = MeshGlobal::getInstance().totalMeshN + 1;
 				int Nc = std::ceil(std::pow(totalColor, 1.0 / 3));
-				int ID = getMeshID() + 1;
+				int ID = getMeshID();
 				glm::vec3 uIDColor;
-				for (size_t i = 0; i < 3 && ID >0; i++)
+				for (size_t i = 0; i < 3 && ID > 0; i++)
 				{
 					uIDColor[i] = (ID % Nc) / float(Nc);
 					ID = (ID - ID % Nc) / Nc;
 				}
 
 				glUniform3f(uIDColorLoc, uIDColor.r, uIDColor.g, uIDColor.b);
+
+				GLint uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+				glUniform1ui(uMeshIDLoc, getMeshID());
 				
 				mpVertexArrayUtil->drawInstanced(getInstanceN());
 			}
 		}
+	};
+
+	class MeshSelectedUtil : public MeshUtil
+	{
+	public:
+		MeshSelectedUtil() = delete;
+
+		MeshSelectedUtil(const std::shared_ptr<MeshUtil> &pMeshUtil)
+			: MeshUtil(*pMeshUtil) {}
+
+		virtual void draw()
+		{
+			//Bind the vertexarray and draw
+			if (mpVertexArrayUtil.use_count() != 0)
+			{
+				GLint programID;
+				glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
+
+				GLint uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+				glUniform1ui(uMeshIDLoc, getMeshID());
+
+				mpVertexArrayUtil->drawInstanced(getInstanceN());
+			}
+		}
+
 	};
 }

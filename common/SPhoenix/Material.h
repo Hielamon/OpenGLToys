@@ -159,9 +159,10 @@ namespace SP
 				}
 
 				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
 				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+				
 				glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 				glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
@@ -185,6 +186,9 @@ namespace SP
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 				glBindTexture(GL_TEXTURE_2D, 0);*/
 			}
+			glActiveTexture(GL_TEXTURE0);
+
+			
 		}
 
 		~MaterialUtil () 
@@ -216,6 +220,7 @@ namespace SP
 				//glBindTexture(GL_TEXTURE_2D, iter_->second);
 				glBindTexture(GL_TEXTURE_2D_ARRAY, iter_->second);
 			}
+			glActiveTexture(GL_TEXTURE0);
 		}
 
 	protected:

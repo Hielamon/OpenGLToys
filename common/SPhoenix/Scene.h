@@ -162,6 +162,7 @@ namespace SP
 				std::string label = ioStr.str();
 
 				std::shared_ptr<MeshUtil> pMeshUtil = std::make_shared<MeshUtil>(pMesh);
+				
 				pMesh->setMeshUtil(pMeshUtil);
 				if (mmLabelToShader.find(label) == mmLabelToShader.end())
 				{
@@ -170,7 +171,7 @@ namespace SP
 					pShaderCodes_->addMacros(macros);
 
 					mmLabelToShader[label] = std::make_shared<ShaderUtil>(pShaderCodes_);
-					mmLabelToMeshes[label] = std::vector<std::shared_ptr<MeshUtil>>();
+					mmLabelToMeshes[label] = std::map<GLuint, std::shared_ptr<MeshUtil>>();
 
 					// Using uniform buffers & Bind the UMatrices uniform block 
 					// index to 1
@@ -178,10 +179,12 @@ namespace SP
 					GLuint ViewUBOIndex = glGetUniformBlockIndex(programID, "ViewUBO");
 					glUniformBlockBinding(programID, ViewUBOIndex, VIEWUBO_BINDING_POINT);
 				}
+				
+				GLuint currMeshID = pMeshUtil->getMeshID();
+				mmLabelToMeshes[label][currMeshID] = pMeshUtil;
+				mmMeshIDToMesh[currMeshID] = pMeshUtil;
 
-				mmLabelToMeshes[label].push_back(pMeshUtil);
-				mvMeshUtil.push_back(pMeshUtil);
-
+				mmMeshToLabel[pMeshUtil] = label;
 			}
 		}
 
@@ -191,7 +194,8 @@ namespace SP
 		{
 			mmLabelToShader.clear();
 			mmLabelToMeshes.clear();
-			mvMeshUtil.clear();
+			mmMeshToLabel.clear();
+			mmMeshIDToMesh.clear();
 		}
 
 		virtual void draw()
@@ -206,13 +210,40 @@ namespace SP
 				glUniformMatrix4fv(tMMatrixLoc, 1, GL_FALSE,
 								   glm::value_ptr(mpScene->mTopModelMatrix));
 
-				std::vector<std::shared_ptr<MeshUtil>> &vpMeshUtil = 
+				std::map<GLuint, std::shared_ptr<MeshUtil>> &vpMeshUtil = 
 					mmLabelToMeshes[iter->first];
 
-				for (size_t i = 0; i < vpMeshUtil.size(); i++)
+				std::map<GLuint, std::shared_ptr<MeshUtil>>::iterator iter;
+				for (iter = vpMeshUtil.begin(); iter != vpMeshUtil.end(); iter++)
 				{
-					vpMeshUtil[i]->draw();
+					iter->second->draw();
 				}
+			}
+		}
+
+		//if the id is not valid , vMeshID will be changed, which will remove the invalid ID
+		virtual void drawByMeshIDs(std::list<GLuint> &vMeshID)
+		{
+			std::list<GLuint>::iterator iter;
+			for (iter = vMeshID.begin(); iter != vMeshID.end(); )
+			{
+				if (mmMeshIDToMesh.find(*iter) == mmMeshIDToMesh.end())
+				{
+					iter = vMeshID.erase(iter);
+					continue;
+				}
+
+				std::shared_ptr<MeshUtil> &pMeshUtil = mmMeshIDToMesh[*iter];
+				std::string &label = mmMeshToLabel[pMeshUtil];
+				std::shared_ptr<ShaderUtil> &pShaderUtil = mmLabelToShader[label];
+
+				pShaderUtil->useProgram();
+				GLint programID = pShaderUtil->getProgramID();
+				GLint tMMatrixLoc = glGetUniformLocation(programID, "topMMatrix");
+				glUniformMatrix4fv(tMMatrixLoc, 1, GL_FALSE,
+								   glm::value_ptr(mpScene->mTopModelMatrix));
+				pMeshUtil->draw();
+				iter++;
 			}
 		}
 
@@ -235,7 +266,7 @@ namespace SP
 				pShaderCodes_->addMacros(macros);
 
 				mmLabelToShader[label] = std::make_shared<ShaderUtil>(pShaderCodes_);
-				mmLabelToMeshes[label] = std::vector<std::shared_ptr<MeshUtil>>();
+				mmLabelToMeshes[label] = std::map<GLuint, std::shared_ptr<MeshUtil>>();
 
 				// Using uniform buffers & Bind the UMatrices uniform block 
 				// index to 1
@@ -244,13 +275,24 @@ namespace SP
 				glUniformBlockBinding(programID, ViewUBOIndex, VIEWUBO_BINDING_POINT);
 			}
 
-			mmLabelToMeshes[label].push_back(pMeshUtil);
-			mvMeshUtil.push_back(pMeshUtil);
+			GLuint currMeshID = pMeshUtil->getMeshID();
+			mmLabelToMeshes[label][currMeshID] = pMeshUtil;
+			mmMeshIDToMesh[currMeshID] = pMeshUtil;
+
+			mmMeshToLabel[pMeshUtil] = label;
 		}
 
 		std::vector<std::shared_ptr<MeshUtil>> getMeshUtils()
 		{
-			return mvMeshUtil;
+			std::vector<std::shared_ptr<MeshUtil>> vMeshUtil(mmMeshToLabel.size());
+
+			std::map<std::shared_ptr<MeshUtil>, std::string>::iterator iter;
+			int i = 0;
+			for (iter = mmMeshToLabel.begin(); iter != mmMeshToLabel.end(); iter++, i++)
+			{
+				vMeshUtil[i] = iter->first;
+			}
+			return vMeshUtil;
 		}
 
 	protected:
@@ -258,9 +300,10 @@ namespace SP
 
 		std::shared_ptr<Scene> mpScene;
 		
-		std::vector<std::shared_ptr<MeshUtil>> mvMeshUtil;
+		std::map<std::shared_ptr<MeshUtil>, std::string> mmMeshToLabel;
+		std::map<GLuint, std::shared_ptr<MeshUtil>> mmMeshIDToMesh;
 		std::map<std::string, std::shared_ptr<ShaderUtil>> mmLabelToShader;
-		std::map<std::string, std::vector<std::shared_ptr<MeshUtil>>> mmLabelToMeshes;
+		std::map<std::string, std::map<GLuint, std::shared_ptr<MeshUtil>>> mmLabelToMeshes;
 	};
 
 	class SceneAssimpLoader
@@ -279,7 +322,7 @@ namespace SP
 
 			HL_INTERVAL_START;
 			const aiScene *aiscene = import.ReadFile(path.c_str(), flag);
-			HL_INTERVAL_END;
+			HL_INTERVAL_ENDSTR("import.ReadFile");
 
 			if (!aiscene || aiscene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiscene->mRootNode)
 			{
@@ -294,7 +337,7 @@ namespace SP
 
 			HL_INTERVAL_START;
 			_loadToScene(aiscene);
-			HL_INTERVAL_END;
+			HL_INTERVAL_ENDSTR("_loadToScene(aiscene)");
 			mbLoadSuccess = true;
 		}
 		~SceneAssimpLoader() {}
