@@ -15,8 +15,6 @@ layout (location = NORMAL_ATTR) in vec3 aNormal;
 layout (location = TEXCOORD_ATTR) in vec2 aTexCoord;
 #elif defined(HAVE_COLOR)
 layout (location = COLOR_ATTR) in vec3 aColor;
-#else //defined(UNIFORM_COLOR)
-uniform vec3 uColor;
 #endif
 
 layout (location = MMATRIX_ATTR) in mat4 aModelMatrix;
@@ -32,8 +30,8 @@ uniform mat4 topMMatrix;
 
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 out vec2 TexCoord;
-#else
-out vec3 ObjectColor;
+#elif defined(HAVE_COLOR)
+out vec3 VertexColor;
 #endif
 
 #if defined(HAVE_NORMAL)
@@ -55,9 +53,7 @@ void main()
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 	TexCoord = vec2(aTexCoord.x, 1.0f - aTexCoord.y);
 #elif defined(HAVE_COLOR)
-	ObjectColor = aColor;
-#else //defined(UNIFORM_COLOR)
-	ObjectColor = uColor;
+	VertexColor = aColor;
 #endif
 
 	FragPos = vec3(worldPos);

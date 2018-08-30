@@ -3,12 +3,10 @@
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out uint MeshID;
 
-//out vec4 FragColor;
-
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 in vec2 TexCoord;
-#else
-in vec3 ObjectColor;
+#elif defined(HAVE_COLOR)
+in vec3 VertexColor;
 #endif
 
 #if defined(HAVE_NORMAL)
@@ -21,24 +19,32 @@ struct Light
 	vec3 lightColor;
 };
 
-#if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
+//#if (defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)) || !defined(HAVE_COLOR)
 struct Material
 {
-#if defined(AMBIENT_TEXTURE)
+#if defined(AMBIENT_TEXTURE) && defined(HAVE_TEXCOORD)
 	sampler2DArray ambient_maps;
-#endif
-#if defined(DIFFUSE_TEXTURE)
-	sampler2DArray diffuse_maps;
-#endif
-#if defined(SPECULAR_TEXTURE)
-	sampler2DArray specular_maps;
-#endif
-};
+#elif !defined(DIFFUSE_TEXTURE) || !defined(HAVE_TEXCOORD)
+	vec4 uAmbient;
 #endif
 
-#if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
-uniform Material material;
+#if defined(DIFFUSE_TEXTURE) && defined(HAVE_TEXCOORD)
+	sampler2DArray diffuse_maps;
+#else
+	vec4 uDiffuse;
 #endif
+
+#if defined(SPECULAR_TEXTURE) && defined(HAVE_TEXCOORD)
+	sampler2DArray specular_maps;
+#else
+	vec4 uSpecular;
+#endif
+
+	float uShininess;
+};
+//#endif
+
+uniform Material material;
 uniform Light light;
 uniform uint uMeshID;
 
@@ -56,25 +62,24 @@ void main()
 	vec3 lightDir = normalize(ViewPos - FragPos);
 	//vec3 lightDir = normalize(light.position - FragPos);
 	float diffuseStrength = max(dot(normal, lightDir), 0.0f);
-	//float diffuseStrength = 0.0f;
 
 	//Blinn-Phong specular
 	vec3 viewDir = normalize(ViewPos - FragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
-	float shininess = 32;
-	float specularStrength = pow(max(dot(halfwayDir, normal), 0.0f), shininess);
+	float specularStrength = pow(max(dot(halfwayDir, normal), 0.0f), material.uShininess);
 #else
 	float ambientStrength = 0.2f;
 	float diffuseStrength = 0.8f;
 	float specularStrength = 0.0f;
 #endif
 
-#if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 	vec3 diffuse = vec3(0.0f, 0.0f, 0.0f);
 	vec3 ambient = diffuse;
 	vec3 specular = vec3(0.0f, 0.0f, 0.0f);
 
-#if defined(DIFFUSE_TEXTURE)
+#if (defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)) || !defined(HAVE_COLOR)
+
+#if defined(DIFFUSE_TEXTURE) && defined(HAVE_TEXCOORD)
 	diffuse = vec3(1.0f, 1.0f, 1.0f);
 	ivec3 diffuse_size = textureSize(material.diffuse_maps, 0);
 	int diffuse_layers = diffuse_size.z;
@@ -83,9 +88,11 @@ void main()
 		diffuse *= vec3(texture(material.diffuse_maps, vec3(TexCoord, float(i))));
 	}
 	ambient = diffuse;
+#else
+	diffuse = vec3(material.uDiffuse);
 #endif
 
-#if defined(AMBIENT_TEXTURE)
+#if defined(AMBIENT_TEXTURE) && defined(HAVE_TEXCOORD)
 	ambient = vec3(1.0f, 1.0f, 1.0f);
 	ivec3 ambient_size = textureSize(material.ambient_maps, 0);
 	int ambient_layers = ambient_size.z;
@@ -93,9 +100,11 @@ void main()
 	{
 		ambient *= vec3(texture(material.ambient_maps, vec3(TexCoord, float(i))));
 	}
+#elif !defined(DIFFUSE_TEXTURE) || !defined(HAVE_TEXCOORD)
+	ambient = vec3(material.uAmbient);
 #endif
 
-#if defined(SPECULAR_TEXTURE)
+#if defined(SPECULAR_TEXTURE) && defined(HAVE_TEXCOORD)
 	specular = vec3(1.0f, 1.0f, 1.0f);
 	ivec3 specular_size = textureSize(material.specular_maps, 0);
 	int specular_layers = specular_size.z;
@@ -103,13 +112,20 @@ void main()
 	{
 		specular *= vec3(texture(material.specular_maps, vec3(TexCoord, float(i))));
 	}
+#else
+	specular = vec3(material.uSpecular);
 #endif
+
+#else
+//Use the vertex color
+	diffuse = VertexColor;
+	ambient = VertexColor;
+	specular = VertexColor;
+#endif
+
 	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;
 	result += specularStrength * specular * lightColor;
-#else
-	result = (ambientStrength + diffuseStrength /*+ specularStrength*/) * ObjectColor * lightColor;
-#endif
 	//result = vec3(1.0f, 1.0f, 1.0f);
-	FragColor = vec4(result, 1.0f);
+	FragColor = vec4(result/*.z, result.y, result.x*/, 1.0f);
 	MeshID = uMeshID;
 }

@@ -28,6 +28,9 @@ namespace SP
 			std::shared_ptr<VertexArrayC> pVertexArrayC = std::make_shared<VertexArrayC>(
 				vVertice, vColor, std::vector<GLuint>(), LINES);
 
+			std::shared_ptr<Material> pMaterial = std::make_shared<Material>();
+
+			setMaterial(pMaterial);
 			setVertexArray(std::static_pointer_cast<VertexArray>(pVertexArrayC));
 			addInstance(m);
 		}

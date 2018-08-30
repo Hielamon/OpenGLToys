@@ -17,8 +17,12 @@ namespace SP
 			};
 
 			std::shared_ptr<VertexArray> pVertexArray = std::make_shared<VertexArray>(
-				vVertice, vIndice, LINES, color);
+				vVertice, vIndice, LINES);
 
+			std::shared_ptr<Material> pMaterial = std::make_shared<Material>(
+				glm::vec4(color, 1.0f), glm::vec4(0.0f));
+
+			setMaterial(pMaterial);
 			setVertexArray(pVertexArray);
 			addInstance();
 		}

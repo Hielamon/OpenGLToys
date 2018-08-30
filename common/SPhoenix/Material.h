@@ -8,10 +8,48 @@ namespace SP
 	class Material
 	{
 	public:
-		Material() : mNumTextures(0) {}
+		Material() : mNumTextures(0), mDiffuseColor(glm::vec4(1.0f)),
+			mAmbientColor(glm::vec4(1.0f)), mSpecularColor(glm::vec4(0.0f)),
+			mShininess(DEFAULT_SHININESS) {}
+
+		Material(const glm::vec4 &diffuseColor, const glm::vec4 &ambientColor,
+				 const glm::vec4 &specularColor, float shininess = DEFAULT_SHININESS)
+			: mNumTextures(0), mDiffuseColor(diffuseColor), mAmbientColor(ambientColor),
+			mSpecularColor(specularColor), mShininess(shininess) {}
+
+		Material(const glm::vec4 &diffAndambiColor, const glm::vec4 &specularColor,
+				 float shininess = DEFAULT_SHININESS)
+			: mNumTextures(0), mDiffuseColor(diffAndambiColor),
+			mAmbientColor(diffAndambiColor), mSpecularColor(specularColor),
+			mShininess(shininess) {}
+
+		Material(const glm::vec4 &uniformColor, float shininess = DEFAULT_SHININESS)
+			: mNumTextures(0), mDiffuseColor(uniformColor), mAmbientColor(uniformColor),
+			mSpecularColor(uniformColor), mShininess(shininess) {}
+
 		~Material() {}
 
 		friend class MaterialUtil;
+
+		void setShininess(const GLfloat& shininess)
+		{
+			mShininess = shininess;
+		}
+
+		void setDiffuseColor(const glm::vec4 &diffuseColor)
+		{
+			mDiffuseColor = diffuseColor;
+		}
+
+		void setAmbientColor(const glm::vec4 &ambientColor)
+		{
+			mAmbientColor = ambientColor;
+		}
+
+		void setSpecularColor(const glm::vec4 &specularColor)
+		{
+			mSpecularColor = specularColor;
+		}
 
 		void addTexture(const std::shared_ptr<Texture> &pTexture)
 		{
@@ -68,7 +106,7 @@ namespace SP
 		
 		virtual std::string getShaderMacros()
 		{
-			std::string macros = mmpTypeTexture.size() == 0 ?
+			std::string macros = mNumTextures == 0 ? 
 				"" : "#define HAVE_TEXTURE\n";
 
 			std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
@@ -96,7 +134,6 @@ namespace SP
 			return pMaterialUtil;
 		}
 
-
 		//For indicating whether the material has been uploaded to the GPU memory
 		void setMaterialUtil(const std::shared_ptr<MaterialUtil> &pMaterialUtil)
 		{
@@ -119,6 +156,10 @@ namespace SP
 	protected:
 		std::map<TextureType, std::vector<std::shared_ptr<Texture>>> mmpTypeTexture;
 
+		glm::vec4 mDiffuseColor, mAmbientColor;
+		glm::vec4 mSpecularColor;
+		GLfloat mShininess;
+
 		//For indicating whether the material has been uploaded to the GPU memory
 		std::weak_ptr<MaterialUtil> mpMaterialUtil;
 
@@ -133,9 +174,11 @@ namespace SP
 		MaterialUtil(const std::shared_ptr<Material> &pMaterial)
 			: mpMaterial(pMaterial)
 		{
+			std::map<TextureType, std::vector<std::shared_ptr<Texture>>> &mpTypeTexture =
+				mpMaterial->mmpTypeTexture;
 			std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
-			for (iter = mpMaterial->mmpTypeTexture.begin();
-				 iter != mpMaterial->mmpTypeTexture.end(); iter++)
+
+			for (iter = mpTypeTexture.begin(); iter != mpTypeTexture.end(); iter++)
 			{
 				int textureUnit = iter->first;
 				glActiveTexture(GL_TEXTURE0 + textureUnit);
@@ -188,7 +231,10 @@ namespace SP
 			}
 			glActiveTexture(GL_TEXTURE0);
 
-			
+			//Set the existence of texture maps
+			mbDiffuseMap = mpTypeTexture.find(Tex_DIFFUSE) != mpTypeTexture.end();
+			mbAmbientMap = mpTypeTexture.find(Tex_AMBIENT) != mpTypeTexture.end();
+			mbSpecularMap = mpTypeTexture.find(Tex_SPECULAR) != mpTypeTexture.end();
 		}
 
 		~MaterialUtil () 
@@ -200,31 +246,76 @@ namespace SP
 			}
 		}
 
-		void activeMaterial()
+		virtual std::string getShaderMacros()
+		{
+			return mpMaterial->getShaderMacros();
+		}
+
+		void activeMaterial(bool bValidTexCoord = true,
+							bool bValidVertexColor = false)
 		{
 			GLint programID;
 			glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
-			std::map<TextureType, std::string> &nameMap = TextureGlobal::getInstance().typeMaterialNameMap;
-			std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
-			for (iter = mpMaterial->mmpTypeTexture.begin();
-				 iter != mpMaterial->mmpTypeTexture.end(); iter++)
-			{
-				int samplerLoc = glGetUniformLocation(programID, nameMap[iter->first].c_str());
-				glUniform1i(samplerLoc,	int(iter->first));
-			}
 
-			std::map<int, GLuint>::iterator iter_;
-			for (iter_ = mmTextureUnit.begin(); iter_ != mmTextureUnit.end(); iter_++)
+			GLint uShininessLoc = glGetUniformLocation(programID, "material.uShininess");
+			glUniform1f(uShininessLoc, mpMaterial->mShininess);
+
+			if (bValidTexCoord)
 			{
-				glActiveTexture(GL_TEXTURE0 + iter_->first);
-				//glBindTexture(GL_TEXTURE_2D, iter_->second);
-				glBindTexture(GL_TEXTURE_2D_ARRAY, iter_->second);
+				std::map<TextureType, std::string> &nameMap = TextureGlobal::getInstance().typeMaterialNameMap;
+				std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
+				for (iter = mpMaterial->mmpTypeTexture.begin();
+					 iter != mpMaterial->mmpTypeTexture.end(); iter++)
+				{
+					int samplerLoc = glGetUniformLocation(programID, nameMap[iter->first].c_str());
+					glUniform1i(samplerLoc, int(iter->first));
+				}
+
+				std::map<int, GLuint>::iterator iter_;
+				for (iter_ = mmTextureUnit.begin(); iter_ != mmTextureUnit.end(); iter_++)
+				{
+					glActiveTexture(GL_TEXTURE0 + iter_->first);
+					//glBindTexture(GL_TEXTURE_2D, iter_->second);
+					glBindTexture(GL_TEXTURE_2D_ARRAY, iter_->second);
+				}
+				glActiveTexture(GL_TEXTURE0);
 			}
-			glActiveTexture(GL_TEXTURE0);
+			else if(bValidVertexColor)
+			{
+				//When there is no texture used, but there is vertex color array
+				//We dont need to upload any diffuse, ambient or specular
+				return;
+			}
+			
+			bool bDiffuse = !(mbDiffuseMap && bValidTexCoord);
+			bool bAmbient = !(mbAmbientMap && bValidTexCoord) && bDiffuse;
+			bool bSpecular = !(mbSpecularMap && bValidTexCoord);
+
+			if (bDiffuse)
+			{
+				GLint uDiffuseLoc = glGetUniformLocation(programID, "material.uDiffuse");
+				glm::vec4 &uColor = mpMaterial->mDiffuseColor;
+				glUniform4f(uDiffuseLoc, uColor.r, uColor.g, uColor.b, uColor.a);
+			}
+			if (bAmbient)
+			{
+				GLint uAmbientLoc = glGetUniformLocation(programID, "material.uAmbient");
+				glm::vec4 &uColor = mpMaterial->mAmbientColor;
+				glUniform4f(uAmbientLoc, uColor.r, uColor.g, uColor.b, uColor.a);
+			}
+			if (bSpecular)
+			{
+				GLint uSpecularLoc = glGetUniformLocation(programID, "material.uSpecular");
+				glm::vec4 &uColor = mpMaterial->mSpecularColor;
+				glUniform4f(uSpecularLoc, uColor.r, uColor.g, uColor.b, uColor.a);
+			}
 		}
 
 	protected:
 		std::shared_ptr<Material> mpMaterial;
+
+		//Indicate whether there is a *color map
+		bool mbDiffuseMap, mbAmbientMap, mbSpecularMap;
 
 		//The map between the texture unit and the texture;
 		std::map<int, GLuint> mmTextureUnit;

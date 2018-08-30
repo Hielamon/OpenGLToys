@@ -305,7 +305,102 @@ namespace SP
 		std::map<std::string, std::shared_ptr<ShaderUtil>> mmLabelToShader;
 		std::map<std::string, std::map<GLuint, std::shared_ptr<MeshUtil>>> mmLabelToMeshes;
 	};
+	
+	class SceneColorIDUtil : public SceneUtil
+	{
+	public:
+		SceneColorIDUtil() = delete;
+		SceneColorIDUtil(const std::shared_ptr<SceneUtil> &pSceneUtil)
+			: SceneUtil(*pSceneUtil)
+		{
+			reset();
 
+			std::string __currentPATH = __FILE__;
+			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+			std::shared_ptr<ShaderCodes> pDefaultShader =
+				std::make_shared<ShaderCodes>(__currentPATH + "/Shaders/SPhoenixScene.vert",
+											  __currentPATH + "/Shaders/SPhoenixScene.frag");
+
+			std::string undefColor = "#undef HAVE_COLOR\n";
+			pDefaultShader->addMacros(undefColor);
+
+			std::vector<std::shared_ptr<MeshUtil>> vExistedMesh = pSceneUtil->getMeshUtils();
+			for (size_t i = 0; i < vExistedMesh.size(); i++)
+			{
+				std::shared_ptr<MeshUtil> pMeshUtil =
+					std::make_shared<MeshUtil>(*(vExistedMesh[i]));
+
+				//Compute the ID Color
+				double totalColor = MeshGlobal::getInstance().totalMeshN + 1;
+				int Nc = std::ceil(std::pow(totalColor, 1.0 / 3));
+				int ID = pMeshUtil->getMeshID();
+				glm::vec4 uIDColor(1.0f);
+				for (size_t i = 0; i < 3 && ID > 0; i++)
+				{
+					uIDColor[i] = (ID % Nc) / float(Nc);
+					ID = (ID - ID % Nc) / Nc;
+				}
+
+				//uIDColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+
+				std::shared_ptr<Material> pMaterial = std::make_shared<Material>(uIDColor);
+				pMeshUtil->setMaterialUtil(pMaterial);
+
+				addMeshUtil(pMeshUtil, pDefaultShader);
+			}
+		}
+
+		~SceneColorIDUtil() {}
+	private:
+
+	};
+
+	class SceneSelectedUtil : public SceneUtil
+	{
+	public:
+		SceneSelectedUtil() = delete;
+		SceneSelectedUtil(const std::shared_ptr<SceneUtil> &pSceneUtil)
+			: SceneUtil(*pSceneUtil)
+		{
+			reset();
+
+			std::string __currentPATH = __FILE__;
+			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+			std::shared_ptr<ShaderCodes> pDefaultShader =
+				std::make_shared<ShaderCodes>(__currentPATH + "/Shaders/SPhoenixScene.vert",
+											  __currentPATH + "/Shaders/SPhoenixScene.frag");
+
+			std::string undefColor = "#undef HAVE_COLOR\n";
+			pDefaultShader->addMacros(undefColor);
+
+			std::vector<std::shared_ptr<MeshUtil>> vExistedMesh = pSceneUtil->getMeshUtils();
+			for (size_t i = 0; i < vExistedMesh.size(); i++)
+			{
+				std::shared_ptr<MeshUtil> pMeshUtil =
+					std::make_shared<MeshUtil>(*(vExistedMesh[i]));
+
+				std::shared_ptr<Material> pMaterial = std::make_shared<Material>();
+				pMeshUtil->setMaterialUtil(pMaterial);
+
+				addMeshUtil(pMeshUtil, pDefaultShader);
+			}
+		}
+
+		~SceneSelectedUtil() {}
+
+		virtual void drawByMeshIDs(std::list<GLuint> &vMeshID)
+		{
+			GLint rastMode;
+			glGetIntegerv(GL_POLYGON_MODE, &rastMode);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			SceneUtil::drawByMeshIDs(vMeshID);
+			glPolygonMode(GL_FRONT_AND_BACK, rastMode);
+		}
+
+	private:
+	};
+
+	//The assimp scene loader 
 	class SceneAssimpLoader
 	{
 	public:
@@ -494,7 +589,7 @@ namespace SP
 
 		std::shared_ptr<Material>  _loadMaterial(const aiMaterial *aimaterial)
 		{
-			std::shared_ptr<Material> pMaterial;
+			std::shared_ptr<Material> pMaterial = std::make_shared<Material>();
 			for (auto &typePair : mTypeMap)
 			{
 				GLuint textureNum = aimaterial->GetTextureCount(typePair.first);
@@ -520,15 +615,32 @@ namespace SP
 					{
 						tex = mmpPathTextureLoaded[path];
 					}
-
-					if (pMaterial.use_count() == 0)
-					{
-						pMaterial = std::make_shared<Material>();
-					}
-
 					pMaterial->addTexture(tex);
 				}
 			}
+
+			//Load the diffuse, ambient and specular value
+			//if these are existed
+			aiColor4D diffuse(1.0f), ambient(1.0f), specular(0.0f);
+			float shininess = 32;
+			if (aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS)
+			{
+				pMaterial->setDiffuseColor(glm::vec4(diffuse.r, diffuse.g, diffuse.b, diffuse.a));
+				pMaterial->setAmbientColor(glm::vec4(diffuse.r, diffuse.g, diffuse.b, diffuse.a));
+			}
+			if (aimaterial->Get(AI_MATKEY_COLOR_AMBIENT, ambient) == AI_SUCCESS)
+			{
+				pMaterial->setAmbientColor(glm::vec4(ambient.r, ambient.g, ambient.b, ambient.a));
+			}
+			if (aimaterial->Get(AI_MATKEY_COLOR_SPECULAR, specular) == AI_SUCCESS)
+			{
+				pMaterial->setSpecularColor(glm::vec4(specular.r, specular.g, specular.b, specular.a));
+			}
+			if (aimaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
+			{
+				pMaterial->setShininess(shininess);
+			}
+			
 			return pMaterial;
 		}
 

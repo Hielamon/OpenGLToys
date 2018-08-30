@@ -153,7 +153,8 @@ namespace SP
 	{
 	public:
 		Camera(int width, int height, const std::string &camName = "Untitled")
-			: GLWindowBase(camName, width, height), mbShowIDColor(false)
+			: GLWindowBase(camName, width, height), mbShowIDColor(false),
+			mbRefreshColorScene(true)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_MULTISAMPLE);
@@ -178,7 +179,7 @@ namespace SP
 		}
 
 
-		void setProjectionMatrix(float fovy = 68.f, float aspect = 0.0f, float zNear = 0.01, float zFar = 100.f)
+		void setProjectionMatrix(float fovy = 60.f, float aspect = 0.0f, float zNear = 0.01, float zFar = 100.f)
 		{
 			mfovy = fovy; mzNear = zNear; mzFar = zFar;
 			maspect = aspect == 0.0f ? mwidth / float(mheight) : aspect;
@@ -248,7 +249,7 @@ namespace SP
 			mbShowIDColor = !mbShowIDColor;
 		}
 
-		void addMeshToScene(const std::shared_ptr<Mesh>& pMesh,
+		virtual void addMeshToScene(const std::shared_ptr<Mesh>& pMesh,
 							const std::shared_ptr<ShaderCodes> &pShaderCodes = nullptr)
 		{
 			if (mpSceneUtil.use_count() != 0)
@@ -258,14 +259,7 @@ namespace SP
 
 				mpSceneUtil->addMeshUtil(pMeshUtil, pShaderCodes);
 
-				if (mpColorSceneUtil.use_count() != 0)
-				{
-					std::shared_ptr<MeshColorIDUtil> pMeshColorIDUtil =
-						std::make_shared<MeshColorIDUtil>(pMeshUtil);
-					mpColorSceneUtil->addMeshUtil(
-						std::static_pointer_cast<MeshUtil>(pMeshColorIDUtil),
-						mpColorIDShader);
-				}
+				mbRefreshColorScene = true;
 			}
 		}
 
@@ -284,7 +278,8 @@ namespace SP
 
 			if (mbShowIDColor)
 			{
-				if (mpColorSceneUtil.use_count() == 0)generateColorScene();
+				if (mpColorSceneUtil.use_count() == 0 || mbRefreshColorScene) 
+					generateColorScene();
 
 				mpColorSceneUtil->draw();
 			}
@@ -297,24 +292,8 @@ namespace SP
 		//Generate the mpColorSceneUtil, According the exsited mpSceneUtil
 		void generateColorScene()
 		{
-			//Initialize the mpColorSceneUtil;
-			std::string __currentPATH = __FILE__;
-			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
-			mpColorIDShader = std::make_shared<ShaderCodes>(
-				__currentPATH + "/Shaders/SPhoenixScene-MeshIDColor.vert",
-				__currentPATH + "/Shaders/SPhoenixScene-MeshIDColor.frag");
-
-			mpColorSceneUtil = std::make_shared<SceneUtil>(*mpSceneUtil);
-			mpColorSceneUtil->reset();
-			std::vector<std::shared_ptr<MeshUtil>> vExistedMesh = mpSceneUtil->getMeshUtils();
-			for (size_t i = 0; i < vExistedMesh.size(); i++)
-			{
-				std::shared_ptr<MeshColorIDUtil> pMeshColorIDUtil =
-					std::make_shared<MeshColorIDUtil>(vExistedMesh[i]);
-				mpColorSceneUtil->addMeshUtil(
-					std::static_pointer_cast<MeshUtil>(pMeshColorIDUtil),
-					mpColorIDShader);
-			}
+			mpColorSceneUtil = std::make_shared<SceneColorIDUtil>(mpSceneUtil);
+			mbRefreshColorScene = false;
 		}
 
 	protected:
@@ -322,7 +301,7 @@ namespace SP
 
 		//mpColorSceneUtil is used to showing the id colored scene
 		std::shared_ptr<SceneUtil> mpColorSceneUtil;
-		std::shared_ptr<ShaderCodes> mpColorIDShader;
+		bool mbRefreshColorScene;
 		bool mbShowIDColor;
 
 		std::shared_ptr<ManipulatorBase> mpManipulator;
@@ -337,7 +316,7 @@ namespace SP
 	{
 	public:
 		CameraFBO(int width, int height, const std::string &camName = "Untitled")
-			: Camera(width, height, camName)
+			: Camera(width, height, camName), mbRefreshSelectedScene(true)
 		{
 			glDepthFunc(GL_LEQUAL);
 
@@ -428,6 +407,16 @@ namespace SP
 		}
 
 
+		virtual void addMeshToScene(const std::shared_ptr<Mesh>& pMesh,
+									const std::shared_ptr<ShaderCodes> &pShaderCodes = nullptr)
+		{
+			if (mpSceneUtil.use_count() != 0)
+			{
+				Camera::addMeshToScene(pMesh, pShaderCodes);
+				mbRefreshSelectedScene = true;
+			}
+		}
+
 		GLuint getPointMeshID(GLint x, GLint y)
 		{
 			//Blit the MultiSample MeshID to Sigle Sample MeshID
@@ -479,16 +468,13 @@ namespace SP
 			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
 			Camera::runOnce();
 
-			if (mpSelectedSceneUtil.use_count() == 0)generateSelectedSceneUtil();
+			if (mpSelectedSceneUtil.use_count() == 0 || mbRefreshSelectedScene)
+				generateSelectedSceneUtil();
+
 			if (mvSelectedMeshID.size() > 0)
 			{
-				GLint rastMode;
-				glGetIntegerv(GL_POLYGON_MODE, &rastMode);
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 				mpSelectedSceneUtil->drawByMeshIDs(mvSelectedMeshID);
-				glPolygonMode(GL_FRONT_AND_BACK, rastMode);
 			}
-			
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -506,24 +492,8 @@ namespace SP
 		//Generate the mpSelectedSceneUtil, According the exsited mpSceneUtil
 		void generateSelectedSceneUtil()
 		{
-			//Initialize the mpColorSceneUtil;
-			std::string __currentPATH = __FILE__;
-			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
-			mpSelectedShader = std::make_shared<ShaderCodes>(
-				__currentPATH + "/Shaders/SPhoenixScene-MeshSelected.vert",
-				__currentPATH + "/Shaders/SPhoenixScene-MeshSelected.frag");
-
-			mpSelectedSceneUtil = std::make_shared<SceneUtil>(*mpSceneUtil);
-			mpSelectedSceneUtil->reset();
-			std::vector<std::shared_ptr<MeshUtil>> vExistedMesh = mpSceneUtil->getMeshUtils();
-			for (size_t i = 0; i < vExistedMesh.size(); i++)
-			{
-				std::shared_ptr<MeshSelectedUtil> pMeshSelectedUtil =
-					std::make_shared<MeshSelectedUtil>(vExistedMesh[i]);
-				mpSelectedSceneUtil->addMeshUtil(
-					std::static_pointer_cast<MeshUtil>(pMeshSelectedUtil),
-					mpSelectedShader);
-			}
+			mpSelectedSceneUtil = std::make_shared<SceneSelectedUtil>(mpSceneUtil);
+			mbRefreshSelectedScene = false;
 		}
 
 	protected:
@@ -539,7 +509,7 @@ namespace SP
 
 		//mpSelectedSceneUtil is used to showing the selected mesh
 		std::shared_ptr<SceneUtil> mpSelectedSceneUtil;
-		std::shared_ptr<ShaderCodes> mpSelectedShader;
+		bool mbRefreshSelectedScene;
 		std::list<GLuint> mvSelectedMeshID;
 	};
 

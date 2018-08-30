@@ -29,25 +29,14 @@ namespace SP
 	{
 	public:
 		Mesh(const std::shared_ptr<VertexArray> &pVertexArray,
-			 const std::shared_ptr<Material> &pMaterial,
+			 const std::shared_ptr<Material> &pMaterial = 
+			 std::make_shared<Material>(),
 			 const std::vector<glm::mat4> &vInstanceMMatrix =
 			 std::vector<glm::mat4>())
-			: mpVertexArray(pVertexArray), mpMaterial(pMaterial),
-			mInstanceN(vInstanceMMatrix.size()), mvInstanceMMatrix(vInstanceMMatrix)
+			: mInstanceN(vInstanceMMatrix.size()), mvInstanceMMatrix(vInstanceMMatrix)
 		{
 			setVertexArray(pVertexArray);
-
-			MeshGlobal::getInstance().totalMeshN++;
-			mMeshID = MeshGlobal::getInstance().totalMeshN;
-		}
-
-		Mesh(const std::shared_ptr<VertexArray> &pVertexArray,
-			 const std::vector<glm::mat4> &vInstanceMMatrix =
-			 std::vector<glm::mat4>())
-			: mInstanceN(vInstanceMMatrix.size()),
-			mvInstanceMMatrix(vInstanceMMatrix)
-		{
-			setVertexArray(pVertexArray);
+			setMaterial(pMaterial);
 
 			MeshGlobal::getInstance().totalMeshN++;
 			mMeshID = MeshGlobal::getInstance().totalMeshN;
@@ -90,6 +79,16 @@ namespace SP
 			mpVertexArray = pVertexArray;
 		}
 
+		void setMaterial(const std::shared_ptr<Material> &pMaterial)
+		{
+			if (pMaterial.use_count() == 0)
+			{
+				SP_CERR("The Material is empty, this situation is not permitted");
+				exit(-1);
+			}
+			mpMaterial = pMaterial;
+		}
+
 		void addInstance(const glm::mat4 &instanceMMatrix = glm::mat4())
 		{
 			mvInstanceMMatrix.push_back(instanceMMatrix);
@@ -98,9 +97,9 @@ namespace SP
 
 		virtual std::string getShaderMacros()
 		{
-			std::string macros;
-			if (mpMaterial.use_count() != 0 &&
-				mpMaterial->getAllTexturesNum() != 0)
+			std::string macros = "";
+
+			if (mpMaterial.use_count() != 0)
 			{
 				macros += mpMaterial->getShaderMacros();
 			}
@@ -112,7 +111,6 @@ namespace SP
 				ioStr << "#define MMATRIX_ATTR " << mMMatrixAttri << "\n";
 				macros += ioStr.str();
 			}
-
 			return macros;
 		}
 
@@ -201,50 +199,18 @@ namespace SP
 	class MeshUtil
 	{
 	public:
+		MeshUtil() = delete;
+
 		MeshUtil(const std::shared_ptr<Mesh> &pMesh)
-		: mpMesh(pMesh), mbUploadUColor(false), mMMatrixVBO(FAILED_RETURN)
+		: mpMesh(pMesh), mMMatrixVBO(FAILED_RETURN)
 		{
 			if (mpMesh->mInstanceN <= 0) return;
 
 			//Uploading the mpMaterial, if not upload
-			if (mpMesh->mpMaterial.use_count() != 0 &&
-				mpMesh->mpMaterial->getAllTexturesNum() != 0)
-			{
-				mpMaterialUtil = mpMesh->mpMaterial->createUtil(mpMesh->mpMaterial);
-				if (!mpMesh->mpMaterial->IsUploaded())
-				{
-					//Aiming to avoid the duplicate upload the material
-					mpMesh->mpMaterial->setMaterialUtil(mpMaterialUtil);
-				}
-			}
-
-			
+			setMaterialUtil(mpMesh->mpMaterial);
 
 			//Uploading the vpVertexArray, if not upload
-			if (mpMesh->mpVertexArray.use_count() != 0)
-			{
-				mpVertexArrayUtil = mpMesh->mpVertexArray->createUtil(mpMesh->mpVertexArray);
-				if (!mpMesh->mpVertexArray->IsUploaded())
-				{
-					//Aiming to avoid the duplicate upload the vertex array
-					mpMesh->mpVertexArray->setVertexArrayUtil(mpVertexArrayUtil);
-				}
-				
-				//For deciding whether to setup the uniform color
-				if ((mpMesh->mpMaterial.use_count() == 0 ||
-					 mpMesh->mpMaterial->getAllTexturesNum() == 0) &&
-					mpMesh->mpVertexArray->getShaderMacros().find(
-					"#define HAVE_COLORS\n") == std::string::npos)
-				{
-					mbUploadUColor = true;
-				}
-			}
-			else
-			{
-				//mpVertexArrayUtil cannot be empty
-				SP_CERR("The vertexArray is empty, this situation is not permitted");
-				exit(-1);
-			}
+			setVertexArrayUtil(mpMesh->mpVertexArray);
 
 			//Uploading the model matrixs of all instances
 			if (mpMesh->mInstanceN > 0)
@@ -279,12 +245,6 @@ namespace SP
 			}
 		}
 
-		//Set the state of whether to upload the ucolor
-		void setUColor(bool bUploadUColor)
-		{
-			mbUploadUColor = bUploadUColor;
-		}
-
 		GLuint getMeshID()
 		{
 			return mpMesh->mMeshID;
@@ -297,66 +257,83 @@ namespace SP
 
 		std::string getShaderMacros()
 		{
-			return mpMesh->getShaderMacros();
+			std::string macros = "";
+
+			if (mpMaterialUtil.use_count() != 0)
+			{
+				macros += mpMaterialUtil->getShaderMacros();
+			}
+
+			if (mpVertexArrayUtil.use_count() != 0)
+			{
+				macros += mpVertexArrayUtil->getShaderMacros();
+				std::stringstream ioStr;
+				ioStr << "#define MMATRIX_ATTR " << mpMesh->mMMatrixAttri << "\n";
+				macros += ioStr.str();
+			}
+			return macros;
+		}
+
+		void setVertexArrayUtil(const std::shared_ptr<VertexArray> &pVertexArray)
+		{
+			if (pVertexArray.use_count() != 0)
+			{
+				mpVertexArrayUtil = pVertexArray->createUtil(pVertexArray);
+				if (!pVertexArray->IsUploaded())
+				{
+					//Aiming to avoid the duplicate upload the vertex array
+					pVertexArray->setVertexArrayUtil(mpVertexArrayUtil);
+				}
+			}
+			else
+			{
+				//mpVertexArrayUtil cannot be empty
+				SP_CERR("The vertexArray is empty, this situation is not permitted");
+				exit(-1);
+			}
+		}
+
+		void setMaterialUtil(const std::shared_ptr<Material> &pMaterial)
+		{
+			if (pMaterial.use_count() != 0)
+			{
+				mpMaterialUtil = pMaterial->createUtil(pMaterial);
+				if (!pMaterial->IsUploaded())
+				{
+					//Aiming to avoid the duplicate upload the material
+					pMaterial->setMaterialUtil(mpMaterialUtil);
+				}
+			}
+			else
+			{
+				//mpVertexArrayUtil cannot be empty
+				SP_CERR("The Material is empty, this situation is not permitted");
+				exit(-1);
+			}
 		}
 
 		virtual void draw()
 		{
 			//Bind the textures
-			if (mpMaterialUtil.use_count() != 0)
-			{
-				mpMaterialUtil->activeMaterial();
-			}
+			mpMaterialUtil->activeMaterial(mpVertexArrayUtil->hasTexCoord(), 
+										   mpVertexArrayUtil->hasVertexColor());
 
 			//Bind the vertexarray and draw
-			if (mpVertexArrayUtil.use_count() != 0)
 			{
-				/*mpVertexArrayUtil->setUColor(false);
 				GLint programID;
 				glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
-				GLint uColorLoc = glGetUniformLocation(programID, "uColor");
-				double totalColor = MeshGlobal::getInstance().totalMeshN + 1;
-				int Nc = std::ceil(std::pow(totalColor, 1.0 / 3));
-				int ID = mpMesh->mMeshID + 1;
-				glm::vec3 uColor;
-				for (size_t i = 0; i < 3 && ID >0; i++)
-				{
-					uColor[i] = (ID % Nc) / float(Nc);
-					ID = (ID - ID % Nc) / Nc;
-				}
-
-
-				
-				glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);*/
-
-				GLint programID;
-				glGetIntegerv(GL_CURRENT_PROGRAM, &programID);
-
-				if (mbUploadUColor)
-				{
-					GLint uColorLoc = glGetUniformLocation(programID, "uColor");
-					const glm::vec3 &uColor = mpVertexArrayUtil->getUniformColor();
-					glUniform3f(uColorLoc, uColor.r, uColor.g, uColor.b);
-				}
 				GLint uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
 				glUniform1ui(uMeshIDLoc, getMeshID());
-
 
 				mpVertexArrayUtil->drawInstanced(mpMesh->mInstanceN);
 			}
 		}
 
 	protected:
-		MeshUtil() {}
-
 		std::shared_ptr<Mesh> mpMesh;
 
 		std::shared_ptr<MaterialUtil> mpMaterialUtil;
 		std::shared_ptr<VertexArrayUtil> mpVertexArrayUtil;
-
-		//If there is not any texture and vertex's colors for the VertexArray
-		//mbUploadUColor will set to the true
-		bool mbUploadUColor;
 
 		//This vertex buffer object consuming 4 attributes
 		//due to the maximum amount of data allowed as a vertex
@@ -367,7 +344,7 @@ namespace SP
 
 	//The MeshColorIDUtil is used for showing the colored id mesh scene
 	//Which only can instanced from a MeshUtil
-	class MeshColorIDUtil : public MeshUtil
+	/*class MeshColorIDUtil : public MeshUtil
 	{
 	public:
 		MeshColorIDUtil() = delete;
@@ -426,5 +403,5 @@ namespace SP
 			}
 		}
 
-	};
+	};*/
 }

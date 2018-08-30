@@ -2,6 +2,7 @@
 #include "utils.h"
 #include "BBox.h"
 
+
 namespace SP
 {
 	class VertexArrayUtil;
@@ -48,13 +49,11 @@ namespace SP
 		
 		VertexArray(const std::vector<glm::vec3> &vertices, 
 					const std::vector<GLuint> &indices = std::vector<GLuint>(),
-					const PrimitiveType &pType = TRIANGLES,
-					const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
+					const PrimitiveType &pType = TRIANGLES)
 			: mNumExistedAttri(1), mPrimitiveType(pType)
 		{
 			mpvVertice = std::make_shared<std::vector<glm::vec3>>(vertices);
 			mpvIndice = std::make_shared<std::vector<GLuint>>(indices);
-			mColor = color;
 		}
 
 		VertexArray(const std::shared_ptr<std::vector<glm::vec3>> &pVertices,
@@ -62,8 +61,8 @@ namespace SP
 					std::make_shared<std::vector<GLuint>>(),
 					const PrimitiveType &pType = TRIANGLES,
 					const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
-			: mpvVertice(pVertices), mpvIndice(pIndices), 
-			mColor(color), mNumExistedAttri(1), mPrimitiveType(pType) {}
+			: mpvVertice(pVertices), mpvIndice(pIndices),
+			mNumExistedAttri(1), mPrimitiveType(pType) {}
 
 		friend class VertexArrayUtil;
 		
@@ -124,7 +123,6 @@ namespace SP
 
 		std::shared_ptr<std::vector<glm::vec3>> mpvVertice;
 		std::shared_ptr<std::vector<GLuint>> mpvIndice;
-		glm::vec3 mColor;
 		PrimitiveType mPrimitiveType;
 
 		//The number of existed attributions;
@@ -142,7 +140,7 @@ namespace SP
 		VertexArrayUtil() = delete;
 
 		VertexArrayUtil(const std::shared_ptr<VertexArray> &pVertexArray)
-			: mpVertexArray(pVertexArray)
+			: mpVertexArray(pVertexArray), mbHasTexCoord(false), mbHasVertexColor(false)
 		{
 			std::map<PrimitiveType, GLenum> &typeMap = VAGlobal::getInstance().PTypeModeMap;
 			mDrawMode = typeMap[pVertexArray->mPrimitiveType];
@@ -223,9 +221,19 @@ namespace SP
 			return	mVAO;
 		}
 
-		const glm::vec3 & getUniformColor()
+		bool hasTexCoord()
 		{
-			return mpVertexArray->mColor;
+			return mbHasTexCoord;
+		}
+
+		bool hasVertexColor()
+		{
+			return mbHasVertexColor;
+		}
+
+		virtual std::string getShaderMacros()
+		{
+			return mpVertexArray->getShaderMacros();
 		}
 
 	protected:
@@ -236,6 +244,9 @@ namespace SP
 		GLenum mDrawMode;
 
 		bool mbDrawElements;
+
+		bool mbHasTexCoord;
+		bool mbHasVertexColor;
 
 		int mNumDrawVertice;
 	};
@@ -249,9 +260,8 @@ namespace SP
 		VertexArrayN(const std::vector<glm::vec3> &vertices,
 					 const std::vector<glm::vec3> &normals,
 					 const std::vector<GLuint> &indices = std::vector<GLuint>(),
-					 const PrimitiveType &pType = TRIANGLES,
-					 const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
-			: VertexArray(vertices, indices, pType, color)
+					 const PrimitiveType &pType = TRIANGLES)
+			: VertexArray(vertices, indices, pType)
 		{
 			mpvNormal = std::make_shared<std::vector<glm::vec3>>(normals);
 			mNumExistedAttri++;
@@ -261,9 +271,8 @@ namespace SP
 					 const std::shared_ptr<std::vector<glm::vec3>> &pNormals,
 					 const std::shared_ptr<std::vector<GLuint>> &pIndices =
 					 std::make_shared<std::vector<GLuint>>(),
-					 const PrimitiveType &pType = TRIANGLES,
-					 const glm::vec3 &color = glm::vec3(1.0f, 1.0f, 1.0f))
-			: VertexArray(pVertices, pIndices, pType, color), mpvNormal(pNormals)
+					 const PrimitiveType &pType = TRIANGLES)
+			: VertexArray(pVertices, pIndices, pType), mpvNormal(pNormals)
 		{
 			mNumExistedAttri++;
 		}
@@ -431,6 +440,8 @@ namespace SP
 		VertexArrayNTcUtil(const std::shared_ptr<VertexArrayNTc> &pVertexArrayNTc)
 			: VertexArrayNUtil(std::static_pointer_cast<VertexArrayN>(pVertexArrayNTc))
 		{
+			mbHasTexCoord = true;
+
 			std::vector<glm::vec2> &vTexCoord = *(pVertexArrayNTc->mpvTexCoord);
 			glGenBuffers(1, &mTexCoordVBO);
 			glBindBuffer(GL_ARRAY_BUFFER, mTexCoordVBO);
@@ -540,6 +551,8 @@ namespace SP
 		VertexArrayNCUtil(const std::shared_ptr<VertexArrayNC> &pVertexArrayNC)
 			: VertexArrayNUtil(std::static_pointer_cast<VertexArrayN>(pVertexArrayNC))
 		{
+			mbHasVertexColor = true;
+
 			std::vector<glm::vec3> &vColor = *(pVertexArrayNC->mpvColors);
 			glGenBuffers(1, &mColorVBO);
 			glBindBuffer(GL_ARRAY_BUFFER, mColorVBO);
@@ -647,6 +660,8 @@ namespace SP
 		VertexArrayTcUtil(const std::shared_ptr<VertexArrayTc> &pVertexArrayTc)
 			: VertexArrayUtil(std::static_pointer_cast<VertexArray>(pVertexArrayTc))
 		{
+			mbHasTexCoord = true;
+
 			std::vector<glm::vec2> &vTexCoord = *(pVertexArrayTc->mpvTexCoord);
 			glGenBuffers(1, &mTexCoordVBO);
 			glBindBuffer(GL_ARRAY_BUFFER, mTexCoordVBO);
@@ -754,6 +769,8 @@ namespace SP
 		VertexArrayCUtil(const std::shared_ptr<VertexArrayC> &pVertexArrayC)
 			: VertexArrayUtil(std::static_pointer_cast<VertexArray>(pVertexArrayC))
 		{
+			mbHasVertexColor = true;
+
 			std::vector<glm::vec3> &vColor = *(pVertexArrayC->mpvColors);
 			glGenBuffers(1, &mColorVBO);
 			glBindBuffer(GL_ARRAY_BUFFER, mColorVBO);
