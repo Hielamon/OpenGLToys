@@ -10,10 +10,9 @@ int main(int argc, char *argv[])
 	std::shared_ptr<Scene> pScene = std::make_shared<Scene>();
 	
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\GLRelatedCodes\\Freedom3D\\LearnOpenGL\\LoadModel\\nanosuit\\nanosuit.obj";
-	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
-	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Drone0001\\Drone166.lws";
-	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\1y3ycdp6e3ao-FH\\hall\\hall.obj";
-	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\4nlnidkes4g0-C\\The-City\\The-City.obj";
+	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
+	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Hall0003\\hall\\hall.obj";
+
 	if (argc == 2)
 	{
 		fileFullPath = argv[1];
@@ -22,12 +21,21 @@ int main(int argc, char *argv[])
 	bool showModel = !false;
 	if (showModel)
 	{
-		SceneAssimpLoader loader(fileFullPath, pScene);
-		if (!loader.IsLoadSuccess())
+		SceneAssimpLoader loader;
+
+		if (!loader.loadScene(fileFullPath, pScene))
 		{
 			SP_CERR("The scene (" + fileFullPath + ") is failed to load");
 			exit(-1);
 		}
+
+		/*fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Drone0001\\Drone166.lws";
+
+		if (!loader.loadScene(fileFullPath, pScene))
+		{
+			SP_CERR("The scene (" + fileFullPath + ") is failed to load");
+			exit(-1);
+		}*/
 	}
 
 
