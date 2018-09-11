@@ -162,7 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\SPhoenix\Core.h" />
-    <ClInclude Include="..\common\SPhoenix\Global_macro.h" />
+    <ClInclude Include="..\common\SPhoenix\GlobalMacros.h" />
     <ClInclude Include="..\common\SPhoenix\AxisMesh.h" />
     <ClInclude Include="..\common\SPhoenix\BBoxMesh.h" />
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />

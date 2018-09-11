@@ -140,6 +140,7 @@ namespace SP
 				//We just use the int value of the texture type as the Unit ID
 				int textureUnit = iter->first;
 				_uploadArrayTexture(textureUnit, iter->second);
+				GL_DEBUG_ALL
 			}
 
 			//Set the existence of texture maps

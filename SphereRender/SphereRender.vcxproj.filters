@@ -79,9 +79,6 @@
     <ClInclude Include="..\common\SPhoenix\Core.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\SPhoenix\Global_macro.h">
-      <Filter>Header Files\SPhoenix</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\SPhoenix\Utils.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
@@ -98,6 +95,9 @@
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\ShaderProgram.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\GlobalMacros.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
   </ItemGroup>
