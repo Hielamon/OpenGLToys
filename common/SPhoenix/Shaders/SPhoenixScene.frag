@@ -6,7 +6,7 @@ layout (location = 1) out uint MeshID;
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 in vec2 TexCoord;
 #elif defined(HAVE_COLOR)
-in vec3 VertexColor;
+in vec4 VertexColor;
 #endif
 
 #if defined(HAVE_NORMAL)
@@ -24,7 +24,7 @@ struct Material
 {
 #if defined(AMBIENT_TEXTURE) && defined(HAVE_TEXCOORD)
 	sampler2DArray ambient_maps;
-#elif !defined(DIFFUSE_TEXTURE) || !defined(HAVE_TEXCOORD)
+#elif !defined(DIFFUSE_TEXTURE)
 	vec4 uAmbient;
 #endif
 
@@ -42,9 +42,10 @@ struct Material
 
 	float uShininess;
 };
-//#endif
 
 uniform Material material;
+//#endif
+
 uniform Light light;
 uniform uint uMeshID;
 
@@ -86,6 +87,7 @@ void main()
 	for(int i = 0; i < diffuse_layers; i++)
 	{
 		diffuse *= vec3(texture(material.diffuse_maps, vec3(TexCoord, float(i))));
+		//diffuse *= vec3(1.0f, 0.0f, 0.0f);
 	}
 	ambient = diffuse;
 #else
@@ -118,9 +120,9 @@ void main()
 
 #else
 //Use the vertex color
-	diffuse = VertexColor;
-	ambient = VertexColor;
-	specular = VertexColor;
+	diffuse = vec3(VertexColor);
+	ambient = diffuse;
+	specular = diffuse;
 #endif
 
 	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;

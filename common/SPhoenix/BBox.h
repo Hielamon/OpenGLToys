@@ -107,6 +107,25 @@ namespace SP
 			return vertices;
 		}
 
+		void computeBBox(const std::vector<glm::vec3> &vertices)
+		{
+			if (vertices.empty()) return;
+
+			mMinVertex = vertices[0];
+			mMaxVertex = vertices[0];
+
+			for (size_t i = 1; i < vertices.size(); i++)
+			{
+				const glm::vec3 &vertex = vertices[i];
+				if (vertex.x < mMinVertex.x) mMinVertex.x = vertex.x;
+				if (vertex.y < mMinVertex.y) mMinVertex.y = vertex.y;
+				if (vertex.z < mMinVertex.z) mMinVertex.z = vertex.z;
+				if (vertex.x > mMaxVertex.x) mMaxVertex.x = vertex.x;
+				if (vertex.y > mMaxVertex.y) mMaxVertex.y = vertex.y;
+				if (vertex.z > mMaxVertex.z) mMaxVertex.z = vertex.z;
+			}
+		}
+
 		glm::vec3 getMinVertex()
 		{
 			return mMinVertex;

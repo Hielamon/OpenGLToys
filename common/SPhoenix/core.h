@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Utils.h"
-#include "Shader.h"
+#include "ShaderProgram.h"
 #include "Scene.h"
 #include "ManipulatorBase.h"
 
@@ -153,8 +153,7 @@ namespace SP
 	{
 	public:
 		Camera(int width, int height, const std::string &camName = "Untitled")
-			: GLWindowBase(camName, width, height), mbShowIDColor(false),
-			mbRefreshColorScene(true)
+			: GLWindowBase(camName, width, height), mbShowIDColor(false)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_MULTISAMPLE);
@@ -212,11 +211,11 @@ namespace SP
 		/**Add a Scene to a Camera's SceneUtil pointer vector, and return the SceneUtil ID*/
 		void setScene(std::shared_ptr<Scene> &pScene)
 		{
-			mpSceneUtil = std::make_shared<SceneUtil>(pScene);
-			pScene->setSceneUtil(mpSceneUtil);
+			mpScene = pScene;
+			pScene->uploadToDevice();
 
 			//Update the model matrix according the scene bounding box
-			BBox sceneBBox = pScene->getBoundingBox();
+			BBox sceneBBox = pScene->getTotalBBox();
 			glm::vec3 minVertex = sceneBBox.getMinVertex();
 			glm::vec3 maxVertex = sceneBBox.getMaxVertex();
 			glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
@@ -238,7 +237,10 @@ namespace SP
 			f *= scale;
 			glm::mat4 ms;
 			ms = glm::scale(ms, glm::vec3(scale, scale, scale));
-			pScene->setTopModelMatrix(ms*mt);
+
+			//TODO: we need to traverse all instance and set
+			//      new model matrix attributes
+			//pScene->setTopModelMatrix(ms*mt);
 
 			glm::vec3 eye(0.0f, 0.0f, f);
 			setViewMatrix(eye, center, up);
@@ -250,16 +252,16 @@ namespace SP
 		}
 
 		virtual void addMeshToScene(const std::shared_ptr<Mesh>& pMesh,
-							const std::shared_ptr<ShaderCodes> &pShaderCodes = nullptr)
+									const std::shared_ptr<ShaderProgram> 
+									&pShaderProgramTmp = nullptr)
 		{
-			if (mpSceneUtil.use_count() != 0)
+			if (mpScene.use_count() != 0)
 			{
-				std::shared_ptr<MeshUtil> pMeshUtil = std::make_shared<MeshUtil>(pMesh);
-				pMesh->setMeshUtil(pMeshUtil);
-
-				mpSceneUtil->addMeshUtil(pMeshUtil, pShaderCodes);
-
-				mbRefreshColorScene = true;
+				mpScene->addMesh(pMesh, pShaderProgramTmp);
+				//We can check the size of meshes in mpColorScene
+				//If which is not equal to the size of meshes in mpScene
+				//We will set the mbRefreshColorScene
+				//mbRefreshColorScene = true;
 			}
 		}
 
@@ -274,34 +276,34 @@ namespace SP
 		virtual void runOnce()
 		{
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			if (mpSceneUtil.use_count() == 0) return;
+			if (mpScene.use_count() == 0) return;
 
 			if (mbShowIDColor)
 			{
-				if (mpColorSceneUtil.use_count() == 0 || mbRefreshColorScene) 
+				if (mpColorScene.use_count() == 0 || 
+					mpColorScene->getNumMesh() != mpScene->getNumMesh()) 
 					generateColorScene();
 
-				mpColorSceneUtil->draw();
+				mpColorScene->draw();
 			}
 			else
 			{
-				mpSceneUtil->draw();
+				mpScene->draw();
 			}
 		}
 
 		//Generate the mpColorSceneUtil, According the exsited mpSceneUtil
 		void generateColorScene()
 		{
-			mpColorSceneUtil = std::make_shared<SceneColorIDUtil>(mpSceneUtil);
-			mbRefreshColorScene = false;
+			mpColorScene = std::make_shared<SceneColorID>(mpScene);
+			mpColorScene->uploadToDevice();
 		}
 
 	protected:
-		std::shared_ptr<SceneUtil> mpSceneUtil;
+		std::shared_ptr<Scene> mpScene;
 
 		//mpColorSceneUtil is used to showing the id colored scene
-		std::shared_ptr<SceneUtil> mpColorSceneUtil;
-		bool mbRefreshColorScene;
+		std::shared_ptr<SceneColorID> mpColorScene;
 		bool mbShowIDColor;
 
 		std::shared_ptr<ManipulatorBase> mpManipulator;
@@ -316,7 +318,7 @@ namespace SP
 	{
 	public:
 		CameraFBO(int width, int height, const std::string &camName = "Untitled")
-			: Camera(width, height, camName), mbRefreshSelectedScene(true)
+			: Camera(width, height, camName)
 		{
 			glDepthFunc(GL_LEQUAL);
 
@@ -325,8 +327,8 @@ namespace SP
 				glGenFramebuffers(1, &mMSFBO);
 				glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
 
-				//Create and attach the color, depth and extra buffers
-				//Color buffers
+				//Create and attach the color, depth 
+				//and extra buffers Color buffers
 
 				//MSAA for anti-aliasing
 				glGenTextures(1, &mColorTexture);
@@ -366,17 +368,17 @@ namespace SP
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			}
 
-
 			//Create RAW FBO
 			{
 				glGenFramebuffers(1, &mFBO);
 				glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
+
 				glGenTextures(1, &mMeshIDTexture);
 				glBindTexture(GL_TEXTURE_2D, mMeshIDTexture);
 				/*glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, mwidth, mheight, 0, GL_R,
 				GL_UNSIGNED_INT, NULL);*/
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, mwidth, mheight, 0, GL_RED_INTEGER,
-							 GL_UNSIGNED_INT, NULL);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, mwidth, mheight, 0,
+							 GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 				/*GLenum error = glGetError();
 				if (error == GL_NO_ERROR)
 				{
@@ -396,24 +398,14 @@ namespace SP
 				GL_RENDERBUFFER, mDepthStencilRBO);
 				glBindRenderbuffer(GL_RENDERBUFFER, 0);*/
 
-				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != 
+					GL_FRAMEBUFFER_COMPLETE)
 				{
 					SP_CERR("The Raw FrameBuffer is not complete");
 					exit(-1);
 				}
 
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			}
-		}
-
-
-		virtual void addMeshToScene(const std::shared_ptr<Mesh>& pMesh,
-									const std::shared_ptr<ShaderCodes> &pShaderCodes = nullptr)
-		{
-			if (mpSceneUtil.use_count() != 0)
-			{
-				Camera::addMeshToScene(pMesh, pShaderCodes);
-				mbRefreshSelectedScene = true;
 			}
 		}
 
@@ -468,12 +460,14 @@ namespace SP
 			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
 			Camera::runOnce();
 
-			if (mpSelectedSceneUtil.use_count() == 0 || mbRefreshSelectedScene)
-				generateSelectedSceneUtil();
+
+			if (mpSceneSelected.use_count() == 0 ||
+				mpSceneSelected->getNumMesh() != mpScene->getNumMesh())
+				generateSelectedScene();
 
 			if (mvSelectedMeshID.size() > 0)
 			{
-				mpSelectedSceneUtil->drawByMeshIDs(mvSelectedMeshID);
+				mpSceneSelected->drawByMeshIDs(mvSelectedMeshID);
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -490,10 +484,10 @@ namespace SP
 		}
 
 		//Generate the mpSelectedSceneUtil, According the exsited mpSceneUtil
-		void generateSelectedSceneUtil()
+		void generateSelectedScene()
 		{
-			mpSelectedSceneUtil = std::make_shared<SceneSelectedUtil>(mpSceneUtil);
-			mbRefreshSelectedScene = false;
+			mpSceneSelected = std::make_shared<SceneSelected>(mpScene);
+			mpSceneSelected->uploadToDevice();
 		}
 
 	protected:
@@ -508,8 +502,7 @@ namespace SP
 		static const int mNumSamples = 8;
 
 		//mpSelectedSceneUtil is used to showing the selected mesh
-		std::shared_ptr<SceneUtil> mpSelectedSceneUtil;
-		bool mbRefreshSelectedScene;
+		std::shared_ptr<SceneSelected> mpSceneSelected;
 		std::list<GLuint> mvSelectedMeshID;
 	};
 

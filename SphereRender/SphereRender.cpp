@@ -2,23 +2,25 @@
 #include <SPhoenix/Manipulator.h>
 #include <SPhoenix/BBoxMesh.h>
 #include <SPhoenix/AxisMesh.h>
+#include <SPhoenix/SceneAssimpLoader.h>
 
 using namespace SP;
+
 
 int main(int argc, char *argv[])
 {
 	std::shared_ptr<Scene> pScene = std::make_shared<Scene>();
-	
+	//..\..\3DModels\Drone0001\Drone166.lws
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\GLRelatedCodes\\Freedom3D\\LearnOpenGL\\LoadModel\\nanosuit\\nanosuit.obj";
-	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
-	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Hall0003\\hall\\hall.obj";
+	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
+	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Hall0003\\hall\\hall.obj";
 
 	if (argc == 2)
 	{
 		fileFullPath = argv[1];
 	}
 
-	bool showModel = !false;
+	bool showModel = false;
 	if (showModel)
 	{
 		SceneAssimpLoader loader;
@@ -49,14 +51,15 @@ int main(int argc, char *argv[])
 
 	if (!showModel)
 	{
-		std::vector<glm::vec3> vertices(4), normals(4), colors(4);
+		std::vector<glm::vec3> vertices(4), normals(4);
+		std::vector<glm::vec4> colors(4);
 		std::vector<glm::vec2> texcoords(4);
 		std::vector<GLuint> indices;
 		{
 
 			vertices[0] = glm::vec3(1.0f, 1.0f, -1.0f);
 			vertices[1] = glm::vec3(1.0f, -1.0f, -1.0f);
-			vertices[2] = glm::vec3(0.9f, -1.0f, -1.0f);
+			vertices[2] = glm::vec3(-1.0f, -1.0f, -1.0f);
 			vertices[3] = glm::vec3(-1.0f, 1.0f, -1.0f);
 
 			normals[0] = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -64,10 +67,10 @@ int main(int argc, char *argv[])
 			normals[2] = glm::vec3(0.0f, 0.0f, 1.0f);
 			normals[3] = glm::vec3(0.0f, 0.0f, 1.0f);
 
-			colors[0] = glm::vec3(1.0f, 0.0f, 0.0f);
-			colors[1] = glm::vec3(0.0f, 1.0f, 0.0f);
-			colors[2] = glm::vec3(0.0f, 0.0f, 1.0f);
-			colors[3] = glm::vec3(0.0f, 1.0f, 1.0f);
+			colors[0] = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			colors[1] = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+			colors[2] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+			colors[3] = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
 
 			texcoords[0] = glm::vec2(1.0f, 1.0f);
 			texcoords[1] = glm::vec2(1.0f, 0.0f);
@@ -76,20 +79,22 @@ int main(int argc, char *argv[])
 
 			indices =
 			{
-				0, 2, 1/*,
-				0, 3, 2*/
+				0, 2, 1,
+				0, 3, 2
 			};
 		}
-		std::vector<glm::mat4> mmatrixs(1, glm::mat4());
-		std::shared_ptr<VertexArrayNC> pVANTc = std::make_shared<VertexArrayNC>(vertices, normals, colors, indices);
+		std::shared_ptr<VertexArray> pVA = std::make_shared<VertexArray>(vertices, indices);
 		//std::shared_ptr<VertexArrayNTc> pVANTc = std::make_shared<VertexArrayNTc>(vertices, normals, texcoords, indices);
 		//std::shared_ptr<VertexArrayC> pVANTc = std::make_shared<VertexArrayC>(vertices, colors, indices);
+		//pVA->setColors(colors);
+		pVA->setTexCoords(texcoords);
+
+		pVA->addInstance();
 		
-		std::shared_ptr<VertexArray> pVA = std::static_pointer_cast<VertexArray>(pVANTc);
-		std::shared_ptr<Texture> pTex = std::make_shared<Texture>("./f4d5190c.dds", TextureType::Tex_DIFFUSE);
+		std::shared_ptr<Texture> pTex = std::make_shared<Texture>("./awesomeface.png", TextureType::Tex_DIFFUSE);
 		std::shared_ptr<Material> pMatrial = std::make_shared<Material>();
-		//pMatrial->addTexture(pTex);
-		std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(pVA, pMatrial, mmatrixs);
+		pMatrial->addTexture(pTex);
+		std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(pVA, pMatrial);
 		pScene->addMesh(pMesh);
 	}
 

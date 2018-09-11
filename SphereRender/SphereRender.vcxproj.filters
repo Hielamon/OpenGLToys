@@ -55,9 +55,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\common\SPhoenix\Shader.h">
-      <Filter>Header Files\SPhoenix</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\SPhoenix\Scene.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
@@ -96,6 +93,12 @@
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\Mesh.h">
       <Filter>Header Files\SPhoenix\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\SceneAssimpLoader.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\ShaderProgram.h">
+      <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

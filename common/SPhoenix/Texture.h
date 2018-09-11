@@ -27,27 +27,27 @@ namespace SP
 			return texGSet;
 		}
 
-		std::map<aiTextureType, TextureType> aiTypeMap;
-		std::map<TextureType, std::string> typeMacroMap;
-		std::map<TextureType, std::string> typeMaterialNameMap;
+		std::map<aiTextureType, TextureType> mAitextypeToTextype;
+		std::map<TextureType, std::string> mTextypeToMacro;
+		std::map<TextureType, std::string> mTextypeToMaterialName;
 
 	private:
 		TextureGlobal()
 		{
-			aiTypeMap = {
+			mAitextypeToTextype = {
 				{ aiTextureType_AMBIENT, Tex_AMBIENT },
 				{ aiTextureType_DIFFUSE, Tex_DIFFUSE },
 				{ aiTextureType_SPECULAR, Tex_SPECULAR }/*,
 														{ aiTextureType_NORMALS, Tex_NORMALS }*/
 			};
 
-			typeMacroMap = {
+			mTextypeToMacro = {
 				{ Tex_AMBIENT , "#define AMBIENT_TEXTURE \n" },
 				{ Tex_DIFFUSE , "#define DIFFUSE_TEXTURE \n" },
 				{ Tex_SPECULAR, "#define SPECULAR_TEXTURE\n" }
 			};
 
-			typeMaterialNameMap =
+			mTextypeToMaterialName =
 			{
 				{ Tex_AMBIENT , "material.ambient_maps" },
 				{ Tex_DIFFUSE , "material.diffuse_maps" },
@@ -59,11 +59,11 @@ namespace SP
 	class Texture
 	{
 	public:
-		Texture() : mwidth(-1), mheight(-1), mchannels(-1) {}
+		Texture() : mWidth(-1), mHeight(-1), mChannels(-1) {}
 
 		Texture(const std::string &imagePath, TextureType type)
 		{
-			unsigned char * data = SOIL_load_image(imagePath.c_str(), &mwidth, &mheight, &mchannels, 3/*SOIL_LOAD_AUTO*/);
+			unsigned char * data = SOIL_load_image(imagePath.c_str(), &mWidth, &mHeight, &mChannels, 3/*SOIL_LOAD_AUTO*/);
 			if (!data)
 			{
 				SP_CERR("Failed to Open Texture File: " + imagePath);
@@ -73,29 +73,29 @@ namespace SP
 
 			std::shared_ptr<unsigned char> pData(data, SOILImageDeleter);
 			mpData = pData;
-			mtype = type;
-			mimagePath = imagePath;
+			mType = type;
+			mImagePath = imagePath;
 			mbValid = true;
 		}
 
 		Texture(const std::shared_ptr<unsigned char> &pData, int width, int height, int channels, TextureType type)
-			: mpData(pData), mwidth(width), mheight(height), mchannels(channels), mtype(type) {}
+			: mpData(pData), mWidth(width), mHeight(height), mChannels(channels), mType(type) {}
 
 		~Texture() {}
 
 		TextureType getType() 
 		{
-			return mtype;
+			return mType;
 		}
 
 		int getWidth()
 		{
-			return mwidth;
+			return mWidth;
 		}
 
 		int getHeight()
 		{
-			return mheight;
+			return mHeight;
 		}
 
 		bool IsValid()
@@ -110,12 +110,12 @@ namespace SP
 
 	protected:
 
-		//The mchannels are the original channaels of texture
-		int mwidth, mheight, mchannels;
+		//The mChannels are the original channaels of texture
+		int mWidth, mHeight, mChannels;
 		bool mbValid;
 
-		std::string mimagePath;
-		TextureType mtype;
+		std::string mImagePath;
+		TextureType mType;
 		std::shared_ptr<unsigned char> mpData;
 	};
 }

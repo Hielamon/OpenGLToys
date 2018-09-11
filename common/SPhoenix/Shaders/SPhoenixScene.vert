@@ -14,7 +14,7 @@ layout (location = NORMAL_ATTR) in vec3 aNormal;
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 layout (location = TEXCOORD_ATTR) in vec2 aTexCoord;
 #elif defined(HAVE_COLOR)
-layout (location = COLOR_ATTR) in vec3 aColor;
+layout (location = COLOR_ATTR) in vec4 aColor;
 #endif
 
 layout (location = MMATRIX_ATTR) in mat4 aModelMatrix;
@@ -26,12 +26,12 @@ layout (std140) uniform ViewUBO
 	vec3 viewPos;    // 16
 };
 
-uniform mat4 topMMatrix;
+//uniform mat4 topMMatrix;
 
 #if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 out vec2 TexCoord;
 #elif defined(HAVE_COLOR)
-out vec3 VertexColor;
+out vec4 VertexColor;
 #endif
 
 #if defined(HAVE_NORMAL)
@@ -43,7 +43,8 @@ out vec3 ViewPos;
 
 void main()
 {
-	vec4 worldPos = topMMatrix * aModelMatrix * vec4(aVertice, 1.0f);
+	vec4 worldPos = aModelMatrix * vec4(aVertice, 1.0f);
+	//vec4 worldPos = topMMatrix * aModelMatrix * vec4(aVertice, 1.0f);
 	gl_Position = projMatrix * viewMatrix * worldPos;
 
 #if defined(HAVE_NORMAL)
