@@ -120,7 +120,7 @@ namespace SP
 				 iter != mmLabelToShader.end(); iter++)
 			{
 				iter->second->useProgram();
-				GLint programID = iter->second->getProgramID();
+				GLuint programID = iter->second->getProgramID();
 
 				std::map<GLuint, std::shared_ptr<Mesh>> &mMeshIDToMesh =
 					mmLabelToMeshes[iter->first];
@@ -295,7 +295,7 @@ namespace SP
 			for (iter = mExistedMeshes.begin();
 				 iter != mExistedMeshes.end(); iter++)
 			{
-				std::shared_ptr<Mesh> &pMesh = iter->second;
+				std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(*(iter->second));
 
 				//Compute the ID Color
 				double totalColor = MeshGlobal::getInstance().totalMeshCount + 1;
@@ -344,7 +344,7 @@ namespace SP
 			for (iter = mExistedMeshes.begin();
 				 iter != mExistedMeshes.end(); iter++)
 			{
-				std::shared_ptr<Mesh> &pMesh = iter->second;
+				std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(*(iter->second));
 
 				std::shared_ptr<Material> pMaterial = std::make_shared<Material>();
 				pMesh->setMaterial(pMaterial);

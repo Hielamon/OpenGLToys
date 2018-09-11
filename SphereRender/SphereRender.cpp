@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 		fileFullPath = argv[1];
 	}
 
-	bool showModel = false;
+	bool showModel = !false;
 	if (showModel)
 	{
 		SceneAssimpLoader loader;

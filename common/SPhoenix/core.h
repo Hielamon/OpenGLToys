@@ -460,7 +460,6 @@ namespace SP
 			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
 			Camera::runOnce();
 
-
 			if (mpSceneSelected.use_count() == 0 ||
 				mpSceneSelected->getNumMesh() != mpScene->getNumMesh())
 				generateSelectedScene();

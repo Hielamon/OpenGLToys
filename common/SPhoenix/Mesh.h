@@ -135,6 +135,9 @@ namespace SP
 				return;
 			}
 
+			int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+			glUniform1ui(uMeshIDLoc, mMeshID);
+
 			mpMaterial->active(programID, mbHasTexCoord, mbHasVertexColor);
 			mpVertexArray->draw(programID);
 		}

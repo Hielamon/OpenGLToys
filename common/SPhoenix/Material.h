@@ -136,11 +136,9 @@ namespace SP
 			std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
 			for (iter = mmTextypeToTex.begin(); iter != mmTextypeToTex.end(); iter++)
 			{
-
 				//We just use the int value of the texture type as the Unit ID
 				int textureUnit = iter->first;
 				_uploadArrayTexture(textureUnit, iter->second);
-				GL_DEBUG_ALL
 			}
 
 			//Set the existence of texture maps
@@ -182,6 +180,7 @@ namespace SP
 				SP_CERR("The current material has not been uploaded befor activing");
 				return;
 			}
+
 
 			GLint uShininessLoc = glGetUniformLocation(programID, "material.uShininess");
 			glUniform1f(uShininessLoc, mShininess);
