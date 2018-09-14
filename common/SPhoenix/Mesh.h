@@ -87,6 +87,12 @@ namespace SP
 			mpVertexArray->setInstanceMMatrix(instanceMMatrix, instanceID);
 		}
 
+		//Means to transform all instances of the mesh with T matrix
+		void transformMesh(const glm::mat4 &T)
+		{
+			mpVertexArray->transformAllInstances(T);
+		}
+
 		glm::mat4 getInstanceMMatrix(GLuint instanceID)
 		{
 			return mpVertexArray->getInstanceMMatrix(instanceID);

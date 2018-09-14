@@ -28,10 +28,7 @@ namespace SP
 			setCommonShaderProgram(defaultShader);
 		}
 
-		~Scene()
-		{
-			reset();
-		}
+		~Scene() {}
 
 		void reset()
 		{
@@ -97,8 +94,7 @@ namespace SP
 				 iter != mmMeshIDToMesh.end(); iter++)
 			{
 				std::shared_ptr<Mesh> &pMesh = iter->second;
-				GLuint meshID = iter->first;
-				assert(pMesh->getMeshID() == meshID);
+				assert(pMesh->getMeshID() == iter->first);
 
 				//Upload the mesh
 				_uploadMesh(pMesh);
@@ -179,28 +175,19 @@ namespace SP
 			return result;
 		}
 
-		/*std::vector<BBox> getAllMeshBBoxes()
+		//Transform the scene, which will transform all meshes in the scene
+		void transformMesh(const glm::mat4 &T)
 		{
-			std::vector<BBox> vBBox;
-			for (size_t i = 0; i < mvpMesh.size(); i++)
+			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
+			for (iter = mmMeshIDToMesh.begin();
+				 iter != mmMeshIDToMesh.end(); iter++)
 			{
-				vBBox.push_back(mvpMesh[i]->getBoundingBox());
+				std::shared_ptr<Mesh> &pMesh = iter->second;
+				assert(pMesh->getMeshID() == iter->first);
+				//transform the mesh
+				pMesh->transformMesh(T);
 			}
-
-			return vBBox;
-		}*/
-
-		/*std::vector<BBox> getAllInstanceBBoxes()
-		{
-			std::vector<BBox> vBBox;
-			for (size_t i = 0; i < mvpMesh.size(); i++)
-			{
-				std::vector<BBox> vBBoxTmp = mvpMesh[i]->getAllBoundingBoxes();
-				vBBox.insert(vBBox.end(), vBBoxTmp.begin(), vBBoxTmp.end());
-			}
-
-			return vBBox;
-		}*/
+		}
 
 	protected:
 		//Which is just a common shaderprogram template, for

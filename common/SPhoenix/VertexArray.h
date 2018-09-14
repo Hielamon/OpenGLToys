@@ -222,6 +222,24 @@ namespace SP
 			}
 		}
 
+		//Transform all instance matrix with one T matrix
+		void transformAllInstances(const glm::mat4 &T)
+		{
+			for (size_t i = 0; i < mNumInstance; i++)
+			{
+				glm::mat4 &modelMatrix = (*mpvInstanceMMatrix)[i];
+				modelMatrix = T*modelMatrix;
+			}
+
+			if (mbUploaded)
+			{
+				glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
+				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::mat4)*mNumInstance,
+								&(*mpvInstanceMMatrix)[0]);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+			}
+		}
+
 		//Get the instance model matrix in instanceID
 		glm::mat4 getInstanceMMatrix(GLuint instanceID)
 		{
@@ -239,11 +257,13 @@ namespace SP
 			return result;
 		}
 
+		
 		//Get the number of instances
 		GLuint getNumInstance()
 		{
 			return mpvInstanceMMatrix->size();
 		}
+
 
 		BBox getTotalBBox()
 		{

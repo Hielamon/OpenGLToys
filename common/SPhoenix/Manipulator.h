@@ -9,7 +9,7 @@ namespace SP
 	class Manipulator : public ManipulatorBase
 	{
 	public:
-		Manipulator(CameraFBO *pCam)
+		Manipulator(GLWindowBase *pCam)
 		{
 			if (!pCam)
 			{
@@ -17,14 +17,14 @@ namespace SP
 				exit(-1);
 			}
 			mpCam = pCam;
-			mfovy = mpCam->mfovy;
+			/*mfovy = mpCam->mfovy;
 			maspect = mpCam->maspect;
 			mzNear = mpCam->mzNear;
 			mzFar = mpCam->mzFar;
 
 			meye = mpCam->meye;
 			mup = mpCam->mup;
-			mcenter = mpCam->mcenter;
+			mcenter = mpCam->mcenter;*/
 
 			memset(mkeyState, GL_FALSE, KEY_COUNT);
 			memset(mmouseButtonState, GL_FALSE, MOUSE_COUNT);
@@ -32,7 +32,10 @@ namespace SP
 
 		Manipulator() = delete;
 
-		~Manipulator() {}
+		~Manipulator() {
+			removeCallBacks();
+			std::cout << "Deconstruction of Manipulator" << std::endl;
+		}
 
 		void registerCallBacks()
 		{
@@ -52,7 +55,23 @@ namespace SP
 			_registerScrollCallBack(curWinPtr);
 			_registerMouseButtonCallBack(curWinPtr);
 			_registerCursorPosCallBack(curWinPtr);
-			
+		}
+
+		void removeCallBacks()
+		{
+			if (!mpCam)
+			{
+				SP_CERR("Cannot get callback for a empty camera pointer");
+				exit(-1);
+			}
+
+			GLFWwindow *curWinPtr = mpCam->getGLFWWinPtr();
+			assert(curWinPtr != nullptr);
+
+			_removeKeyCallBack(curWinPtr);
+			_removeScrollCallBack(curWinPtr);
+			_removeMouseButtonCallBack(curWinPtr);
+			_removeCursorPosCallBack(curWinPtr);
 		}
 
 	protected:
@@ -65,13 +84,16 @@ namespace SP
 			case GLFW_KEY_ESCAPE:
 				if (action == GLFW_PRESS)
 				{
+					std::cout << "Close the window" << std::endl;
 					glfwSetWindowShouldClose(window, GL_TRUE);
 				}
 				break;
-			case GLFW_KEY_R:
+			/*case GLFW_KEY_R:
 				mpCam->setProjectionMatrix(mfovy, maspect, mzNear, mzFar);
 				if(mkeyState[GLFW_KEY_LEFT_CONTROL])
 					mpCam->setViewMatrix(meye, mcenter, mup);
+				mpCam->deleteManipulator();
+				return;
 				break;
 			case GLFW_KEY_TAB:
 				if (action == GLFW_PRESS)
@@ -88,7 +110,7 @@ namespace SP
 				{
 					mpCam->revertShowIDColor();
 				}
-				break;
+				break;*/
 			
 			default:
 				break;
@@ -96,7 +118,7 @@ namespace SP
 
 			//Press move camera on XZ-plane
 			//if(mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
-			{
+			/*{
 				glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
 				glm::vec3 direction(0.0f);
 
@@ -137,22 +159,22 @@ namespace SP
 					RigidTransformLookAt(translate, eye, center, up);
 					mpCam->setViewMatrix(eye, center, up);
 				}
-			}
+			}*/
 		}
 
 		virtual void scrollCallBackImpl(GLFWwindow *window, double xoffset, double yoffset)
 		{
-			float curFovy = mpCam->mfovy;
+			/*float curFovy = mpCam->mfovy;
 
 			curFovy -= float(yoffset);
 
 			curFovy = std::max(1.0f, std::min(curFovy, 180.0f));
-			mpCam->setProjectionMatrix(curFovy, mpCam->maspect);
+			mpCam->setProjectionMatrix(curFovy, mpCam->maspect);*/
 		}
 
 		virtual void mouseButtonCallBackImpl(GLFWwindow *window, int button, int action, int mods)
 		{
-			if (button == GLFW_MOUSE_BUTTON_LEFT &&
+			/*if (button == GLFW_MOUSE_BUTTON_LEFT &&
 				action == GLFW_PRESS &&
 				mmouseButtonState[button] == GLFW_RELEASE)
 			{
@@ -183,12 +205,12 @@ namespace SP
 				
 			}
 
-			mmouseButtonState[button] = action;
+			mmouseButtonState[button] = action;*/
 		}
 
 		virtual void cursorPosCallBackImpl(GLFWwindow *window, double xpos, double ypos)
 		{
-			double dx = xpos - mpreX;
+			/*double dx = xpos - mpreX;
 			double dy = ypos - mpreY;
 
 			if (abs(dx) >= 1 || abs(dy) >= 1)
@@ -266,11 +288,11 @@ namespace SP
 
 				mpreX = xpos;
 				mpreY = ypos;
-			}
+			}*/
 		}
 
 	protected:
-		CameraFBO *mpCam;
+		GLWindowBase *mpCam;
 
 		float mfovy, maspect, mzNear, mzFar;
 		glm::vec3 meye, mcenter, mup;
@@ -300,6 +322,11 @@ namespace SP
 			glfwSetKeyCallback(curWinPtr, keyfun);
 		}
 
+		void _removeKeyCallBack(GLFWwindow *curWinPtr)
+		{
+			glfwSetKeyCallback(curWinPtr, NULL);
+		}
+
 		void _registerScrollCallBack(GLFWwindow *curWinPtr)
 		{
 
@@ -310,6 +337,11 @@ namespace SP
 				);
 			};
 			glfwSetScrollCallback(curWinPtr, scrollfun);
+		}
+
+		void _removeScrollCallBack(GLFWwindow *curWinPtr)
+		{
+			glfwSetScrollCallback(curWinPtr, NULL);
 		}
 
 		void _registerMouseButtonCallBack(GLFWwindow *curWinPtr)
@@ -323,6 +355,11 @@ namespace SP
 			glfwSetMouseButtonCallback(curWinPtr, mousebuttonfun);
 		}
 
+		void _removeMouseButtonCallBack(GLFWwindow *curWinPtr)
+		{
+			glfwSetMouseButtonCallback(curWinPtr, NULL);
+		}
+
 		void _registerCursorPosCallBack(GLFWwindow *curWinPtr)
 		{
 			GLFWcursorposfun cursorposfun = [](GLFWwindow *window, double xpos, double ypos)
@@ -332,6 +369,11 @@ namespace SP
 				);
 			};
 			glfwSetCursorPosCallback(curWinPtr, cursorposfun);
+		}
+
+		void _removeCursorPosCallBack(GLFWwindow *curWinPtr)
+		{
+			glfwSetCursorPosCallback(curWinPtr, NULL);
 		}
 	};
 }

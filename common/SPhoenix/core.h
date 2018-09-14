@@ -4,6 +4,7 @@
 #include "ShaderProgram.h"
 #include "Scene.h"
 #include "ManipulatorBase.h"
+#include <commonMacro.h>
 
 
 namespace SP
@@ -44,77 +45,97 @@ namespace SP
 	class GLWindowBase
 	{
 	public:
-		GLWindowBase(const std::string &win_name = "Untitled", int width = 0, int height = 0)
+		GLWindowBase(const std::string &win_name = "Untitled", 
+					 int width = 0, int height = 0)
+			: mbValidWindow(false)
 		{
 			GlfwConfigure::Setup();
 
 			glm::u32vec2 screenSize = GetScreenResolution();
 			assert(screenSize[0] != -1);
-			mwidth = width == 0 ? screenSize[0] * 0.5 : width;
-			mheight = height == 0 ? screenSize[1] * 0.5 : height;
-			mwinName = win_name;
+			mWidth = width == 0 ? screenSize[0] * 0.5 : width;
+			mHeight = height == 0 ? screenSize[1] * 0.5 : height;
+			mWinName = win_name;
 
-			mglfwWinPtr = _initWindow(mwidth, mheight, mwinName);
-			assert(mglfwWinPtr != nullptr);
-
-			mopened = GL_TRUE;
+			mGLFWWinPtr = _initWindow(mWidth, mHeight, mWinName);
+			assert(mGLFWWinPtr != nullptr);
 		}
 
 		~GLWindowBase()
 		{
-			if (mopened && mglfwWinPtr != nullptr)
+			if (mbValidWindow && mGLFWWinPtr != nullptr)
 			{
-				glfwDestroyWindow(mglfwWinPtr);
-				mopened = false;
+				glfwDestroyWindow(mGLFWWinPtr);
+				mbValidWindow = false;
 			}
 		}
 
 		GLFWwindow *getGLFWWinPtr()
 		{
-			return mglfwWinPtr;
+			return mGLFWWinPtr;
 		}
 
 		glm::i32vec2 getWindowSize()
 		{
-			return glm::i32vec2(mwidth, mheight);
+			return glm::i32vec2(mWidth, mHeight);
 		}
 
-		bool isOpened()
+		bool isValidWindow()
 		{
-			return mopened;
+			return mbValidWindow;
 		}
 
 		virtual bool isShutdown()
 		{
-			return glfwWindowShouldClose(mglfwWinPtr);
+			return glfwWindowShouldClose(mGLFWWinPtr);
 		}
 
 		bool run()
 		{
+			clock_t start, end;
+			clock_t cost;
+			std::vector<float> vFPS;
+			int frameCount = 0;
+			start = clock();
 			while (!isShutdown())
 			{
 				runOnce();
 
 				glfwPollEvents();
-				glfwSwapBuffers(mglfwWinPtr);
+				glfwSwapBuffers(mGLFWWinPtr);
+				frameCount++;
+
+				end = clock();
+				cost = end - start;
+				if (cost > 1000)
+				{
+					float tpf = cost * 1.0 / frameCount;
+					float fps = frameCount*1000.0 / (cost);
+					std::cout << "\rframe rate = " << fps <<
+						"; frame time = " << tpf << std::flush;
+					frameCount = 0;
+					start = end;
+				}
 			}
+			std::cout << std::endl;
 
 			return GL_TRUE;
 		}
 
 		virtual void runOnce() = 0;
+
 	protected:
 		/**GLFW window pointer*/
-		GLFWwindow * mglfwWinPtr;
+		GLFWwindow * mGLFWWinPtr;
 
 		/**window size*/
-		int mwidth, mheight;
+		int mWidth, mHeight;
 
 		/**windows name*/
-		std::string mwinName;
+		std::string mWinName;
 
 		/**indicate the window state, TODO : maybe change to a enum*/
-		bool mopened;
+		bool mbValidWindow;
 
 	private:
 		GLFWwindow * _initWindow(int &width, int &height, std::string &winName)
@@ -130,23 +151,25 @@ namespace SP
 			GLFWwindow *window = glfwCreateWindow(width, height, winName.c_str(), NULL, NULL);
 			if (window == nullptr)
 			{
-				SP_CERR("Failed to CreateWindow ect...");
-				exit(-1);
+				SP_CERR("Failed to CreateWindow " << winName);
+				return window;
 			}
 
 			glfwMakeContextCurrent(window);
 
+			mbValidWindow = true;
 			glewExperimental = GL_TRUE;
 			if (glewInit() != GLEW_OK)
 			{
 				SP_CERR("Failed to initialize GLEW");
 				glfwDestroyWindow(window);
-				exit(-1);
+				mbValidWindow = false;
 			}
 
 			return window;
 		}
 	};
+
 
 	/**Camera class : execute the rendering loop*/
 	class Camera : public GLWindowBase
@@ -177,11 +200,10 @@ namespace SP
 			glDeleteBuffers(1, &mViewUBO);
 		}
 
-
 		void setProjectionMatrix(float fovy = 60.f, float aspect = 0.0f, float zNear = 0.01, float zFar = 100.f)
 		{
 			mfovy = fovy; mzNear = zNear; mzFar = zFar;
-			maspect = aspect == 0.0f ? mwidth / float(mheight) : aspect;
+			maspect = aspect == 0.0f ? mWidth / float(mHeight) : aspect;
 
 			mprojectionMatrix = glm::perspective(glm::radians(mfovy), maspect, mzNear, mzFar);
 			glBindBuffer(GL_UNIFORM_BUFFER, mViewUBO);
@@ -206,6 +228,11 @@ namespace SP
 		{
 			mpManipulator = pManipulator;
 			mpManipulator->registerCallBacks();
+		}
+
+		void deleteManipulator()
+		{
+			mpManipulator.reset();
 		}
 
 		/**Add a Scene to a Camera's SceneUtil pointer vector, and return the SceneUtil ID*/
@@ -240,7 +267,9 @@ namespace SP
 
 			//TODO: we need to traverse all instance and set
 			//      new model matrix attributes
-			//pScene->setTopModelMatrix(ms*mt);
+			//HL_INTERVAL_START
+			pScene->transformMesh(ms*mt);
+			//HL_INTERVAL_ENDSTR("pScene->transformMesh(ms*mt)");
 
 			glm::vec3 eye(0.0f, 0.0f, f);
 			setViewMatrix(eye, center, up);
@@ -265,14 +294,6 @@ namespace SP
 			}
 		}
 
-		//mfovy is the angle FOV in y direction
-		float mfovy, maspect, mzNear, mzFar;
-		glm::vec3 meye, mcenter, mup;
-
-
-	protected:
-		Camera() {}
-
 		virtual void runOnce()
 		{
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -280,8 +301,8 @@ namespace SP
 
 			if (mbShowIDColor)
 			{
-				if (mpColorScene.use_count() == 0 || 
-					mpColorScene->getNumMesh() != mpScene->getNumMesh()) 
+				if (mpColorScene.use_count() == 0 ||
+					mpColorScene->getNumMesh() != mpScene->getNumMesh())
 					generateColorScene();
 
 				mpColorScene->draw();
@@ -291,6 +312,14 @@ namespace SP
 				mpScene->draw();
 			}
 		}
+
+		//mfovy is the angle FOV in y direction
+		float mfovy, maspect, mzNear, mzFar;
+		glm::vec3 meye, mcenter, mup;
+
+
+	protected:
+		Camera() {}
 
 		//Generate the mpColorSceneUtil, According the exsited mpSceneUtil
 		void generateColorScene()
@@ -334,14 +363,14 @@ namespace SP
 				glGenTextures(1, &mColorTexture);
 				glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mColorTexture);
 				glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, mNumSamples, GL_RGB,
-										mwidth, mheight, GL_TRUE);
+										mWidth, mHeight, GL_TRUE);
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 									   GL_TEXTURE_2D_MULTISAMPLE, mColorTexture, 0);
 
 				glGenTextures(1, &mMSMeshIDTexture);
 				glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mMSMeshIDTexture);
 				glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, mNumSamples, GL_R32UI,
-										mwidth, mheight, GL_TRUE);
+										mWidth, mHeight, GL_TRUE);
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
 									   GL_TEXTURE_2D_MULTISAMPLE, mMSMeshIDTexture, 0);
 				glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
@@ -353,7 +382,7 @@ namespace SP
 				glGenRenderbuffers(1, &mMSDepthStencilRBO);
 				glBindRenderbuffer(GL_RENDERBUFFER, mMSDepthStencilRBO);
 				glRenderbufferStorageMultisample(GL_RENDERBUFFER, mNumSamples,
-												 GL_DEPTH24_STENCIL8, mwidth, mheight);
+												 GL_DEPTH24_STENCIL8, mWidth, mHeight);
 				glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
 										  GL_RENDERBUFFER, mMSDepthStencilRBO);
 
@@ -377,7 +406,7 @@ namespace SP
 				glBindTexture(GL_TEXTURE_2D, mMeshIDTexture);
 				/*glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, mwidth, mheight, 0, GL_R,
 				GL_UNSIGNED_INT, NULL);*/
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, mwidth, mheight, 0,
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, mWidth, mHeight, 0,
 							 GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 				/*GLenum error = glGetError();
 				if (error == GL_NO_ERROR)
@@ -407,6 +436,33 @@ namespace SP
 
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			}
+		}
+
+		virtual void runOnce()
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
+			Camera::runOnce();
+
+			if (mvSelectedMeshID.size() > 0)
+			{
+				if (mpSceneSelected.use_count() == 0 ||
+					mpSceneSelected->getNumMesh() != mpScene->getNumMesh())
+					generateSelectedScene();
+
+				mpSceneSelected->drawByMeshIDs(mvSelectedMeshID);
+			}
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			//Copy the color buffer from mFBO to the default framebuffer
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+			glReadBuffer(GL_COLOR_ATTACHMENT0);
+			glDrawBuffer(GL_BACK_LEFT);
+
+			glBlitFramebuffer(0, 0, mWidth, mHeight, 0, 0, mWidth, mHeight,
+							  GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
 		}
 
 		GLuint getPointMeshID(GLint x, GLint y)
@@ -455,32 +511,7 @@ namespace SP
 		}
 
 	protected:
-		virtual void runOnce()
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
-			Camera::runOnce();
-
-			if (mpSceneSelected.use_count() == 0 ||
-				mpSceneSelected->getNumMesh() != mpScene->getNumMesh())
-				generateSelectedScene();
-
-			if (mvSelectedMeshID.size() > 0)
-			{
-				mpSceneSelected->drawByMeshIDs(mvSelectedMeshID);
-			}
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-			//Copy the color buffer from mFBO to the default framebuffer
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-			glReadBuffer(GL_COLOR_ATTACHMENT0);
-			glDrawBuffer(GL_BACK_LEFT);
-
-			glBlitFramebuffer(0, 0, mwidth, mheight, 0, 0, mwidth, mheight,
-							  GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-		}
+		
 
 		//Generate the mpSelectedSceneUtil, According the exsited mpSceneUtil
 		void generateSelectedScene()
