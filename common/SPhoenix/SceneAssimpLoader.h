@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Scene.h"
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 namespace SP
 {
@@ -69,6 +72,7 @@ namespace SP
 
 			//Loading all meshes in the scene
 			mvMeshID.reserve(aiscene->mNumMeshes);
+
 			for (size_t i = 0; i < aiscene->mNumMeshes; i++)
 			{
 				aiMesh *aimesh = aiscene->mMeshes[i];
@@ -77,6 +81,7 @@ namespace SP
 
 				//Add the model to mScene, but the instanceN are still zero
 				std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(pVertexArray, pMaterial);
+				//std::shared_ptr<FasterMesh> pMesh = std::make_shared<FasterMesh>(pVertexArray, pMaterial);
 				mvMeshID.push_back(pMesh->getMeshID());
 
 				mpScene->addMesh(pMesh);

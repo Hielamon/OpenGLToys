@@ -61,12 +61,10 @@ namespace SP
 			}
 
 			mpVertexArray = pVertexArray;
-			if (mbUploaded)
-			{
-				mpVertexArray->uploadToDevice();
-				mbHasTexCoord = mpVertexArray->hasTexCoord();
-				mbHasVertexColor = mpVertexArray->hasVertexColor();
-			}
+			mbHasTexCoord = mpVertexArray->hasTexCoord();
+			mbHasVertexColor = mpVertexArray->hasVertexColor();
+
+			if (mbUploaded) mpVertexArray->uploadToDevice();
 		}
 
 		void setMaterial(const std::shared_ptr<Material> &pMaterial)
@@ -79,6 +77,24 @@ namespace SP
 
 			mpMaterial = pMaterial;
 			if (mbUploaded) mpMaterial->uploadToDevice();
+		}
+
+		//For active same type materials only once
+		std::shared_ptr<Material> getMaterial()
+		{
+			return mpMaterial;
+		}
+		
+		//For active same type materials only once
+		bool getHasTexCoord()
+		{
+			return mbHasTexCoord;
+		}
+		
+		//For active same type materials only once
+		bool getHasVertexColor()
+		{
+			return mbHasVertexColor;
 		}
 
 		void setInstanceMMatrix(const glm::mat4 &instanceMMatrix,
@@ -126,10 +142,9 @@ namespace SP
 		//upload the mesh information to the device
 		virtual void uploadToDevice()
 		{
+			if (mbUploaded) return;
 			mpMaterial->uploadToDevice();
 			mpVertexArray->uploadToDevice();
-			mbHasTexCoord = mpVertexArray->hasTexCoord();
-			mbHasVertexColor = mpVertexArray->hasVertexColor();
 			mbUploaded = true;
 		}
 
@@ -141,10 +156,10 @@ namespace SP
 				return;
 			}
 
-			int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
-			glUniform1ui(uMeshIDLoc, mMeshID);
+			/*int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+			glUniform1ui(uMeshIDLoc, mMeshID);*/
 
-			mpMaterial->active(programID, mbHasTexCoord, mbHasVertexColor);
+			//mpMaterial->active(programID, mbHasTexCoord, mbHasVertexColor);
 			mpVertexArray->draw(programID);
 		}
 
@@ -152,7 +167,7 @@ namespace SP
 		//For the inherited classes of the mesh£¬
 		//They must set the material and the vertex array explicite in
 		//the constructor function
-		Mesh() {}
+		Mesh() : mbUploaded(false) {}
 
 		//The mpMaterial must be assign to in the constructor
 		//or the inherited class' constructor
@@ -168,5 +183,25 @@ namespace SP
 		//glm::mat4 mModelMatrix;
 
 		GLuint mMeshID;
+	};
+
+	class FasterMesh : public Mesh
+	{
+	public:
+		FasterMesh(const std::shared_ptr<VertexArray> &pVertexArray,
+			 const std::shared_ptr<Material> &pMaterial =
+			 std::make_shared<Material>()) : Mesh(pVertexArray, pMaterial) {}
+		
+		virtual void draw(const GLuint &programID)
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current mesh has not been uploaded befor drawing");
+				return;
+			}
+
+			mpMaterial->active(programID, mbHasTexCoord, mbHasVertexColor);
+			mpVertexArray->draw(programID);
+		}
 	};
 }

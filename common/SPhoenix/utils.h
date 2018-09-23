@@ -73,7 +73,3 @@ inline void RigidTransformLookAt(glm::mat4 &rigid, glm::vec3 &eye, glm::vec3 &ce
 	up = glm::vec3(rigid * upHomo);*/
 }
 
-
-
-
-

@@ -19,6 +19,10 @@
 //the UMatrices binging point set to 1
 #define VIEWUBO_BINDING_POINT 1
 
+#define MAX_VIEWPORT_SIZE 32768
+
+
+
 #define GL_DEBUG_INVALID_ENUM \
 if (glGetError() == GL_INVALID_ENUM)\
 {\

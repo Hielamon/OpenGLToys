@@ -48,7 +48,7 @@ namespace SP
 				{
 					int start = code.find("#version");
 					int insertPos = code.find("\n", start);
-					code.insert(insertPos + 2, macros);
+					code.insert(insertPos + 1, macros);
 				}
 			}
 		}

@@ -9,9 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Source Files\Shader">
-      <UniqueIdentifier>{015aa328-f893-4754-8c06-df511e06b5db}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\SPhoenix">
       <UniqueIdentifier>{61c0a334-7fb2-4b29-8d84-3689b6e2035f}</UniqueIdentifier>
     </Filter>
@@ -35,22 +32,22 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="SphereRender.frag">
-      <Filter>Source Files\Shader</Filter>
-    </None>
-    <None Include="SphereRender.vert">
-      <Filter>Source Files\Shader</Filter>
-    </None>
-    <None Include="SphereRenderTest.vert">
-      <Filter>Source Files\Shader</Filter>
-    </None>
-    <None Include="SphereRenderTest.frag">
-      <Filter>Source Files\Shader</Filter>
-    </None>
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.frag">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.vert">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-2DGraphic.frag">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-2DGraphic.vert">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-SkyBox.frag">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-SkyBox.vert">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
   </ItemGroup>
@@ -99,6 +96,15 @@
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\GlobalMacros.h">
       <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Camera.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\MonitorWindow.h">
+      <Filter>Header Files\SPhoenix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Sphere.h">
+      <Filter>Header Files\SPhoenix\Mesh</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

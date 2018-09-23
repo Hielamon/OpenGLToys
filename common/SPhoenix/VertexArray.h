@@ -344,6 +344,8 @@ namespace SP
 			mbDrawElements = mpvIndice.use_count() == 0 ? false : true;
 			if (mbDrawElements) mNumDrawVertice = mpvIndice->size();
 
+			//if (mNumInstance > 1) std::cout << "big instaces = " << mNumInstance << std::endl;
+
 			_setupVAO();
 
 			mbUploaded = true;
@@ -387,6 +389,7 @@ namespace SP
 		//draw the vertex array, we use the glDraw*Instanced function for uniform usage
 		virtual void draw(const GLuint &programID)
 		{
+			//return;
 			if (mNumInstance <= 0)
 			{
 				SP_CERR("The current vertex array has no instance for drawing");
@@ -404,10 +407,14 @@ namespace SP
 			{
 				glDrawElementsInstanced(mDrawMode, mNumDrawVertice, GL_UNSIGNED_INT, 
 										0, mNumInstance);
+
+				/*glDrawElements(mDrawMode, mNumDrawVertice, GL_UNSIGNED_INT,
+										0);*/
 			}
 			else
 			{
 				glDrawArraysInstanced(mDrawMode, 0, mNumDrawVertice, mNumInstance);
+				//glDrawArrays(mDrawMode, 0, mNumDrawVertice);
 			}
 		}
 

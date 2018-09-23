@@ -111,7 +111,6 @@ namespace SP
 		//mTextypeToMacro of the TextureGlobal
 		virtual std::string getShaderMacros()
 		{
-
 			std::string macros = "";
 
 			if (mTextureTotalCount == 0) return macros;
@@ -181,7 +180,6 @@ namespace SP
 				return;
 			}
 
-
 			GLint uShininessLoc = glGetUniformLocation(programID, "material.uShininess");
 			glUniform1f(uShininessLoc, mShininess);
 
@@ -193,6 +191,7 @@ namespace SP
 				{
 					int samplerLoc = glGetUniformLocation(programID, nameMap[iter->first].c_str());
 					glUniform1i(samplerLoc, int(iter->first));
+					//GL_DEBUG_ALL;
 				}
 
 				std::map<int, GLuint>::iterator iter_;
@@ -284,6 +283,143 @@ namespace SP
 		{
 			GLint uColorLoc = glGetUniformLocation(programID, varname);
 			glUniform4f(uColorLoc, color.r, color.g, color.b, color.a);
+		}
+	};
+
+	//The mvpCubeFaceTexture vector holds the six face texture of the cube,
+	//following the order:right, left, top, bottom, back, front
+	class MaterialCube : public Material
+	{
+	public:
+		MaterialCube()
+		{
+			//mvpCubeFaceTexture.resize(6);
+		}
+
+		//The input vector holds the six face texture of the cube,
+		//following the order:right, left, top, bottom, back, front
+		void setCubeTextures(const std::vector<std::shared_ptr<Texture>> &vpTexture)
+		{
+			if (vpTexture.size() != 6)
+			{
+				SP_CERR("The size of textures for setting cubemap is not 6");
+				return;
+			}
+			mvpCubeFaceTexture = vpTexture;
+		}
+
+		virtual void uploadToDevice()
+		{
+			if (mbUploaded) return;
+
+			if (mvpCubeFaceTexture.size() != 6)
+			{
+				SP_CERR("The size of textures for uploading cubemap is not 6");
+				return;
+			}
+
+			//Check the empty texture
+			for (size_t i = 0; i < 6; i++)
+			{
+				if (mvpCubeFaceTexture[i].use_count() == 0)
+				{
+					SP_CERR("The " << i << "th texture of the cubeMap is empty");
+					return;
+				}
+			}
+
+			//Check the same size
+			int width = mvpCubeFaceTexture[0]->getWidth();
+			int height = mvpCubeFaceTexture[0]->getHeight();
+			for (size_t i = 1; i < 6; i++)
+			{
+				if (mvpCubeFaceTexture[i]->getWidth() != width)
+				{
+					SP_CERR("The " << i << "th texture's width is not same with pre");
+					return;
+				}
+
+				if (mvpCubeFaceTexture[i]->getHeight() != height)
+				{
+					SP_CERR("The " << i << "th texture's height is not same with pre");
+					return;
+				}
+			}
+
+			int textureUnit = Tex_CUBE;
+			_uploadCubeTexture(textureUnit, mvpCubeFaceTexture);
+
+			Material::uploadToDevice();
+		}
+
+		virtual void active(const GLuint &programID,
+							bool bValidTexCoord = true,
+							bool bValidVertexColor = false)
+		{
+			
+
+			if (!mbUploaded)
+			{
+				SP_CERR("The current material has not been uploaded befor activing");
+				return;
+			}
+
+			std::map<TextureType, std::string> &nameMap = 
+				TextureGlobal::getInstance().mTextypeToMaterialName;
+
+			{
+				int samplerLoc = glGetUniformLocation(programID, nameMap[Tex_CUBE].c_str());
+				glUniform1i(samplerLoc, Tex_CUBE);
+				//GL_DEBUG_ALL;
+			}
+
+			glActiveTexture(GL_TEXTURE0 + Tex_CUBE);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, mmTexunitToTexbuffer[Tex_CUBE]);
+			glActiveTexture(GL_TEXTURE0);
+		}
+
+	private:
+		//holds the six face texture of the cube, following the order:
+		//right, left, top, bottom, back, front
+		std::vector<std::shared_ptr<Texture>> mvpCubeFaceTexture;
+
+	private:
+		void _uploadCubeTexture(int textureUnit,
+								const std::vector<std::shared_ptr<Texture>> &vpTexture)
+		{
+			glActiveTexture(GL_TEXTURE0 + textureUnit);
+
+			int width = vpTexture[0]->getWidth();
+			int height = vpTexture[0]->getHeight();
+			int layerCount = vpTexture.size();
+
+			GLuint cubeMapBuffer;
+			glGenTextures(1, &cubeMapBuffer);
+			mmTexunitToTexbuffer[textureUnit] = cubeMapBuffer;
+
+			glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapBuffer);
+
+			for (size_t i = 0; i < vpTexture.size(); i++)
+			{
+				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
+							 GL_RGB8, width, height, 0,
+							 GL_RGB, GL_UNSIGNED_BYTE, vpTexture[i]->getData());
+			}
+
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+			//since texture coordinates that are exactly between two faces might 
+			//not hit an exact face (due to some hardware limitations) so by using
+			// GL_CLAMP_TO_EDGE OpenGL always return their edge values whenever
+			// we sample between faces.
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+			//glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+			glActiveTexture(GL_TEXTURE0);
 		}
 	};
 }

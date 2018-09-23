@@ -22,6 +22,8 @@ struct Light
 //#if (defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)) || !defined(HAVE_COLOR)
 struct Material
 {
+#if (defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)) || !defined(HAVE_COLOR)
+
 #if defined(AMBIENT_TEXTURE) && defined(HAVE_TEXCOORD)
 	sampler2DArray ambient_maps;
 #elif !defined(DIFFUSE_TEXTURE)
@@ -38,6 +40,8 @@ struct Material
 	sampler2DArray specular_maps;
 #else
 	vec4 uSpecular;
+#endif
+
 #endif
 
 	float uShininess;
@@ -122,7 +126,7 @@ void main()
 //Use the vertex color
 	diffuse = vec3(VertexColor);
 	ambient = diffuse;
-	specular = diffuse;
+	//specular = diffuse;
 #endif
 
 	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;

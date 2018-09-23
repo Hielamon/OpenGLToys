@@ -2,15 +2,23 @@
 
 #include "ShaderProgram.h"
 #include "Mesh.h"
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+
 #include <commonMacro.h>
+
+#include <direct.h>
+#include <io.h>
+#include <TraverFolder.h>
 
 namespace SP
 {
 	class Scene
 	{
+	public:
+		struct ID2MeshMap
+		{
+			std::map<GLuint, std::shared_ptr<Mesh>> mMeshID2Mesh;
+		};
+
 	public:
 		Scene(ShaderProgram &commonShaderProgram)
 			: mbUploaded(false)
@@ -84,6 +92,35 @@ namespace SP
 			return mmMeshIDToMesh.size();
 		}
 
+		//Get the total bounding box of all meshes
+		BBox getTotalBBox()
+		{
+			BBox result;
+
+			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
+			for (iter = mmMeshIDToMesh.begin();
+				 iter != mmMeshIDToMesh.end(); iter++)
+			{
+				result += iter->second->getTotalBBox();
+			}
+
+			return result;
+		}
+
+		//Transform the scene, which will transform all meshes in the scene
+		void transformMesh(const glm::mat4 &T)
+		{
+			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
+			for (iter = mmMeshIDToMesh.begin();
+				 iter != mmMeshIDToMesh.end(); iter++)
+			{
+				std::shared_ptr<Mesh> &pMesh = iter->second;
+				assert(pMesh->getMeshID() == iter->first);
+				//transform the mesh
+				pMesh->transformMesh(T);
+			}
+		}
+
 		//upload the scene information to the device,
 		virtual void uploadToDevice()
 		{
@@ -100,10 +137,12 @@ namespace SP
 				_uploadMesh(pMesh);
 			}
 
+			std::cout << "Shader ID count = " << mmLabelToMeshes.size() << std::endl;
+
 			mbUploaded = true;
 		}
 
-		virtual void draw()
+		virtual void drawOld()
 		{
 			if (!mbUploaded)
 			{
@@ -122,10 +161,70 @@ namespace SP
 					mmLabelToMeshes[iter->first];
 
 				std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter_;
+				int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+
 				for (iter_ = mMeshIDToMesh.begin();
 					 iter_ != mMeshIDToMesh.end(); iter_++)
 				{
+					glUniform1ui(uMeshIDLoc, iter_->second->getMeshID());
 					iter_->second->draw(programID);
+				}
+			}
+		}
+
+		virtual void draw()
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current scen has not been uploaded befor drawing");
+				return;
+			}
+
+			std::map<std::string, std::shared_ptr<ShaderProgram>>::iterator iter;
+			for (iter = mmLabelToShader.begin();
+				 iter != mmLabelToShader.end(); iter++)
+			{
+				iter->second->useProgram();
+				GLuint programID = iter->second->getProgramID();
+
+				int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+
+				//For active same type materials only once
+				std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>>
+					&mMaterialIndex = mmLabelToMaterialIndex[iter->first];
+				
+				std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>>::iterator iterM;
+
+				for (iterM = mMaterialIndex.begin();
+					 iterM != mMaterialIndex.end(); iterM++)
+				{
+					bool vbTexAndColor[8] =
+					{
+						false, false, /**/true, false, /**/
+						false, true, /**/true, true/**/
+					};
+
+					for (size_t i = 0, j = 0; i < 4; i++, j += 2)
+					{
+						std::map<GLuint, std::shared_ptr<Mesh>> &mMeshIDToMesh =
+							iterM->second[i].mMeshID2Mesh;
+
+						if (mMeshIDToMesh.size() > 0)
+						{
+							iterM->first->active(programID, vbTexAndColor[j],
+												 vbTexAndColor[j + 1]);
+
+							//draw meshes
+							std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter_;
+
+							for (iter_ = mMeshIDToMesh.begin();
+								 iter_ != mMeshIDToMesh.end(); iter_++)
+							{
+								glUniform1ui(uMeshIDLoc, iter_->second->getMeshID());
+								iter_->second->draw(programID);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -160,35 +259,6 @@ namespace SP
 			}
 		}
 
-		//Get the total bounding box of all meshes
-		BBox getTotalBBox()
-		{
-			BBox result;
-
-			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
-			for (iter = mmMeshIDToMesh.begin(); 
-				 iter != mmMeshIDToMesh.end(); iter++)
-			{
-				result += iter->second->getTotalBBox();
-			}
-
-			return result;
-		}
-
-		//Transform the scene, which will transform all meshes in the scene
-		void transformMesh(const glm::mat4 &T)
-		{
-			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
-			for (iter = mmMeshIDToMesh.begin();
-				 iter != mmMeshIDToMesh.end(); iter++)
-			{
-				std::shared_ptr<Mesh> &pMesh = iter->second;
-				assert(pMesh->getMeshID() == iter->first);
-				//transform the mesh
-				pMesh->transformMesh(T);
-			}
-		}
-
 	protected:
 		//Which is just a common shaderprogram template, for
 		//the every real shader program we need to add some 
@@ -211,6 +281,9 @@ namespace SP
 		std::map<std::shared_ptr<Mesh>, std::string> mmMeshToLabel;
 		std::map<std::string, std::shared_ptr<ShaderProgram>> mmLabelToShader;
 		std::map<std::string, std::map<GLuint, std::shared_ptr<Mesh>>> mmLabelToMeshes;
+
+		//For active same type materials only once
+		std::map<std::string, std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>>> mmLabelToMaterialIndex;
 
 		bool mbUploaded;
 
@@ -241,6 +314,9 @@ namespace SP
 				mmLabelToShader[label] = pShaderProgram;
 				mmLabelToMeshes[label] = std::map<GLuint, std::shared_ptr<Mesh>>();
 
+				//For active same type materials only once
+				mmLabelToMaterialIndex[label] = std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>>();
+
 				// Using uniform buffers & Bind the UMatrices
 				// uniform block index to 1. This is still ugly setting.
 				GLuint programID = pShaderProgram->getProgramID();
@@ -251,6 +327,54 @@ namespace SP
 			mmMeshIDToMesh[meshID] = pMesh;
 			mmMeshToLabel[pMesh] = label;
 			mmLabelToMeshes[label][meshID] = pMesh;
+
+			//For active same type materials only once
+			std::shared_ptr<Material> pMaterial = pMesh->getMaterial();
+			std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>> &mMaterialIndex
+				= mmLabelToMaterialIndex[label];
+			if (mMaterialIndex.find(pMaterial) == mMaterialIndex.end())
+			{
+				mMaterialIndex[pMaterial] = std::vector<ID2MeshMap>(4);
+			}
+			bool hasTexCoord = pMesh->getHasTexCoord();
+			bool hasVertexColor = pMesh->getHasVertexColor();
+			int vIndex = hasTexCoord * 1 + hasVertexColor * 2;
+			mMaterialIndex[pMaterial][vIndex].mMeshID2Mesh[meshID] = pMesh;
+		}
+	};
+
+	//Take some hacks codes for more quikly frame rate
+	class FasterScene : public Scene
+	{
+	public:
+		virtual void draw()
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current scen has not been uploaded befor drawing");
+				return;
+			}
+
+			std::map<std::string, std::shared_ptr<ShaderProgram>>::iterator iter;
+			for (iter = mmLabelToShader.begin();
+				 iter != mmLabelToShader.end(); iter++)
+			{
+				iter->second->useProgram();
+				GLuint programID = iter->second->getProgramID();
+
+				std::map<GLuint, std::shared_ptr<Mesh>> &mMeshIDToMesh =
+					mmLabelToMeshes[iter->first];
+
+				std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter_;
+				int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+
+				for (iter_ = mMeshIDToMesh.begin();
+					 iter_ != mMeshIDToMesh.end(); iter_++)
+				{
+					glUniform1ui(uMeshIDLoc, iter_->second->getMeshID());
+					iter_->second->draw(programID);
+				}
+			}
 		}
 	};
 	
@@ -352,6 +476,147 @@ namespace SP
 
 	private:
 	};
+
+	inline std::shared_ptr<Scene> createSkyBoxScene(const std::string &cubeMapFolder)
+	{
+		if (_access(cubeMapFolder.c_str(), 0) == -1)
+		{
+			SP_CERR("The cubeMapFolder is not a valid folder");
+			return nullptr;
+		}
+
+		//Load the textures from the cubeMapFolders
+		std::vector<std::shared_ptr<Texture>> vpTexture(6, nullptr);
+		{
+			TraverFolder tf;
+			tf.setFolderPath(cubeMapFolder);
+			std::vector<std::string> vFileNames;
+			tf.getFileFullPath(vFileNames);
+
+			for (size_t i = 0; i < vFileNames.size(); i++)
+			{
+				if (vFileNames[i].find("right.") != std::string::npos)
+				{
+					vpTexture[0] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("left.") != std::string::npos)
+				{
+					vpTexture[1] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("top.") != std::string::npos)
+				{
+					vpTexture[2] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("bottom.") != std::string::npos)
+				{
+					vpTexture[3] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("front.") != std::string::npos)
+				{
+					vpTexture[4] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("back.") != std::string::npos)
+				{
+					vpTexture[5] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+
+				if (vFileNames[i].find("_rt.") != std::string::npos)
+				{
+					vpTexture[0] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("_lf.") != std::string::npos)
+				{
+					vpTexture[1] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("_up.") != std::string::npos)
+				{
+					vpTexture[2] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[2]->antiClockWise90();
+				}
+				else if (vFileNames[i].find("_dn.") != std::string::npos)
+				{
+					vpTexture[3] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[3]->clockWise90();
+				}
+				else if (vFileNames[i].find("_bk.") != std::string::npos)
+				{
+					vpTexture[4] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+				else if (vFileNames[i].find("_ft.") != std::string::npos)
+				{
+					vpTexture[5] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+				}
+			}
+
+			for (size_t i = 0; i < 6; i++)
+			{
+				if (vpTexture[i].use_count() == 0)
+				{
+					SP_CERR("The " << i << "th face texture is empty, the skybox is invalid");
+					return nullptr;
+				}
+			}
+
+		}
+
+		std::shared_ptr<Scene> pSkyBoxScene = std::make_shared<Scene>();
+
+		std::string __currentPATH = __FILE__;
+		__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+		ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene-SkyBox.vert",
+									__currentPATH + "/Shaders/SPhoenixScene-SkyBox.frag");
+		pSkyBoxScene->setCommonShaderProgram(defaultShader);
+
+		std::vector<glm::vec3> vertices(8);
+		std::vector<GLuint> indices;
+		{
+			//Get the six points of a space box
+			//           5      6
+			//            *******   ^ y
+			//        4  *   7 **   | 
+			//          ******* *   |
+			//          *	  *	*    
+			//          *	  *	*   
+			//          *  0  * *1  
+			//          *	  **    
+			//          *******      ------->x
+			//           3     2
+			vertices[0] = glm::vec3(-0.5f, -0.5f, -0.5f);
+			vertices[1] = glm::vec3(0.5f, -0.5f, -0.5f);
+			vertices[2] = glm::vec3(0.5f, -0.5f, 0.5f);
+			vertices[3] = glm::vec3(-0.5f, -0.5f, 0.5f);
+			vertices[4] = glm::vec3(-0.5f, 0.5f, 0.5f);
+			vertices[5] = glm::vec3(-0.5f, 0.5f, -0.5f);
+			vertices[6] = glm::vec3(0.5f, 0.5f, -0.5f);
+			vertices[7] = glm::vec3(0.5f, 0.5f, 0.5f);
+
+			indices =
+			{
+				//Look inside
+				//Bottom
+				0, 2, 1, 0, 3, 2,
+				//Top
+				5, 6, 7, 5, 7, 4,
+				//Right
+				7, 6, 1, 7, 1, 2,
+				//Left
+				4, 0, 5, 4, 3, 0,
+				//Back
+				5, 1, 6, 5, 0, 1,
+				//Front
+				4, 7, 2, 4, 2, 3,
+			};
+		}
+		std::shared_ptr<VertexArray> pVA =
+			std::make_shared<VertexArray>(vertices, indices, PrimitiveType::TRIANGLES);
+		pVA->addInstance();
+
+		std::shared_ptr<MaterialCube> pMatrialCube = std::make_shared<MaterialCube>();
+		pMatrialCube->setCubeTextures(vpTexture);
+		std::shared_ptr<Mesh> pSkyBoxMesh = std::make_shared<Mesh>(pVA, pMatrialCube);
+		pSkyBoxScene->addMesh(pSkyBoxMesh);
+		return pSkyBoxScene;
+	}
 
 }
 

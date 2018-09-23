@@ -136,6 +136,7 @@ namespace SP
 			return mMaxVertex;
 		}
 
+
 		BBox operator +(const BBox &b)
 		{
 			{
@@ -174,7 +175,7 @@ namespace SP
 		glm::vec3 mMinVertex, mMaxVertex;
 	};
 
-	inline BBox TransformBBox(const glm::mat4 &T, BBox &box)
+	inline BBox TransformBBox(const glm::mat4 &T, const BBox &box)
 	{
 		std::vector<glm::vec3> vBBoxVertex = box.getBBoxVertices();
 		for (size_t i = 0; i < vBBoxVertex.size(); i++)

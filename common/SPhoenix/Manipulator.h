@@ -2,50 +2,37 @@
 
 #include "Utils.h"
 #include "Core.h"
+#include "MonitorWindow.h"
 #include "ManipulatorBase.h"
 
 namespace SP
 {
-	class Manipulator : public ManipulatorBase
+	class WinManipulator : public ManipulatorBase
 	{
 	public:
-		Manipulator(GLWindowBase *pCam)
+		WinManipulator(const std::shared_ptr<GLWindowBase> &pGLWindowBase)
+			: mpGLWindowBase(pGLWindowBase), mCursorPosX(0), mCursorPosY(0)
 		{
-			if (!pCam)
+			if (pGLWindowBase.use_count() == 0)
 			{
 				SP_CERR("the camera prepared for initial the Manipulator cannot be NULL");
 				exit(-1);
 			}
-			mpCam = pCam;
-			/*mfovy = mpCam->mfovy;
-			maspect = mpCam->maspect;
-			mzNear = mpCam->mzNear;
-			mzFar = mpCam->mzFar;
-
-			meye = mpCam->meye;
-			mup = mpCam->mup;
-			mcenter = mpCam->mcenter;*/
-
+			
 			memset(mkeyState, GL_FALSE, KEY_COUNT);
 			memset(mmouseButtonState, GL_FALSE, MOUSE_COUNT);
 		}
 
-		Manipulator() = delete;
+		WinManipulator() = delete;
 
-		~Manipulator() {
+		~WinManipulator() {
 			removeCallBacks();
 			std::cout << "Deconstruction of Manipulator" << std::endl;
 		}
 
 		void registerCallBacks()
 		{
-			if (!mpCam)
-			{
-				SP_CERR("Cannot get callback for a empty camera pointer");
-				exit(-1);
-			}
-
-			GLFWwindow *curWinPtr = mpCam->getGLFWWinPtr();
+			GLFWwindow *curWinPtr = mpGLWindowBase->getGLFWWinPtr();
 			assert(curWinPtr != nullptr);
 
 			glfwSetWindowUserPointer(curWinPtr, this);
@@ -59,13 +46,8 @@ namespace SP
 
 		void removeCallBacks()
 		{
-			if (!mpCam)
-			{
-				SP_CERR("Cannot get callback for a empty camera pointer");
-				exit(-1);
-			}
 
-			GLFWwindow *curWinPtr = mpCam->getGLFWWinPtr();
+			GLFWwindow *curWinPtr = mpGLWindowBase->getGLFWWinPtr();
 			assert(curWinPtr != nullptr);
 
 			_removeKeyCallBack(curWinPtr);
@@ -77,7 +59,6 @@ namespace SP
 	protected:
 		virtual void keyCallBackImpl(GLFWwindow *window, int key, int scancode, int action, int mods)
 		{
-			mkeyState[key] = action;
 
 			switch (key)
 			{
@@ -95,16 +76,6 @@ namespace SP
 				mpCam->deleteManipulator();
 				return;
 				break;
-			case GLFW_KEY_TAB:
-				if (action == GLFW_PRESS)
-				{
-					GLint rastMode;
-					glGetIntegerv(GL_POLYGON_MODE, &rastMode);
-					GLint bias = rastMode - GL_POINT;
-					bias = (bias + 1) % 3;
-					glPolygonMode(GL_FRONT_AND_BACK, GL_POINT + bias);
-				}
-				break;
 			case GLFW_KEY_C:
 				if (action == GLFW_PRESS)
 				{
@@ -116,50 +87,7 @@ namespace SP
 				break;
 			}
 
-			//Press move camera on XZ-plane
-			//if(mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
-			/*{
-				glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
-				glm::vec3 direction(0.0f);
-
-				glm::vec3 zDir = eye - center;
-				glm::vec3 zAxis = glm::normalize(zDir);
-				glm::vec3 xAxis = glm::normalize(glm::cross(up, zAxis));
-				glm::vec3 yAxis = glm::cross(zAxis, xAxis);
-
-				float velocity = 0.1f;
-				switch (key)
-				{
-				case GLFW_KEY_W:
-					direction = glm::vec3(0.0f, 0.0f, -velocity);
-					break;
-				case GLFW_KEY_S:
-					direction = glm::vec3(0.0f, 0.0f, velocity);
-					break;
-				case GLFW_KEY_A:
-					direction = glm::vec3(-velocity, 0.0f, 0.0f);
-					break;
-				case GLFW_KEY_D:
-					direction = glm::vec3(velocity, 0.0f, 0.0f);
-					break;
-				case GLFW_KEY_E:
-					direction = velocity* glm::vec3(xAxis.y, yAxis.y, zAxis.y);
-					break;
-				case GLFW_KEY_Q:
-					direction = -velocity* glm::vec3(xAxis.y, yAxis.y, zAxis.y);
-					break;
-					break;
-				default:
-					break;
-				}
-
-				if (direction != glm::vec3(0.0f))
-				{
-					glm::mat4 translate = glm::translate(glm::mat4(1.0f), direction);
-					RigidTransformLookAt(translate, eye, center, up);
-					mpCam->setViewMatrix(eye, center, up);
-				}
-			}*/
+			mkeyState[key] = action;
 		}
 
 		virtual void scrollCallBackImpl(GLFWwindow *window, double xoffset, double yoffset)
@@ -203,99 +131,20 @@ namespace SP
 					mpCam->setSelectedID(meshID);
 				}
 				
-			}
+			}*/
 
-			mmouseButtonState[button] = action;*/
+			mmouseButtonState[button] = action;
 		}
 
 		virtual void cursorPosCallBackImpl(GLFWwindow *window, double xpos, double ypos)
 		{
-			/*double dx = xpos - mpreX;
-			double dy = ypos - mpreY;
-
-			if (abs(dx) >= 1 || abs(dy) >= 1)
-			{
-				
-				float dxRad = glm::radians(dx);
-				float dyRad = glm::radians(dy);
-
-				//TODO : try to draw some tips icon on the screen
-				//TODO : actually, a pick up mechanism need be installed
-				if (mmouseButtonState[GLFW_MOUSE_BUTTON_LEFT])
-				{
-					glm::mat4 rotate;
-					if (abs(dx) > abs(dy))
-					{
-						rotate = glm::rotate(glm::mat4(1.0f), -dxRad, glm::vec3(0.0f, 1.0f, 0.0f));
-					}
-					else
-					{
-						rotate = glm::rotate(rotate, -dyRad, glm::vec3(1.0f, 0.0f, 0.0f));
-					}
-
-					glm::vec4 eyeHomo(mpCam->meye, 1.0f);
-					eyeHomo = rotate * eyeHomo;
-					glm::vec3 eye(eyeHomo);
-					//std::cout << "eye point = " << glm::to_string(eye) << std::endl;
-
-					glm::vec4 upHomo(mpCam->mup, 0.0f);
-					upHomo = rotate * upHomo;
-					glm::vec3 up(upHomo);
-
-					mpCam->setViewMatrix(eye, mpCam->mcenter, up);
-
-				}
-
-				if (mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
-				{
-					glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
-					glm::vec3 zaxis = glm::normalize(eye - center);
-					glm::vec3 xaxis = glm::normalize(glm::cross(up, zaxis));
-
-					float velocity = 0.05;
-					glm::mat4 rotate;
-					if (abs(dx) > abs(dy))
-					{
-						//rotate = glm::rotate(rotate, -dxRad * velocity, up);
-						rotate = glm::rotate(rotate, -dxRad * velocity, glm::vec3(0.0f, 1.0f, 0.0f));
-					}
-					else
-					{
-						rotate = glm::rotate(rotate, -dyRad * velocity, xaxis);
-						//rotate = glm::rotate(rotate, -dyRad * velocity, xaxis);
-					}
-
-					//RigidTransformLookAt(rotate, eye, center, up);
-					zaxis = glm::mat3(rotate) * zaxis;
-					center = eye - zaxis;
-
-					up = glm::mat3(rotate) * up;
-
-					mpCam->setViewMatrix(eye, center, up);
-				}
-				else if (mmouseButtonState[GLFW_MOUSE_BUTTON_MIDDLE] && abs(dy) >= 1)
-				{
-					glm::vec3 eye = mpCam->meye, center = mpCam->mcenter, up = mpCam->mup;
-
-					float velocity = 0.1f;
-
-					glm::vec3 direction = glm::vec3(0.0f, -velocity * dy, 0.0f);
-
-					glm::mat4 translate = glm::translate(glm::mat4(1.0f), direction);
-					RigidTransformLookAt(translate, eye, center, up);
-					mpCam->setViewMatrix(eye, center, up);
-				}
-
-				mpreX = xpos;
-				mpreY = ypos;
-			}*/
+			mCursorPosX = xpos;
+			mCursorPosY = ypos;
+			//std::cout << "xpos = " << xpos << ";" << "ypos = " << ypos << std::endl;
 		}
 
 	protected:
-		GLWindowBase *mpCam;
-
-		float mfovy, maspect, mzNear, mzFar;
-		glm::vec3 meye, mcenter, mup;
+		std::shared_ptr<GLWindowBase> mpGLWindowBase;
 
 		//indicate whether the key is pressed
 		bool mkeyState[KEY_COUNT];
@@ -303,8 +152,8 @@ namespace SP
 		//indicate whether the mouse button is pressed
 		bool mmouseButtonState[MOUSE_COUNT];
 
-		//record pre-frame's cursor corrdinate
-		double mpreX, mpreY;
+		//record current-frame's cursor corrdinate
+		double mCursorPosX, mCursorPosY;
 
 	private:
 
@@ -312,7 +161,7 @@ namespace SP
 		{
 			GLFWkeyfun keyfun = [](GLFWwindow *window, int key, int scancode, int action, int mode)
 			{
-				static_cast<Manipulator*>(glfwGetWindowUserPointer(window))->keyCallBackImpl(
+				static_cast<WinManipulator*>(glfwGetWindowUserPointer(window))->keyCallBackImpl(
 					window, key, scancode, action, mode
 				);
 				/*static_cast<Manipulator*>(0)->keyCallBackImpl(
@@ -332,7 +181,7 @@ namespace SP
 
 			GLFWscrollfun scrollfun = [](GLFWwindow *window, double xoffset, double yoffset)
 			{
-				static_cast<Manipulator*>(glfwGetWindowUserPointer(window))->scrollCallBackImpl(
+				static_cast<WinManipulator*>(glfwGetWindowUserPointer(window))->scrollCallBackImpl(
 					window, xoffset, yoffset
 				);
 			};
@@ -348,7 +197,7 @@ namespace SP
 		{
 			GLFWmousebuttonfun mousebuttonfun = [](GLFWwindow *window, int button, int action, int mods)
 			{
-				static_cast<Manipulator*>(glfwGetWindowUserPointer(window))->mouseButtonCallBackImpl(
+				static_cast<WinManipulator*>(glfwGetWindowUserPointer(window))->mouseButtonCallBackImpl(
 					window, button, action, mods
 				);
 			};
@@ -364,7 +213,7 @@ namespace SP
 		{
 			GLFWcursorposfun cursorposfun = [](GLFWwindow *window, double xpos, double ypos)
 			{
-				static_cast<Manipulator*>(glfwGetWindowUserPointer(window))->cursorPosCallBackImpl(
+				static_cast<WinManipulator*>(glfwGetWindowUserPointer(window))->cursorPosCallBackImpl(
 					window, xpos, ypos
 				);
 			};
@@ -374,6 +223,522 @@ namespace SP
 		void _removeCursorPosCallBack(GLFWwindow *curWinPtr)
 		{
 			glfwSetCursorPosCallback(curWinPtr, NULL);
+		}
+	};
+
+	class MonitorManipulator : public WinManipulator
+	{
+	public:
+		MonitorManipulator(const std::shared_ptr<MonitorWindow> &pMonitorWindow)
+			: WinManipulator(pMonitorWindow), mpMonitorWindow(pMonitorWindow),
+			mMoveDirCount(0)
+		{
+			mvMoveDir.resize(6, glm::vec3(0.0f));
+		}
+
+		~MonitorManipulator() {}
+
+		/*void getCameraMoveVariables(int &MoveDirCount,
+									std::vector<glm::vec3> &vMoveDir)
+		{
+			MoveDirCount = mMoveDirCount;
+			vMoveDir = mvMoveDir;
+		}*/
+
+		//Some tasks need to be processed for every frame
+		//Such as the movement of cameras
+		virtual void doFrameTasks()
+		{
+			std::vector<std::shared_ptr<Camera>> vpCamera =
+				mpMonitorWindow->getAllCameras();
+			float frameCostTime = mpMonitorWindow->getFrameCostTime();
+
+			//Do camera movement
+			if (mMoveDirCount > 0 && mpMonitorWindow.use_count() != 0)
+			{
+				glm::vec3 direction = glm::vec3(0.0f);
+				for (size_t i = 0; i < mvMoveDir.size(); i++)
+				{
+					direction += mvMoveDir[i];
+				}
+
+				glm::mat4 viewMatrix0 = mpMonitorWindow->getDefaultCamera()->getViewMatrix();
+
+				if (glm::dot(direction, direction) > 1e-1)
+				{
+					if (mkeyState[GLFW_KEY_LEFT_ALT])
+					{
+						JoyStickGlobal::getInstance().accelerateAutoMiniSpeed(
+							CAMERA_MOVE_ACSPEED);
+					}
+					else if(mkeyState[GLFW_KEY_LEFT_CONTROL])
+					{
+						JoyStickGlobal::getInstance().accelerateAutoMiniSpeed(
+							CAMERA_MOVE_DESPEED);
+					}
+
+					for (size_t i = 0; i < vpCamera.size(); i++)
+					{
+						JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
+						joystick.setDoTranslate(true);
+
+						if (mkeyState[GLFW_KEY_LEFT_SHIFT] || 
+							mkeyState[GLFW_KEY_LEFT_ALT])
+						{
+							joystick.accelerateTsVelocity(CAMERA_MOVE_ACSPEED);
+						}
+						else
+						{
+							joystick.accelerateTsVelocity(CAMERA_MOVE_DESPEED);
+						}
+
+						joystick.setJoyStickSpace(viewMatrix0);
+						joystick.setTranslateDir(direction);
+
+						vpCamera[i]->excuteJoyStick3D(frameCostTime);
+						joystick.setDoTranslate(false);
+					}
+					//std::cout << "direction = " << direction.x << ", " << direction.y << ", " << direction.z << std::endl;
+					//std::cout << "mMoveDirCount = " << mMoveDirCount << std::endl;
+				}
+			}
+
+			for (size_t i = 0; i < vpCamera.size(); i++)
+			{
+				JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
+				if (!joystick.getDoRotate() && !joystick.getDoTranslate())
+					continue;
+				vpCamera[i]->excuteJoyStick3D(frameCostTime);
+			}
+
+			WinManipulator::doFrameTasks();
+			return;
+		}
+
+	protected:
+		std::shared_ptr<MonitorWindow> mpMonitorWindow;
+
+		//For doing camera movement
+		int mMoveDirCount;
+		//key: W, S, A, D, E, Q
+		std::vector<glm::vec3> mvMoveDir;
+
+	protected:
+		virtual void keyCallBackImpl(GLFWwindow *window, int key, int scancode, int action, int mods)
+		{
+			switch (key)
+			{
+			case GLFW_KEY_TAB:
+				if (action == GLFW_PRESS)
+				{
+					GLint rastMode;
+					glGetIntegerv(GL_POLYGON_MODE, &rastMode);
+					GLint bias = rastMode - GL_POINT;
+					bias = (bias + 1) % 3;
+					glPolygonMode(GL_FRONT_AND_BACK, GL_POINT + bias);
+				}
+				break;
+
+			case GLFW_KEY_SPACE:
+				if (action == GLFW_PRESS && mpMonitorWindow->getNumCamera() >= 2)
+				{
+					mpMonitorWindow->swapWithDefaultCamera(1);
+				}
+				break;
+
+			case GLFW_KEY_R:
+				if (action == GLFW_PRESS)
+				{
+					std::vector<std::shared_ptr<Camera>> vpCamera =
+						mpMonitorWindow->getAllCameras();
+
+					std::shared_ptr<Camera> pDefaultCamera = 
+						mpMonitorWindow->getDefaultCamera();
+
+					if (mkeyState[GLFW_KEY_LEFT_CONTROL])
+					{
+						std::shared_ptr<Scene> pScene = mpMonitorWindow->getScene();
+
+						if (pScene.use_count() != 0)
+						{
+							mpMonitorWindow->adjustCameraToScene(pDefaultCamera,
+																 pScene, vpCamera);
+						}
+					}
+					
+					//Uniform all camera rotation to the default camera
+					if (mkeyState[GLFW_KEY_LEFT_SHIFT])
+					{
+						glm::mat4 viewMatrix0 = pDefaultCamera->getViewMatrix();
+						mpMonitorWindow->unifyCamerasDirection(pDefaultCamera,
+															   vpCamera);
+					}
+
+					//Reset the viewport of cameras
+					mpMonitorWindow->resetCamerasViewport(vpCamera);
+				}
+				break;
+
+			case GLFW_KEY_HOME:
+				if (action == GLFW_PRESS)
+				{
+					std::vector<std::shared_ptr<Camera>> vpCamera =
+						mpMonitorWindow->getAllCameras();
+
+					std::shared_ptr<Camera> pDefaultCamera =
+						mpMonitorWindow->getDefaultCamera();
+
+					glm::mat4 viewMatrix0 = pDefaultCamera->getViewMatrix();
+
+					glm::mat3 R0 = glm::mat3(viewMatrix0);
+					glm::vec3 Ts0 = glm::vec3(viewMatrix0[3]);
+
+					//Reset the viewport of cameras
+					for (size_t i = 0; i < vpCamera.size(); i++)
+					{
+						//vpCamera[i]->setViewport(0, 0, cw, ch);
+						glm::vec3 eye, center, up;
+						vpCamera[i]->getCameraPose(eye, center, up);
+						eye = R0 * eye + Ts0;
+						center = R0 * center + Ts0;
+						up = R0 * up;
+						vpCamera[i]->setViewMatrix(eye, center, up);
+					}
+				}
+				break;
+			/*case GLFW_KEY_RIGHT:
+			{
+				std::shared_ptr<Camera> pCameraMini = mpMonitorWindow->getCamera(1);
+				int offsetX, offsetY;
+				pCameraMini->getCanvasOffset(offsetX, offsetY);
+				offsetX += 5;
+				pCameraMini->setCanvasOffset(offsetX, offsetY);
+			}
+				break;
+			case GLFW_KEY_LEFT:
+			{
+				std::shared_ptr<Camera> pCameraMini = mpMonitorWindow->getCamera(1);
+				int offsetX, offsetY;
+				pCameraMini->getCanvasOffset(offsetX, offsetY);
+				offsetX -= 5;
+				pCameraMini->setCanvasOffset(offsetX, offsetY);
+			}
+			break;
+			case GLFW_KEY_UP:
+			{
+				std::shared_ptr<Camera> pCameraMini = mpMonitorWindow->getCamera(1);
+				int offsetX, offsetY;
+				pCameraMini->getCanvasOffset(offsetX, offsetY);
+				offsetY += 5;
+				pCameraMini->setCanvasOffset(offsetX, offsetY);
+			}
+			break;
+			case GLFW_KEY_DOWN:
+			{
+				std::shared_ptr<Camera> pCameraMini = mpMonitorWindow->getCamera(1);
+				int offsetX, offsetY;
+				pCameraMini->getCanvasOffset(offsetX, offsetY);
+				offsetY -= 5;
+				pCameraMini->setCanvasOffset(offsetX, offsetY);
+			}
+			break;*/
+			default:
+				break;
+			}
+
+			//Do the camera travelling for all cameras' joysticks
+			//If the rigid all cameras movement is not locked
+			//if (1)
+			{
+				glm::vec3 tmpDir(0.0f);
+				int index = -1;
+
+				switch (key)
+				{
+				case GLFW_KEY_W:
+					index = 0;
+					tmpDir = glm::vec3(0.0f, 0.0f, -1.0f);
+					break;
+				case GLFW_KEY_S:
+					index = 1;
+					tmpDir = glm::vec3(0.0f, 0.0f, 1.0f);
+					break;
+				case GLFW_KEY_A:
+					index = 2;
+					tmpDir = glm::vec3(-1.0f, 0.0f, 0.0f);
+					break;
+				case GLFW_KEY_D:
+					index = 3;
+					tmpDir = glm::vec3(1.0f, 0.0f, 0.0f);
+					break;
+				case GLFW_KEY_E:
+					//In world space
+					index = 4;
+					tmpDir = glm::vec3(0.0f, 1.0f, 0.0f);
+					tmpDir = glm::mat3(mpMonitorWindow->getDefaultCamera()->getViewMatrix())
+						* tmpDir;
+					break;
+				case GLFW_KEY_Q:
+					//In world space
+					index = 5;
+					tmpDir = glm::vec3(0.0f, -1.0f, 0.0f);
+					tmpDir = glm::mat3(mpMonitorWindow->getDefaultCamera()->getViewMatrix()) 
+						* tmpDir;
+					break;
+				default:
+					break;
+				}
+
+				int PreMoveDirCount = mMoveDirCount;
+				if (index >= 0 /*&& index < 6*/)
+				{
+					if (action == GLFW_PRESS)
+					{
+						mMoveDirCount++;
+						mvMoveDir[index] = tmpDir;
+					}
+					else if (action == GLFW_RELEASE)
+					{
+						mMoveDirCount--;
+						mvMoveDir[index] = glm::vec3(0.0f, 0.0f, 0.0f);
+					}
+				}
+
+				//std::cout << "mMoveDirCount = " << mMoveDirCount << std::endl;
+			}
+
+			//If the second camera rotation is not locked
+			if (mpMonitorWindow->getNumCamera() >= 2)
+			{
+				std::shared_ptr<Camera> pCamera1 = mpMonitorWindow->getCamera(1);
+				JoyStick3D &joystick1 = pCamera1->getJoyStick3D();
+				glm::mat4 viewMatrix1 = pCamera1->getViewMatrix();
+				int index = -1;
+				glm::vec3 axis(0.0f);
+
+				switch (key)
+				{
+				case GLFW_KEY_LEFT:
+					index = 0;
+					axis = glm::vec3(0.0f, -1.0f, 0.0f);
+					/*{
+						glm::mat4 RInv = glm::mat4(glm::mat3(viewMatrix1));
+						RInv = glm::transpose(RInv);
+						glm::mat4 Twl = RInv*viewMatrix1;
+						joystick1.setJoyStickSpace(Twl);
+					}*/
+					joystick1.setJoyStickSpace(viewMatrix1);
+					break;
+				case GLFW_KEY_RIGHT:
+					index = 1;
+					axis = glm::vec3(0.0f, 1.0f, 0.0f);
+					/*{
+						glm::mat4 RInv = glm::mat4(glm::mat3(viewMatrix1));
+						RInv = glm::transpose(RInv);
+						glm::mat4 Twl = RInv*viewMatrix1;
+						joystick1.setJoyStickSpace(Twl);
+					}*/
+					joystick1.setJoyStickSpace(viewMatrix1);
+					break;
+				case GLFW_KEY_UP:
+					index = 2;
+					axis = glm::vec3(1.0f, 0.0f, 0.0f);
+					joystick1.setJoyStickSpace(viewMatrix1);
+					break;
+				case GLFW_KEY_DOWN:
+					index = 3;
+					axis = glm::vec3(-1.0f, 0.0f, 0.0f);
+					joystick1.setJoyStickSpace(viewMatrix1);
+					break;
+				default:
+					break;
+				}
+
+				if (index != -1)
+				{
+					if (action == GLFW_PRESS)
+					{
+						joystick1.setDoRotate(true);
+						joystick1.setRotateAxis(axis);
+					}
+					else if(action == GLFW_RELEASE)
+					{
+						joystick1.setDoRotate(false);
+					}
+				}
+			}
+			
+			WinManipulator::keyCallBackImpl(window, key, scancode, action, mods);
+		}
+
+		virtual void scrollCallBackImpl(GLFWwindow *window, double xoffset, double yoffset)
+		{
+			float scale = 1.0f;
+			if (yoffset < -9) yoffset = -9;
+			scale += (yoffset * 0.1);
+			int vx, vy, vw, vh;
+			std::shared_ptr<Camera> pDefaultCamera =
+				mpMonitorWindow->getDefaultCamera();
+
+			//scale the viewport of camera
+			pDefaultCamera->getViewport(vx, vy, vw, vh);
+
+			vw *= scale;
+			vh *= scale;
+
+			double scaleXPos = mCursorPosX;
+			double scaleYPos = mpMonitorWindow->getWindowSize()[1] - mCursorPosY;
+
+			double vXPos = scaleXPos - vx;
+			double vYPos = scaleYPos - vy;
+
+			vx -= vXPos*(scale - 1.0f);
+			vy -= vYPos*(scale - 1.0f);
+
+			if(vw < MAX_VIEWPORT_SIZE && vh < MAX_VIEWPORT_SIZE)
+				pDefaultCamera->setViewport(vx, vy, vw, vh);
+		}
+
+		virtual void mouseButtonCallBackImpl(GLFWwindow *window, int button, int action, int mods)
+		{
+			/*if (button == GLFW_MOUSE_BUTTON_LEFT &&
+			action == GLFW_PRESS &&
+			mmouseButtonState[button] == GLFW_RELEASE)
+			{
+			double x, y;
+			glfwGetCursorPos(mpCam->getGLFWWinPtr(), &x, &y);
+			//std::cout << "x = " << x << ", y = " << y <<  std::endl;
+			glm::i32vec2 winSize = mpCam->getWindowSize();
+			int bufferx = x, buffery = winSize.y - y;
+			GLuint meshID = 0;
+			meshID = mpCam->getPointMeshID(bufferx, buffery);
+
+			if (mkeyState[GLFW_KEY_LEFT_CONTROL])
+			{
+			mpCam->addSelectedID(meshID);
+			if (meshID > 0)
+			{
+			std::cout << "MeshID = " << meshID << std::endl;
+			}
+			}
+			else if(mkeyState[GLFW_KEY_LEFT_SHIFT])
+			{
+			mpCam->deleteSelectedID(meshID);
+			}
+			else if(meshID == 0)
+			{
+			mpCam->setSelectedID(meshID);
+			}
+
+			}*/
+
+
+			WinManipulator::mouseButtonCallBackImpl(window, button, action, mods);
+		}
+
+		virtual void cursorPosCallBackImpl(GLFWwindow *window, double xpos, double ypos)
+		{
+			double dx = xpos - mCursorPosX;
+			double dy = ypos - mCursorPosY;
+
+			if (mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT] && 
+				(abs(dx) >= 1.0 || abs(dy) >= 1.0))
+			{
+				std::shared_ptr<Camera> pDefaultCamera =
+					mpMonitorWindow->getDefaultCamera();
+				
+				float fovy, aspect, zNear, zFar;
+				pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
+				float tanHalfFovy = std::tan(fovy*0.5);
+				float tanHalfFovx = tanHalfFovy * aspect;
+				float fovx = std::atan(tanHalfFovx) * 2;
+
+				int cx, cy, cw, ch;
+				pDefaultCamera->getCanvas(cx, cy, cw, ch);
+
+				float dxRad = fovx * dx / ch;
+				float dyRad = fovx * dy / cw;
+
+				JoyStick3D joystick;
+				joystick.setDoRotate(true);
+				float angle = 0.0f;
+
+				glm::mat4 viewMatrix0 = pDefaultCamera->getViewMatrix();
+
+				if (abs(dx) > abs(dy))
+				{
+					glm::mat4 RInv = glm::mat4(glm::mat3(viewMatrix0));
+					RInv = glm::transpose(RInv);
+					glm::mat4 Twl = RInv*viewMatrix0;
+					joystick.setJoyStickSpace(Twl);
+					joystick.setRotateAxis(glm::vec3(0.0f, 1.0f, 0.0f));
+					angle = -dxRad;
+				}
+				else
+				{
+					joystick.setJoyStickSpace(viewMatrix0);
+					joystick.setRotateAxis(glm::vec3(1.0f, 0.0f, 0.0f));
+
+					angle = -dyRad;
+				}
+
+				std::vector<std::shared_ptr<Camera>> vpCamera =
+					mpMonitorWindow->getAllCameras();
+
+				for (size_t i = 0; i < vpCamera.size(); i++)
+				{
+					glm::vec3 eye, center, up;
+					vpCamera[i]->getCameraPose(eye, center, up);
+
+					joystick.executeRotation(eye, center, up, angle);
+					vpCamera[i]->setViewMatrix(eye, center, up);
+				}
+			}
+
+			WinManipulator::cursorPosCallBackImpl(window, xpos, ypos);
+		}
+
+	private:
+		void _setCamerasMoveDir(const glm::vec3 &direction, 
+								bool bInCameraSpace = true,
+								const glm::mat4 &Twj = glm::mat4())
+		{
+			std::vector<std::shared_ptr<Camera>> vpCamera =
+				mpMonitorWindow->getAllCameras();
+
+			for (size_t i = 0; i < vpCamera.size(); i++)
+			{
+				JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
+				joystick.setDoTranslate(true);
+
+				if (mmouseButtonState[GLFW_MOUSE_BUTTON_LEFT])
+					joystick.accelerateTsVelocity(CAMERA_MOVE_ACSPEED);
+				else if (mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
+					joystick.accelerateTsVelocity(CAMERA_MOVE_DESPEED);
+
+				if (bInCameraSpace)
+				{
+					joystick.setJoyStickSpace(vpCamera[i]->getViewMatrix());
+				}
+				else
+				{
+					joystick.setJoyStickSpace(Twj);
+				}
+
+				joystick.setTranslateDir(direction);
+			}
+		}
+
+		void _stopCamerasMove()
+		{
+			std::vector<std::shared_ptr<Camera>> vpCamera =
+				mpMonitorWindow->getAllCameras();
+
+			for (size_t i = 0; i < vpCamera.size(); i++)
+			{
+				JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
+				joystick.setDoTranslate(false);
+			}
 		}
 	};
 }
