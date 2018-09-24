@@ -16,8 +16,10 @@
 #define DEFAULT_SHININESS 32.0f
 
 //When using the uniform buffer object
-//the UMatrices binging point set to 1
+//the VIEWUBO binging point set to 1
 #define VIEWUBO_BINDING_POINT 1
+//the PROJUBO binging point set to 2
+#define PROJUBO_BINDING_POINT 2
 
 #define MAX_VIEWPORT_SIZE 32768
 

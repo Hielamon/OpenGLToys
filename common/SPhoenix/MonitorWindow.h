@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "UICamera.h"
 
 namespace SP
 {
@@ -18,10 +19,17 @@ namespace SP
 			glDepthFunc(GL_LEQUAL);
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
+			//Set up the UI Scene
+			mpUIScene = std::make_shared<Scene2D>();
+			mpUIScene->uploadToDevice();
+
+			mpUICamera = std::make_shared<UICamera>(mWidth, mHeight, 0, 0);
+			mpUICamera->setup(mWidth, mHeight);
+
 			//We set the default Camera(same size with window) in mvpCamera[0],
 			//The Scene will be transformed to fit the mvpCamera[0]
-			std::shared_ptr<CameraMini> pCamera =
-				std::make_shared<CameraMini>(mWidth, mHeight, 0, 0);
+			std::shared_ptr<Camera> pCamera =
+				std::make_shared<Camera>(mWidth, mHeight, 0, 0);
 
 			//Add the default camera to the first element of the mvpCamera
 			addCamera(pCamera);
@@ -42,6 +50,22 @@ namespace SP
 
 			pCamera->setup(mWidth, mHeight);
 			mvpCamera.push_back(pCamera);
+
+			//Set the camera shape scene
+			std::shared_ptr<Mesh> pCameraShape = pCamera->getCameraShape();
+			std::shared_ptr<Scene> pCameraShapeScene = nullptr;
+			if (pCameraShape.use_count() != 0)
+			{
+				pCameraShapeScene = std::make_shared<Scene>();
+				pCameraShapeScene->addMesh(pCameraShape);
+				pCameraShapeScene->uploadToDevice();
+			}
+			mvpCameraShapeScene.push_back(pCameraShapeScene);
+
+			//Add camera border to the mpUIScene
+			int cx, cy, cw, ch;
+			pCamera->getCanvas(cx, cy, cw, ch);
+			addRectangle(cx, cy, cw, ch);
 		}
 
 		std::shared_ptr<Camera> getCamera(int index)
@@ -128,23 +152,15 @@ namespace SP
 				//swap the canvas with the default camera
 				int cx, cy, cw, ch;
 				pCamera->getCanvas(cx, cy, cw, ch);
-				/*pCamera->getCanvasOffset();
-				pCamera->getCanvasSize();*/
 
 				std::shared_ptr<Camera> pDefaultCamera = getDefaultCamera();
 				int cx_, cy_, cw_, ch_;
 				pDefaultCamera->getCanvas(cx_, cy_, cw_, ch_);
-				/*pDefaultCamera->getCanvasOffset();
-				pDefaultCamera->getCanvasSize();*/
 
 				pCamera->setCanvas(cx_, cy_, cw_, ch_);
-				/*pCamera->setCanvasOffset();
-				pCamera->setCanvasSize();*/
 				pCamera->setViewport(0, 0, cw_, ch_);
 
 				pDefaultCamera->setCanvas(cx, cy, cw, ch);
-				/*pDefaultCamera->setCanvasOffset();
-				pDefaultCamera->setCanvasSize();*/
 				pDefaultCamera->setViewport(0, 0, cw, ch);
 
 				//swap the pointer in the mvpCamera
@@ -220,6 +236,62 @@ namespace SP
 		/******************************Scene operation*****************************/
 		/**************************************************************************/
 
+		/**************************************************************************/
+		/********************************UI operation*******************************/
+
+		//bottom-left coordinate
+		void addRectangle(int x, int y, int width, int height, int border = 1,
+						  glm::vec4 color = glm::vec4(1.0f))
+		{
+			float wInv = 1.0f / mWidth, hInv = 1.0f / mHeight;
+			float w_ = 2.0f * width * wInv, h_ = 2.0f * height * hInv;
+			float x_ = 2.0f * x * wInv - 1.0f;
+			float y_ = 2.0f * y * hInv - 1.0f;
+
+			PrimitiveType pType = border > 0 ? PrimitiveType::LINES :
+				PrimitiveType::TRIANGLES;
+
+			std::vector<glm::vec3> vertices(4);
+			std::vector<GLuint> indices;
+			{
+				vertices[0] = glm::vec3(x_, y_, -1.0f);
+				vertices[1] = glm::vec3(x_ + w_, y_, -1.0f);
+				vertices[2] = glm::vec3(x_ + w_, y_ + h_, -1.0f);
+				vertices[3] = glm::vec3(x_, y_ + h_, -1.0f);
+
+				if (border > 0)
+				{
+					indices =
+					{
+						0, 1,
+						1, 2,
+						2, 3,
+						3, 0
+					};
+				}
+				else
+				{
+					indices =
+					{
+						0, 1, 2,
+						0, 2, 3
+					};
+				}
+				
+			}
+			std::shared_ptr<VertexArray> pVA =
+				std::make_shared<VertexArray>(vertices, indices, pType);
+			pVA->addInstance();
+
+			std::shared_ptr<Material> pMatrial = std::make_shared<Material>(color);
+			std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(pVA, pMatrial);
+			assert(mpUIScene.use_count() != 0);
+			mpUIScene->addMesh(pMesh);
+		}
+
+		/********************************UI operation*******************************/
+		/**************************************************************************/
+
 		float getFrameCostTime()
 		{
 			return mFrameCostTime;
@@ -272,35 +344,37 @@ namespace SP
 			if (mpManipulator.use_count() != 0)
 				mpManipulator->doFrameTasks();
 
-			std::vector<std::shared_ptr<Scene>> vpScene;
-			if (mpScene.use_count() != 0) vpScene.push_back(mpScene);
-
 			for (size_t i = 0; i < mvpCamera.size(); i++)
 			{
-				std::shared_ptr<Scene> pCameraShapeScene =
-					mvpCamera[i]->getCameraShapeScene();
+				std::vector<std::shared_ptr<Scene>> vpScene;
+				if (mpScene.use_count() != 0) vpScene.push_back(mpScene);
 
-				if (pCameraShapeScene.use_count() != 0)
-					vpScene.push_back(pCameraShapeScene);
-			}
+				for (size_t j = 0; j < mvpCamera.size(); j++)
+				{
+					if (j == i || mvpCameraShapeScene[j].use_count() == 0) continue;
+					vpScene.push_back(mvpCameraShapeScene[j]);
+				}
 
-			if (mpSkyBoxScene.use_count() != 0) vpScene.push_back(mpSkyBoxScene);
-
-			for (size_t i = 0; i < mvpCamera.size(); i++)
-			{
+				if (mpSkyBoxScene.use_count() != 0) vpScene.push_back(mpSkyBoxScene);
 				mvpCamera[i]->renderOneFrame(vpScene);
-				//mvpCamera[i]->renderOneFrame(mpScene);
 			}
+
+			if (mpUIScene->getNumMesh() > 0)
+				mpUICamera->renderOneFrame(mpUIScene);
 		}
 
 	protected:
 		std::shared_ptr<Scene> mpScene;
 		std::shared_ptr<Scene> mpSkyBoxScene;
 
+		std::shared_ptr<Scene> mpUIScene;
+		std::shared_ptr<Camera> mpUICamera;
+
 		//The first element mvpCamera[0] is the default camera
 		//which has the same canvas size with the window, and must be
 		//set in the constructor of this class or inherited class
 		std::vector<std::shared_ptr<Camera>> mvpCamera;
+		std::vector<std::shared_ptr<Scene>> mvpCameraShapeScene;
 
 	private:
 		//Cost time for the current frame, in millisecond
@@ -348,17 +422,5 @@ namespace SP
 			pScene->transformMesh(ms*mt);
 		}
 
-		//Move the cameras in the default camera corrdinate
-		/*void _excuteCamerasMove(float millisecond)
-		{
-			glm::mat4 viewMatrix0 = mpMonitorWindow->getDefaultCamera()->getViewMatrix();
-			for (size_t i = 0; i < mvpCamera.size(); i++)
-			{
-				JoyStick3D &joystick = mvpCamera[i]->getJoyStick3D();
-				if (!joystick.getDoRotate() && !joystick.getDoTranslate())
-					continue;
-				mvpCamera[i]->excuteJoyStick3D(millisecond);
-			}
-		}*/
 	};
 }

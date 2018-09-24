@@ -166,6 +166,7 @@
     <ClInclude Include="..\common\SPhoenix\GlobalMacros.h" />
     <ClInclude Include="..\common\SPhoenix\AxisMesh.h" />
     <ClInclude Include="..\common\SPhoenix\BBoxMesh.h" />
+    <ClInclude Include="..\common\SPhoenix\JoyStick.h" />
     <ClInclude Include="..\common\SPhoenix\Sphere.h" />
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h" />
@@ -177,6 +178,7 @@
     <ClInclude Include="..\common\SPhoenix\ShaderProgram.h" />
     <ClInclude Include="..\common\SPhoenix\BBox.h" />
     <ClInclude Include="..\common\SPhoenix\Texture.h" />
+    <ClInclude Include="..\common\SPhoenix\UICamera.h" />
     <ClInclude Include="..\common\SPhoenix\Utils.h" />
     <ClInclude Include="..\common\SPhoenix\VertexArray.h" />
   </ItemGroup>

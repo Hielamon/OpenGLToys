@@ -13,12 +13,6 @@ layout (location = COLOR_ATTR) in vec4 aColor;
 
 layout (location = MMATRIX_ATTR) in mat4 aModelMatrix;
 
-layout (std140) uniform ViewUBO
-{
-	mat4 projMatrix; // 16 * 4
-	mat4 viewMatrix; // 16 * 4
-	vec3 viewPos;    // 16
-};
 
 //uniform mat4 topMMatrix;
 #if defined(HAVE_COLOR)
@@ -28,8 +22,7 @@ out vec4 VertexColor;
 void main()
 {
 	vec4 worldPos = aModelMatrix * vec4(aVertice, 1.0f);
-	//vec4 worldPos = topMMatrix * aModelMatrix * vec4(aVertice, 1.0f);
-	gl_Position = /*projMatrix * viewMatrix **/ worldPos;
+	gl_Position =  worldPos;
 
 #if defined(HAVE_COLOR)
 	VertexColor = aColor;

@@ -221,7 +221,7 @@ namespace SP
 								 iter_ != mMeshIDToMesh.end(); iter_++)
 							{
 								glUniform1ui(uMeshIDLoc, iter_->second->getMeshID());
-								iter_->second->draw(programID);
+								iter_->second->drawOnlyInScene(programID);
 							}
 						}
 					}
@@ -344,38 +344,20 @@ namespace SP
 	};
 
 	//Take some hacks codes for more quikly frame rate
-	class FasterScene : public Scene
+	class Scene2D : public Scene
 	{
 	public:
-		virtual void draw()
+		Scene2D()
 		{
-			if (!mbUploaded)
-			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
-				return;
-			}
+			std::string __currentPATH = __FILE__;
+			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+			ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene-2DGraphic.vert",
+										__currentPATH + "/Shaders/SPhoenixScene-2DGraphic.frag");
 
-			std::map<std::string, std::shared_ptr<ShaderProgram>>::iterator iter;
-			for (iter = mmLabelToShader.begin();
-				 iter != mmLabelToShader.end(); iter++)
-			{
-				iter->second->useProgram();
-				GLuint programID = iter->second->getProgramID();
-
-				std::map<GLuint, std::shared_ptr<Mesh>> &mMeshIDToMesh =
-					mmLabelToMeshes[iter->first];
-
-				std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter_;
-				int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
-
-				for (iter_ = mMeshIDToMesh.begin();
-					 iter_ != mMeshIDToMesh.end(); iter_++)
-				{
-					glUniform1ui(uMeshIDLoc, iter_->second->getMeshID());
-					iter_->second->draw(programID);
-				}
-			}
+			setCommonShaderProgram(defaultShader);
 		}
+
+		~Scene2D() {}
 	};
 	
 	//SceneColorID will copy the existed Scene and change the material of

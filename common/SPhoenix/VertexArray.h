@@ -56,6 +56,7 @@ namespace SP
 		{
 			mpvVertice = std::make_shared<std::vector<glm::vec3>>(vertices);
 			mpvInstanceMMatrix = std::make_shared<std::vector<glm::mat4>>();
+			mpvRelInstanceMMatrix = std::make_shared<std::vector<glm::mat4>>();
 
 			if (!indices.empty())
 			{
@@ -76,6 +77,7 @@ namespace SP
 			mDrawMode = typeMap[mPrimitiveType];
 
 			mpvInstanceMMatrix = std::make_shared<std::vector<glm::mat4>>();
+			mpvRelInstanceMMatrix = std::make_shared<std::vector<glm::mat4>>();
 		}
 
 		~VertexArray()
@@ -184,11 +186,24 @@ namespace SP
 
 		//Add the instance to model matrix array, if this VertexArray has been uploaded,
 		//Then this function will also upload the new model matrix array
+		//Add the instance by the absolute way, meanwhile we set the relative model
+		//matrix as the same with the real instance model matrix
 		void addInstance(const glm::mat4 &instanceMMatrix = glm::mat4())
 		{
-			mpvInstanceMMatrix->push_back(instanceMMatrix);
+			addRelInstance(instanceMMatrix);
+		}
+
+		//Add the instance to model matrix array, if this VertexArray has 
+		//been uploaded,Then this function will also upload the new model
+		// matrix array, Add the instance by the relative way
+		void addRelInstance(const glm::mat4 &relInstanceMMatrix = glm::mat4(1.0f),
+							const glm::mat4 &parentMMatrix = glm::mat4(1.0f))
+		{
+			mpvInstanceMMatrix->push_back(parentMMatrix * relInstanceMMatrix);
+			mpvRelInstanceMMatrix->push_back(relInstanceMMatrix);
+
 			mNumInstance++;
-			
+
 			//If the array of model matrix has been uploaded to the device
 			//we will update the model matrix buffer 
 			if (mbUploaded)
@@ -206,7 +221,40 @@ namespace SP
 			if (mpvInstanceMMatrix->size() > instanceID)
 			{
 				glm::mat4 &modelMatrix = (*mpvInstanceMMatrix)[instanceID];
+				glm::mat4 modelMatrixOld = modelMatrix;
 				modelMatrix = instanceMMatrix;
+
+				//Try to keep consistency of the model matrix from the relative matrix
+				/*glm::mat4 &relModelMatrix = (*mpvRelInstanceMMatrix)[instanceID];
+				relModelMatrix *= (glm::inverse(modelMatrixOld) * instanceMMatrix);*/
+
+				if (mbUploaded)
+				{
+					glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
+					glBufferSubData(GL_ARRAY_BUFFER, instanceID * sizeof(glm::mat4),
+									sizeof(glm::mat4), &modelMatrix);
+					glBindBuffer(GL_ARRAY_BUFFER, 0);
+				}
+			}
+			else
+			{
+				SP_CERR("The instance ID beyond the mpvInstanceMMatrix size");
+			}
+		}
+
+		void setRelInstanceMMatrix(const glm::mat4 &relInstanceMMatrix,
+								   const glm::mat4 &parentMMatrix,
+								   GLuint instanceID)
+		{
+			if (mpvInstanceMMatrix->size() > instanceID)
+			{
+				glm::mat4 &modelMatrix = (*mpvInstanceMMatrix)[instanceID];
+				glm::mat4 modelMatrixOld = modelMatrix;
+				modelMatrix = parentMMatrix * relInstanceMMatrix;
+
+				//Try to keep consistency of the model matrix from the relative matrix
+				glm::mat4 &relModelMatrix = (*mpvRelInstanceMMatrix)[instanceID];
+				relModelMatrix = relInstanceMMatrix;
 
 				if (mbUploaded)
 				{
@@ -235,12 +283,12 @@ namespace SP
 			{
 				glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::mat4)*mNumInstance,
-								&(*mpvInstanceMMatrix)[0]);
+								&((*mpvInstanceMMatrix)[0]));
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 			}
 		}
 
-		//Get the instance model matrix in instanceID
+		//Get the absolute instance model matrix in instanceID
 		glm::mat4 getInstanceMMatrix(GLuint instanceID)
 		{
 			glm::mat4 result;
@@ -257,13 +305,29 @@ namespace SP
 			return result;
 		}
 
+		//Get the relative instance model matrix in instanceID
+		glm::mat4 getRelInstanceMMatrix(GLuint instanceID)
+		{
+			glm::mat4 result;
+			if (mpvRelInstanceMMatrix->size() > instanceID)
+			{
+				result = (*mpvRelInstanceMMatrix)[instanceID];
+			}
+			else
+			{
+				SP_CERR("The instance ID beyond the mpvRelInstanceMMatrix size");
+				exit(-1);
+			}
+
+			return result;
+		}
+
 		
 		//Get the number of instances
 		GLuint getNumInstance()
 		{
 			return mpvInstanceMMatrix->size();
 		}
-
 
 		BBox getTotalBBox()
 		{
@@ -430,10 +494,14 @@ namespace SP
 		//means without any model matrix transform
 		BBox mOriginBBox;
 
-		//The mpvInstanceMMatrix must be assign to a empty vector in
-		//the constructor
+		//The mpvInstanceMMatrix must be assign to a empty vector in the constructor
+		//The real instance model matrix for the P*V*M formula
 		std::shared_ptr<std::vector<glm::mat4>> mpvInstanceMMatrix;
 		int mNumInstance;
+
+		//The mpvRelInstanceMMatrix must be assign to a empty vector in the constructor 
+		//The relative instance model matrix in respect to the mesh
+		std::shared_ptr<std::vector<glm::mat4>> mpvRelInstanceMMatrix;
 
 		//****** The inner variable for device ******//
 		bool mbUploaded;

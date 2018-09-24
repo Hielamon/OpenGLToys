@@ -234,6 +234,8 @@ namespace SP
 			mMoveDirCount(0)
 		{
 			mvMoveDir.resize(6, glm::vec3(0.0f));
+			mAcEyeVary = glm::vec3(0.0f);
+			mAcUpVary = glm::vec3(0.0f);
 		}
 
 		~MonitorManipulator() {}
@@ -252,6 +254,21 @@ namespace SP
 			std::vector<std::shared_ptr<Camera>> vpCamera =
 				mpMonitorWindow->getAllCameras();
 			float frameCostTime = mpMonitorWindow->getFrameCostTime();
+
+			//Do the Pre Rotation
+			if (vpCamera.size() >= 2)
+			{
+				JoyStick3D &joystick1 = vpCamera[1]->getJoyStick3D();
+				if (joystick1.getDoRotate())
+				{
+					//joystick1.setJoyStickSpace(vpCamera[1]->getViewMatrix());
+					glm::vec3 eye, center, up;
+					vpCamera[1]->getCameraPose(eye, center, up);
+					joystick1.executeTimeRotationViewSpace(eye, center, up,
+														   frameCostTime);
+					vpCamera[1]->setViewMatrix(eye, center, up);
+				}
+			}
 
 			//Do camera movement
 			if (mMoveDirCount > 0 && mpMonitorWindow.use_count() != 0)
@@ -277,9 +294,23 @@ namespace SP
 							CAMERA_MOVE_DESPEED);
 					}
 
+					/*glm::vec3 eye1, center1, up1;
+					glm::vec3 eye2, center2, up2;
+					vpCamera[0]->getCameraPose(eye1, center1, up1);
+					vpCamera[1]->getCameraPose(eye2, center2, up2);
+					glm::vec3 eyeDiff = eye2 - eye1;
+					glm::vec3 upDiff = up2 - up1;
+					std::cout << "before eyeDiff = " << eyeDiff.x << "," << eyeDiff.y << "," << eyeDiff.z << std::endl;
+					std::cout << "before upDiff = " << upDiff.x << "," << upDiff.y << "," << upDiff.z << std::endl;*/
+
+					direction = glm::transpose(glm::mat3(viewMatrix0))
+						* direction;
+
 					for (size_t i = 0; i < vpCamera.size(); i++)
 					{
 						JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
+						joystick.setJoyStickSpace(glm::mat4(1.0f));
+						joystick.setTranslateDir(direction);
 						joystick.setDoTranslate(true);
 
 						if (mkeyState[GLFW_KEY_LEFT_SHIFT] || 
@@ -292,24 +323,33 @@ namespace SP
 							joystick.accelerateTsVelocity(CAMERA_MOVE_DESPEED);
 						}
 
-						joystick.setJoyStickSpace(viewMatrix0);
-						joystick.setTranslateDir(direction);
-
-						vpCamera[i]->excuteJoyStick3D(frameCostTime);
+						vpCamera[i]->excuteJoyStick3DTranslate(frameCostTime);
 						joystick.setDoTranslate(false);
 					}
+
+					/*vpCamera[0]->getCameraPose(eye1, center1, up1);
+					vpCamera[1]->getCameraPose(eye2, center2, up2);
+					glm::vec3 eyeDiff_ = eye2 - eye1;
+					glm::vec3 upDiff_ = up2 - up1;
+					std::cout << "after eyeDiff = " << eyeDiff_.x << "," << eyeDiff_.y << "," << eyeDiff_.z << std::endl;
+					std::cout << "after upDiff = " << upDiff_.x << "," << upDiff_.y << "," << upDiff_.z << std::endl;
+
+					glm::vec3 eyeVary = eyeDiff_ - eyeDiff;
+					glm::vec3 upVary = upDiff_ - upDiff;
+					mAcEyeVary += eyeVary;
+					mAcUpVary += upVary;
+					std::cout << "eye vary = " << eyeVary.x << "," << eyeVary.y << "," << eyeVary.z << std::endl;
+					std::cout << "up  vary = " << upVary.x << "," << upVary.y << "," << upVary.z << std::endl;
+					std::cout << "mAcEyeVary = " << mAcEyeVary.x << "," << mAcEyeVary.y << "," << mAcEyeVary.z << std::endl;
+					std::cout << "mAcUpVary  = " << mAcUpVary.x << "," << mAcUpVary.y << "," << mAcUpVary.z << std::endl;
+					std::cout << std::endl;
+					std::cout << std::endl;*/
 					//std::cout << "direction = " << direction.x << ", " << direction.y << ", " << direction.z << std::endl;
 					//std::cout << "mMoveDirCount = " << mMoveDirCount << std::endl;
 				}
 			}
 
-			for (size_t i = 0; i < vpCamera.size(); i++)
-			{
-				JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
-				if (!joystick.getDoRotate() && !joystick.getDoTranslate())
-					continue;
-				vpCamera[i]->excuteJoyStick3D(frameCostTime);
-			}
+			
 
 			WinManipulator::doFrameTasks();
 			return;
@@ -322,6 +362,8 @@ namespace SP
 		int mMoveDirCount;
 		//key: W, S, A, D, E, Q
 		std::vector<glm::vec3> mvMoveDir;
+
+		glm::vec3 mAcEyeVary, mAcUpVary;
 
 	protected:
 		virtual void keyCallBackImpl(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -446,13 +488,14 @@ namespace SP
 				break;
 			}
 
+			{}
+
 			//Do the camera travelling for all cameras' joysticks
 			//If the rigid all cameras movement is not locked
 			//if (1)
 			{
 				glm::vec3 tmpDir(0.0f);
 				int index = -1;
-
 				switch (key)
 				{
 				case GLFW_KEY_W:
@@ -482,13 +525,13 @@ namespace SP
 					//In world space
 					index = 5;
 					tmpDir = glm::vec3(0.0f, -1.0f, 0.0f);
-					tmpDir = glm::mat3(mpMonitorWindow->getDefaultCamera()->getViewMatrix()) 
+					tmpDir = glm::mat3(mpMonitorWindow->getDefaultCamera()->getViewMatrix())
 						* tmpDir;
 					break;
 				default:
 					break;
 				}
-
+				
 				int PreMoveDirCount = mMoveDirCount;
 				if (index >= 0 /*&& index < 6*/)
 				{
@@ -503,8 +546,6 @@ namespace SP
 						mvMoveDir[index] = glm::vec3(0.0f, 0.0f, 0.0f);
 					}
 				}
-
-				//std::cout << "mMoveDirCount = " << mMoveDirCount << std::endl;
 			}
 
 			//If the second camera rotation is not locked
@@ -580,14 +621,19 @@ namespace SP
 			std::shared_ptr<Camera> pDefaultCamera =
 				mpMonitorWindow->getDefaultCamera();
 
+			//pDefaultCamera = mpMonitorWindow->getCamera(1);
+
 			//scale the viewport of camera
 			pDefaultCamera->getViewport(vx, vy, vw, vh);
 
 			vw *= scale;
 			vh *= scale;
 
-			double scaleXPos = mCursorPosX;
-			double scaleYPos = mpMonitorWindow->getWindowSize()[1] - mCursorPosY;
+			int cx, cy, cw, ch;
+			pDefaultCamera->getCanvas(cx, cy, cw, ch);
+
+			double scaleXPos = mCursorPosX - cx;
+			double scaleYPos = mpMonitorWindow->getWindowSize()[1] - mCursorPosY - cy;
 
 			double vXPos = scaleXPos - vx;
 			double vYPos = scaleYPos - vy;
@@ -685,8 +731,27 @@ namespace SP
 				std::vector<std::shared_ptr<Camera>> vpCamera =
 					mpMonitorWindow->getAllCameras();
 
+
 				for (size_t i = 0; i < vpCamera.size(); i++)
 				{
+					/*if (i == 0)
+					{
+						glm::vec3 eye, center, up;
+						vpCamera[i]->getCameraPose(eye, center, up);
+
+						glm::vec3 eyeTmp = eye;
+
+						joystick.executeRotation(eye, center, up, angle);
+						vpCamera[i]->setViewMatrix(eye, center, up);
+
+						eyeTmp = eye - eyeTmp;
+						mAcEyeVary += eyeTmp;
+
+						std::cout << "acc eye vary  : " << mAcEyeVary.x << ", " << mAcEyeVary.y << ", " << mAcEyeVary.z << std::endl;
+						std::cout << std::endl;
+						continue;
+					}*/
+					
 					glm::vec3 eye, center, up;
 					vpCamera[i]->getCameraPose(eye, center, up);
 

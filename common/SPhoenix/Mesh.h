@@ -32,9 +32,9 @@ namespace SP
 	public:
 		Mesh(const std::shared_ptr<VertexArray> &pVertexArray,
 			 const std::shared_ptr<Material> &pMaterial =
-			 std::make_shared<Material>()/*,
-			 const glm::mat4 &modelMatrix = glm::mat4()*/)
-			: mbUploaded(false)/*, mModelMatrix(modelMatrix)*/
+			 std::make_shared<Material>(),
+			 const glm::mat4 &relMMatrix = glm::mat4(1.0f))
+			: mbUploaded(false), mRelMMatrix(relMMatrix)
 		{
 			reset(pVertexArray, pMaterial);
 
@@ -97,21 +97,51 @@ namespace SP
 			return mbHasVertexColor;
 		}
 
-		void setInstanceMMatrix(const glm::mat4 &instanceMMatrix,
-								GLuint instanceID)
-		{
-			mpVertexArray->setInstanceMMatrix(instanceMMatrix, instanceID);
-		}
-
 		//Means to transform all instances of the mesh with T matrix
 		void transformMesh(const glm::mat4 &T)
 		{
 			mpVertexArray->transformAllInstances(T);
 		}
 
+		void setInstanceMMatrix(const glm::mat4 &instanceMMatrix,
+								GLuint instanceID)
+		{
+			mpVertexArray->setInstanceMMatrix(instanceMMatrix, instanceID);
+		}
+
 		glm::mat4 getInstanceMMatrix(GLuint instanceID)
 		{
 			return mpVertexArray->getInstanceMMatrix(instanceID);
+		}
+
+		void setRelInstanceMMatrix(const glm::mat4 &relInstanceMMatrix,
+								GLuint instanceID)
+		{
+			mpVertexArray->setRelInstanceMMatrix(relInstanceMMatrix, mRelMMatrix,
+												 instanceID);
+		}
+
+		glm::mat4 getRelInstanceMMatrix(GLuint instanceID)
+		{
+			return mpVertexArray->getRelInstanceMMatrix(instanceID);
+		}
+
+		void setRelMMatrix(const glm::mat4 &relMMatrix)
+		{
+			mRelMMatrix = relMMatrix;
+			int numInstance = mpVertexArray->getNumInstance();
+			for (size_t i = 0; i < numInstance; i++)
+			{
+				glm::mat4 instanceMMatrix = mRelMMatrix *
+					mpVertexArray->getRelInstanceMMatrix(i);
+
+				mpVertexArray->setInstanceMMatrix(instanceMMatrix, i);
+			}
+		}
+
+		int getNumInstance()
+		{
+			return mpVertexArray->getNumInstance();
 		}
 
 		BBox getTotalBBox()
@@ -127,6 +157,7 @@ namespace SP
 		void addInstance(const glm::mat4 &instanceMMatrix = glm::mat4())
 		{
 			mpVertexArray->addInstance(instanceMMatrix);
+			//mpVertexArray->addRelInstance(instanceMMatrix, mRelMMatrix);
 		}
 
 		virtual std::string getShaderMacros()
@@ -148,6 +179,16 @@ namespace SP
 			mbUploaded = true;
 		}
 
+		virtual void drawOnlyInScene(const GLuint &programID)
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current mesh has not been uploaded befor drawing");
+				return;
+			}
+			mpVertexArray->draw(programID);
+		}
+
 		virtual void draw(const GLuint &programID)
 		{
 			if (!mbUploaded)
@@ -156,10 +197,10 @@ namespace SP
 				return;
 			}
 
-			/*int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
-			glUniform1ui(uMeshIDLoc, mMeshID);*/
+			int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+			glUniform1ui(uMeshIDLoc, mMeshID);
 
-			//mpMaterial->active(programID, mbHasTexCoord, mbHasVertexColor);
+			mpMaterial->active(programID, mbHasTexCoord, mbHasVertexColor);
 			mpVertexArray->draw(programID);
 		}
 
@@ -180,7 +221,7 @@ namespace SP
 
 		bool mbUploaded;
 
-		//glm::mat4 mModelMatrix;
+		glm::mat4 mRelMMatrix;
 
 		GLuint mMeshID;
 	};

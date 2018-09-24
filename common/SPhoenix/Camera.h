@@ -1,253 +1,11 @@
 #pragma once
-#include "Utils.h"
+#include "JoyStick.h"
 #include "Scene.h"
 
 namespace SP
 {
-	class JoyStickGlobal
-	{
-	public:
-		
-		~JoyStickGlobal() {}
-
-		static JoyStickGlobal &getInstance()
-		{
-			static JoyStickGlobal joystick;
-			return joystick;
-		}
-
-		void accelerateAutoMiniSpeed(float acVelocity)
-		{
-			mAutoMinMoveSpeed += acVelocity;
-			if (mAutoMinMoveSpeed < mMinMoveSpeed)
-				mAutoMinMoveSpeed = mMinMoveSpeed;
-		}
-
-		float mMinMoveSpeed;
-		float mMaxMoveSpeed;
-		float mAutoMinMoveSpeed;
-
-		float mAcSpeed, mDeSpeed;
-
-	private:
-		JoyStickGlobal() 
-		{
-			mMinMoveSpeed = 0.0005;
-			mMaxMoveSpeed = 0.05;
-			mAutoMinMoveSpeed = mMinMoveSpeed;
-
-			mAcSpeed = 0.0001;
-			mDeSpeed = -0.0002;
-		}
-	};
-
-#define CAMERA_MOVE_MIN_SPEED JoyStickGlobal::getInstance().mMinMoveSpeed
-#define CAMERA_MOVE_AUTO_MIN_SPEED JoyStickGlobal::getInstance().mAutoMinMoveSpeed
-#define CAMERA_MOVE_ACSPEED JoyStickGlobal::getInstance().mAcSpeed
-#define CAMERA_MOVE_DESPEED JoyStickGlobal::getInstance().mDeSpeed
-#define CAMERA_MOVE_MAX_SPEED JoyStickGlobal::getInstance().mMaxMoveSpeed
-#define ACCELERATE_AUTO_MIN_SPEED (x_) 
-
-	class JoyStick3D
-	{
-	public:
-		JoyStick3D() : mbDoTranslate(false), mbDoRotate(false),
-			mTsDirection(0.0f, 1.0f, 0.0f), mRAxis(0.0f, 1.0f, 0.0f),
-			mTsVelocity(0.0f), mRAngularRate(0.0f)
-		{
-			setJoyStickSpace(glm::mat4(1.0f));
-		}
-
-		~JoyStick3D() {}
-
-		bool getDoTranslate()
-		{
-			return mbDoTranslate;
-		}
-
-		bool getDoRotate()
-		{
-			return mbDoRotate;
-		}
-
-		void setDoTranslate(bool bDoTranslate)
-		{
-			mbDoTranslate = bDoTranslate;
-		}
-
-		void setDoRotate(bool bDoRotate)
-		{
-			mbDoRotate = bDoRotate;
-		}
-
-		void setTranslateDir(glm::vec3 tDirection)
-		{
-			mTsDirection = tDirection;
-		}
-
-		void setRotateAxis(glm::vec3 RAxis)
-		{
-			mRAxis = RAxis;
-		}
-
-		void setTranslateVelocity(float tVelocity)
-		{
-			mTsVelocity = tVelocity;
-		}
-
-		void setAngularRate(float RAngularRate)
-		{
-			mRAngularRate = RAngularRate;
-		}
-
-		void accelerateTsVelocity(float acVelocity)
-		{
-			mTsVelocity += acVelocity;
-
-			if (mTsVelocity < CAMERA_MOVE_AUTO_MIN_SPEED)
-				mTsVelocity = CAMERA_MOVE_AUTO_MIN_SPEED;
-
-			if (mTsVelocity < CAMERA_MOVE_MIN_SPEED)
-				mTsVelocity = CAMERA_MOVE_MIN_SPEED;
-
-			if (mTsVelocity > CAMERA_MOVE_MAX_SPEED)
-				mTsVelocity = CAMERA_MOVE_MAX_SPEED;
-		}
-
-		void setJoyStickSpace(const glm::mat4 &Twj)
-		{
-			mTwj = Twj;
-			mRwj = glm::mat3(Twj);
-			mTswj = glm::vec3(mTwj[3]);
-
-			mRjw = glm::transpose(mRwj);
-			mTsjw = -mRjw*mTswj;
-			mTjw = glm::mat4(mRjw);
-			mTjw[3] = glm::vec4(mTsjw, 1.0f);
-
-			//glm::mat4 Test = mTwj * mTjw;
-		}
-
-		//The Twl is the transform from world space to the local space,
-		//Execute the coordinate defined by the Twl
-		void execute(glm::mat4 &Twl, float milisecond)
-		{
-			if (mbDoRotate && mRAngularRate != 0.0f && milisecond > 0.0f)
-			{
-				//Do rotate to Pose
-				float angle = mRAngularRate * milisecond;
-
-				//Get the rotation axis in the local space of Twl
-				executeRotation(Twl, angle);
-			}
-
-			if (mbDoTranslate && mTsVelocity != 0.0f && milisecond > 0.0f)
-			{
-				//Do translate to Pose
-				float distance = mTsVelocity * milisecond;
-
-				//Get the translate direction in the local space of Twl
-				executeTranslate(Twl, distance);
-			}
-		}
-
-		void execute(glm::vec3 &eye, glm::vec3 &center, 
-					 glm::vec3 &up, float milisecond)
-		{
-			glm::mat4 Twc = glm::lookAt(eye, center, up);
-			execute(Twc, milisecond);
-			eye = glm::vec3(Twc[3]);
-			glm::mat3 iR = glm::transpose(glm::mat3(Twc));
-			eye = -iR * eye;
-
-			glm::vec3 zAxis = glm::vec3(Twc[0][2], Twc[1][2], Twc[2][2]);
-			center = eye - zAxis;
-
-			up = glm::vec3(Twc[0][1], Twc[1][1], Twc[2][1]);
-		}
-
-		void executeRotation(glm::mat4 &Twl, float angle)
-		{
-			glm::mat4 dR = glm::rotate(glm::mat4(1.0f), angle, mRAxis);
-			Twl *= (mTjw*glm::transpose(dR)*mTwj);
-		}
-
-		void executeRotation(glm::vec3 &eye, glm::vec3 &center,
-							 glm::vec3 &up, float angle)
-		{
-			glm::mat4 Twc = glm::lookAt(eye, center, up);
-			executeRotation(Twc, angle);
-			eye = glm::vec3(Twc[3]);
-			glm::mat3 iR = glm::transpose(glm::mat3(Twc));
-			eye = -iR * eye;
-
-			glm::vec3 zAxis = glm::vec3(Twc[0][2], Twc[1][2], Twc[2][2]);
-			center = eye - zAxis;
-
-			up = glm::vec3(Twc[0][1], Twc[1][1], Twc[2][1]);
-		}
-
-		void executeRotation(glm::mat4 &Twl, glm::mat3 R)
-		{
-			glm::mat4 dR = glm::mat4(R);
-			Twl *= (mTjw*glm::transpose(dR)*mTwj);
-		}
-
-		void executeRotation(glm::vec3 &eye, glm::vec3 &center,
-							 glm::vec3 &up, glm::mat3 R)
-		{
-			glm::mat4 Twc = glm::lookAt(eye, center, up);
-			executeRotation(Twc, R);
-			eye = glm::vec3(Twc[3]);
-			glm::mat3 iR = glm::transpose(glm::mat3(Twc));
-			eye = -iR * eye;
-
-			glm::vec3 zAxis = glm::vec3(Twc[0][2], Twc[1][2], Twc[2][2]);
-			center = eye - zAxis;
-
-			up = glm::vec3(Twc[0][1], Twc[1][1], Twc[2][1]);
-		}
-
-		void executeTranslate(glm::mat4 &Twl, float distance)
-		{
-			glm::vec3 tVec = mTsDirection * distance;
-			glm::mat4 dT = glm::translate(glm::mat4(1.0f), tVec);
-			Twl *= (mTjw * glm::inverse(dT)* mTwj);
-		}
-
-		void executeTranslate(glm::vec3 &eye, glm::vec3 &center,
-							 glm::vec3 &up, float distance)
-		{
-			glm::mat4 Twc = glm::lookAt(eye, center, up);
-			executeTranslate(Twc, distance);
-			eye = glm::vec3(Twc[3]);
-			glm::mat3 iR = glm::transpose(glm::mat3(Twc));
-			eye = -iR * eye;
-
-			glm::vec3 zAxis = glm::vec3(Twc[0][2], Twc[1][2], Twc[2][2]);
-			center = eye - zAxis;
-
-			up = glm::vec3(Twc[0][1], Twc[1][1], Twc[2][1]);
-		}
-
-	private:
-		//The state for whether to do transform
-		bool mbDoTranslate, mbDoRotate;
-
-		//The direction for translate and rotation in joystick space
-		glm::vec3 mTsDirection, mRAxis;
-
-		//The velocity for per milisecond
-		float mTsVelocity, mRAngularRate;
-
-		//The joystick space, Twj transform the 
-		//world point to the joystick space point
-		glm::mat4 mTwj, mTjw;
-		glm::mat3 mRwj, mRjw;
-		//Translate vector
-		glm::vec3 mTswj, mTsjw;
-	};
-
+	//The Camera basic class hold some common properties of the perspective  
+	//camera and provide the common camera interface by the virtual function. 
 	//The virtual functions(etc. setup, renderOneFrame) can be just called
 	//in the inherited class of the GLWindowBase class for the opengl
 	//context related implementations in these functions
@@ -257,14 +15,12 @@ namespace SP
 		Camera(int width = 0, int height = 0, int offsetX = 0, int offsetY = 0)
 			: mCWidth(width), mCHeight(height), mCOffsetX(offsetX),
 			 mCOffsetY(offsetY), mbSetup(false), mViewX(0), mViewY(0),
-			 mViewWidth(width), mViewHeight(height)
+			 mViewWidth(width), mViewHeight(height), mbClearPerFrame(true)
 		{
 			setProjectionMatrix();
 			setViewMatrix();
 			mJoyStick3D.setTranslateVelocity(CAMERA_MOVE_MIN_SPEED);
 			mJoyStick3D.setAngularRate(0.005f);
-
-			mAcEyeVaring = glm::vec3(0.0f);
 		}
 
 		~Camera() 
@@ -276,11 +32,17 @@ namespace SP
 				glDeleteFramebuffers(1, &mMSFBO);
 				glDeleteFramebuffers(1, &mFBO);
 				glDeleteTextures(1, &mMSColorTexture);
+				glDeleteTextures(1, &mColorTexture);
 				glDeleteTextures(1, &mMSMeshIDTexture);
 				glDeleteTextures(1, &mMeshIDTexture);
 				glDeleteRenderbuffers(1, &mMSDepthStencilRBO);
 				glDeleteRenderbuffers(1, &mDepthStencilRBO);
 			}
+		}
+
+		void setClearFlag(bool bClear)
+		{
+			mbClearPerFrame = bClear;
 		}
 
 		void setCanvas(int offsetX, int offsetY, int width, int height)
@@ -354,6 +116,31 @@ namespace SP
 			mViewMatrix = glm::lookAt(mEye, mCenter, mUp);
 
 			if (mbSetup) _uploadViewMatrix();
+
+			if (mpCameraShape.use_count())
+			{
+				//mpCameraShape->setRelMMatrix(glm::inverse(mViewMatrix));
+
+				/*glm::mat4 curM = mpCameraShape->getInstanceMMatrix(0);
+
+				glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
+				glm::mat4 oriM = glm::inverse(mViewMatrix) * scale;
+
+				glm::mat4 residual = curM - oriM;
+
+				if (residual != glm::mat4(0.0f))
+				{
+					std::cout << "residual matrix = " << std::endl;
+					std::cout << residual[0][0] << " " << residual[1][0] << " " << residual[2][0] << " " << residual[3][0] << std::endl;
+					std::cout << residual[0][1] << " " << residual[1][1] << " " << residual[2][1] << " " << residual[3][1] << std::endl;
+					std::cout << residual[0][2] << " " << residual[1][2] << " " << residual[2][2] << " " << residual[3][2] << std::endl;
+					std::cout << residual[0][3] << " " << residual[1][3] << " " << residual[2][3] << " " << residual[3][3] << std::endl;
+					std::cout << std::endl;
+				}*/
+				
+				glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
+				mpCameraShape->setInstanceMMatrix(glm::inverse(mViewMatrix) * scale, 0);
+			}
 		}
 		
 		glm::mat4 getViewMatrix()
@@ -374,9 +161,101 @@ namespace SP
 			return mJoyStick3D;
 		}
 
+		void excuteJoyStick3D(float milisecond)
+		{
+			/*glm::vec3 eyeTmp = mEye;
+			std::cout << "Before eye : " << mEye.x << ", " << mEye.y << ", " << mEye.z << std::endl;
+			mJoyStick3D.execute(mEye, mCenter, mUp, milisecond);
+			std::cout << "After  eye : " << mEye.x << ", " << mEye.y << ", " << mEye.z << std::endl;
+			eyeTmp = mEye - eyeTmp;
+			mAcEyeVaring += eyeTmp;
+			std::cout << "residual  eye : " << eyeTmp.x << ", " << eyeTmp.y << ", " << eyeTmp.z << std::endl;
+			std::cout << "acc eye vary  : " << mAcEyeVaring.x << ", " << mAcEyeVaring.y << ", " << mAcEyeVaring.z << std::endl;
+			std::cout << std::endl;
+			setViewMatrix(mEye, mCenter, mUp);*/
+
+			mJoyStick3D.execute(mEye, mCenter, mUp, milisecond);
+			setViewMatrix(mEye, mCenter, mUp);
+		}
+
+		void excuteJoyStick3DTranslate(float milisecond)
+		{
+			mJoyStick3D.executeTimeTranslate(mEye, mCenter, mUp, milisecond);
+			setViewMatrix(mEye, mCenter, mUp);
+		}
+
+		void excuteJoyStick3DRotate(float milisecond)
+		{
+			/*glm::vec3 eyeTmp = mEye;
+			std::cout << "Before eye : " << mEye.x << ", " << mEye.y << ", " << mEye.z << std::endl;
+			mJoyStick3D.executeTimeRotation(mEye, mCenter, mUp, milisecond);
+			std::cout << "After  eye : " << mEye.x << ", " << mEye.y << ", " << mEye.z << std::endl;
+			eyeTmp = mEye - eyeTmp;
+			mAcEyeVaring += eyeTmp;
+			std::cout << "residual  eye : " << eyeTmp.x << ", " << eyeTmp.y << ", " << eyeTmp.z << std::endl;
+			std::cout << "acc eye vary  : " << mAcEyeVaring.x << ", " << mAcEyeVaring.y << ", " << mAcEyeVaring.z << std::endl;
+			std::cout << std::endl;
+			setViewMatrix(mEye, mCenter, mUp);*/
+
+			mJoyStick3D.executeTimeRotation(mEye, mCenter, mUp, milisecond);
+			setViewMatrix(mEye, mCenter, mUp);
+		}
+
+
+		void setCameraShape(const std::shared_ptr<Mesh> &pCameraShape)
+		{
+			mpCameraShape = pCameraShape;
+			/*glm::mat4 viewMatrixInv = glm::inverse(mViewMatrix);
+			mpCameraShape->transformMesh(viewMatrixInv);*/
+		}
+
+		std::shared_ptr<Mesh> getCameraShape()
+		{
+			return mpCameraShape;
+		}
+
+		virtual std::shared_ptr<Mesh>
+			createCameraShape(glm::vec4 color = glm::vec4(1.0f),
+							  glm::mat4 scale = glm::mat4(1.0f))
+		{
+			std::vector<glm::vec3> vertices(5);
+			std::vector<GLuint> indices;
+			{
+				float tanHalfFovy = std::tan(mFovy*0.5);
+				float tanHalfFovx = tanHalfFovy * mAspect;
+
+				vertices[0] = glm::vec3(0.0f, 0.0f, 0.0f);
+				vertices[1] = glm::vec3(tanHalfFovx, tanHalfFovy, -1.0f);
+				vertices[2] = glm::vec3(tanHalfFovx, -tanHalfFovy, -1.0f);
+				vertices[3] = glm::vec3(-tanHalfFovx, -tanHalfFovy, -1.0f);
+				vertices[4] = glm::vec3(-tanHalfFovx, tanHalfFovy, -1.0f);
+
+				indices =
+				{
+					0, 1,
+					0, 2,
+					0, 3,
+					0, 4,
+					1, 2,
+					2, 3,
+					3, 4,
+					4, 1
+				};
+			}
+
+			std::shared_ptr<VertexArray> pVA =
+				std::make_shared<VertexArray>(vertices, indices, PrimitiveType::LINES);
+
+			pVA->addInstance(scale);
+
+			std::shared_ptr<Material> pMatrial = std::make_shared<Material>(color);
+			std::shared_ptr<Mesh> pCameraShape = std::make_shared<Mesh>(pVA, pMatrial);
+			return pCameraShape;
+		}
+
 		//According to looking the bonding box , this function adjust the
 		//camera pose to the (1, 1, 1) position of the bounding box
-		void adjustCameraPose(BBox bbox)
+		virtual void adjustCameraPose(BBox bbox)
 		{
 			glm::vec3 minVertex = bbox.getMinVertex();
 			glm::vec3 maxVertex = bbox.getMaxVertex();
@@ -449,23 +328,6 @@ namespace SP
 			setViewMatrix(eye, centerVertex, -yAxis);
 		}
 
-		void excuteJoyStick3D(float milisecond)
-		{
-			/*glm::vec3 eyeTmp = mEye;
-			std::cout << "Before eye : " << mEye.x << ", " << mEye.y << ", " << mEye.z << std::endl;
-			mJoyStick3D.execute(mEye, mCenter, mUp, milisecond);
-			std::cout << "After  eye : " << mEye.x << ", " << mEye.y << ", " << mEye.z << std::endl;
-			eyeTmp = mEye - eyeTmp;
-			mAcEyeVaring += eyeTmp;
-			std::cout << "residual  eye : " << eyeTmp.x << ", " << eyeTmp.y << ", " << eyeTmp.z << std::endl;
-			std::cout << "acc eye vary  : " << mAcEyeVaring.x << ", " << mAcEyeVaring.y << ", " << mAcEyeVaring.z << std::endl;
-			std::cout << std::endl;
-			setViewMatrix(mEye, mCenter, mUp);*/
-
-			mJoyStick3D.execute(mEye, mCenter, mUp, milisecond);
-			setViewMatrix(mEye, mCenter, mUp);
-		}
-
 		//Preparation for some OpenGL context settings, Can be only 
 		//called from inherited class of the GLWindowBase class
 		virtual void setup(int winWidth, int winHeight)
@@ -498,33 +360,7 @@ namespace SP
 		//Can be only called from inherited class of the GLWindowBase class
 		virtual void renderOneFrame(const std::shared_ptr<Scene> &pScene)
 		{
-			if(!mbSetup)
-			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
-				return;
-			}
-
-			//Bind the vbo point
-			glBindBufferBase(GL_UNIFORM_BUFFER, VIEWUBO_BINDING_POINT, mViewUBO);
-			glViewport(mViewX, mViewY, mViewWidth, mViewHeight);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-			//draw the scene
-			drawScene(pScene);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-			//Copy the color buffer from mMSFBO to mFBO
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-			glReadBuffer(GL_COLOR_ATTACHMENT0);
-			glDrawBuffer(GL_BACK_LEFT);
-
-			glBlitFramebuffer(0, 0, mCWidth, mCHeight, mCOffsetX, mCOffsetY,
-							  mCWidth + mCOffsetX, mCHeight + mCOffsetY,
-							  GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			renderOneFrame(std::vector<std::shared_ptr<Scene>>(1, pScene));
 		}
 
 		//Can be only called from inherited class of the GLWindowBase class
@@ -548,7 +384,9 @@ namespace SP
 			glViewport(mViewX, mViewY, mViewWidth, mViewHeight);
 
 			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			if (mbClearPerFrame)
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			//draw the scene
 			for (size_t i = 0; i < vpScene.size(); i++)
@@ -559,6 +397,16 @@ namespace SP
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			//Copy the color buffer from mMSFBO to mFBO
+			/*glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFBO);
+			glReadBuffer(GL_COLOR_ATTACHMENT0);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+			glBlitFramebuffer(0, 0, mCWidth, mCHeight,
+							  0, 0, mCWidth, mCHeight,
+							  GL_COLOR_BUFFER_BIT, GL_NEAREST);*/
+
+			//Copy the color buffer from mFBO to default FBO
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 			glReadBuffer(GL_COLOR_ATTACHMENT0);
@@ -566,20 +414,29 @@ namespace SP
 
 			glBlitFramebuffer(0, 0, mCWidth, mCHeight, mCOffsetX, mCOffsetY,
 							  mCWidth + mCOffsetX, mCHeight + mCOffsetY,
-							  GL_COLOR_BUFFER_BIT, GL_NEAREST);
-		}
+							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
+							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
-		virtual std::shared_ptr<Scene> getCameraShapeScene()
-		{
-			return nullptr;
 		}
 
 	protected:
+		virtual void drawScene(const std::shared_ptr<Scene> &pScene)
+		{
+			if (pScene.use_count() == 0) return;
+			pScene->draw();
+		}
+
+	protected:
+		glm::vec3 mAcEyeVaring;
+
 		//The three pose vectors of the camera with  
 		//respect to the world coordinate
 		glm::vec3 mEye, mCenter, mUp;
 		//The matrix transforming the world coordinates to camera coordinates
 		glm::mat4 mViewMatrix;
+		//The Mesh for showing the camera shape
+		std::shared_ptr<Mesh> mpCameraShape;
+		glm::mat4 mCameraShapeMMatrix;
 
 		//The parameters of perspective frustum
 		//mFovy: the angle FOV in y direction
@@ -588,20 +445,13 @@ namespace SP
 		//The matrix transforming the camera coordinates to clipped coordinates
 		glm::mat4 mProjMatrix;
 		
-
 		//The pixel size and offset(bottom-left) of camera canvas to the parent window
 		int mCWidth, mCHeight, mCOffsetX, mCOffsetY;
 
 		//The variables for viewport(bottom-left)
 		int mViewX, mViewY, mViewWidth, mViewHeight;
 
-		virtual void drawScene(const std::shared_ptr<Scene> &pScene)
-		{
-			if (pScene.use_count() == 0) return;
-			pScene->draw();
-		}
-
-	private:
+	protected:
 		//Indicatint whether the camera has been set up
 		bool mbSetup;
 
@@ -612,10 +462,13 @@ namespace SP
 		//the raw FBO mFBO acting as the temporary FBO
 		GLuint mMSFBO, mFBO;
 
-		//The buffers for the FBO
-		GLuint mMSColorTexture, mMSMeshIDTexture, mMeshIDTexture;
+		//The buffers for the mMSFBO and mFBO
+		//The mColorTexture is not used currently
+		GLuint mMSColorTexture, mColorTexture;
+		GLuint mMSMeshIDTexture, mMeshIDTexture;
 		GLuint mMSDepthStencilRBO, mDepthStencilRBO;
 
+	private:
 		//Samples for Super sample Anti-aliasing
 		static const int mNumSamples = 8;
 
@@ -623,8 +476,8 @@ namespace SP
 		//Some variables for manipulate the camera
 		////////////////////////////////////////////////////////
 		JoyStick3D mJoyStick3D;
-		glm::vec3 mAcEyeVaring;
 
+		bool mbClearPerFrame;
 
 	private:
 		void _createMultiSampleFBO(int winWidth, int winHeight)
@@ -685,17 +538,24 @@ namespace SP
 			glGenFramebuffers(1, &mFBO);
 			glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
 
+			glGenTextures(1, &mColorTexture);
+			glBindTexture(GL_TEXTURE_2D, mColorTexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, bufferW, bufferH, 0,
+						 GL_RGB, GL_UNSIGNED_BYTE, NULL);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+								   GL_TEXTURE_2D, mColorTexture, 0);
+
 			glGenTextures(1, &mMeshIDTexture);
 			glBindTexture(GL_TEXTURE_2D, mMeshIDTexture);
 			/*glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, mwidth, mheight, 0, GL_R,
 			GL_UNSIGNED_INT, NULL);*/
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, bufferW, bufferH, 0,
 						 GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
 								   GL_TEXTURE_2D, mMeshIDTexture, 0);
 
-			GLenum buffers[1] = { GL_COLOR_ATTACHMENT0 };
-			glDrawBuffers(1, buffers);
+			GLenum buffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+			glDrawBuffers(2, buffers);
 
 			//Depth and stencil renderbuffer
 			/*glGenRenderbuffers(1, &mDepthStencilRBO);
@@ -729,7 +589,6 @@ namespace SP
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, 64, glm::value_ptr(mProjMatrix));
 			glBindBuffer(GL_UNIFORM_BUFFER, 0);
 		}
-
 	};
 
 	//Add the camera border for distinction between the mini camera and major camera
@@ -811,11 +670,14 @@ namespace SP
 
 				std::shared_ptr<VertexArray> pVA =
 					std::make_shared<VertexArray>(vertices, indices, PrimitiveType::LINES);
-				pVA->addInstance();
+
+				glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
+				pVA->addInstance(scale);
 
 				glm::vec4 cameraColor(1.0f, 1.0f, 0.0f, 1.0f);
 				std::shared_ptr<Material> pMatrial = std::make_shared<Material>(cameraColor);
-				mpCameraShape = std::make_shared<Mesh>(pVA, pMatrial);
+				std::shared_ptr<Mesh> pCameraShape = std::make_shared<Mesh>(pVA, pMatrial);
+				setCameraShape(pCameraShape);
 				mpCameraShapeScene->addMesh(mpCameraShape);
 			}
 
@@ -840,14 +702,13 @@ namespace SP
 			Camera::setViewMatrix(eye, center, up);
 			
 			//update the camera shape model matrix
-			glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
-			mpCameraShape->setInstanceMMatrix(glm::inverse(mViewMatrix) * scale, 0);
+			/*glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
+			mpCameraShape->setInstanceMMatrix(glm::inverse(mViewMatrix) * scale, 0);*/
 		}
 
 	protected:
 		std::shared_ptr<Scene> mpBorderScene;
 		std::shared_ptr<Scene> mpCameraShapeScene;
-		std::shared_ptr<Mesh> mpCameraShape;
 
 		virtual void drawScene(const std::shared_ptr<Scene> &pScene)
 		{

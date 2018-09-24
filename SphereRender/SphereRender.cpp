@@ -14,7 +14,7 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 	//std::shared_ptr<Scene> pScene = std::static_pointer_cast<Scene>(pFasterScene);
 	std::shared_ptr<Scene> pScene = std::make_shared<Scene>();
 
-	bool showModel = !false;
+	bool showModel = false;
 	if (showModel)
 	{
 		SceneAssimpLoader loader;
@@ -49,7 +49,6 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 		std::vector<glm::vec2> texcoords(4);
 		std::vector<GLuint> indices;
 		{
-
 			vertices[0] = glm::vec3(1.0f, 1.0f, -0.0f);
 			vertices[1] = glm::vec3(1.0f, -1.0f, -0.0f);
 			vertices[2] = glm::vec3(-1.0f, -1.0f, -0.0f);
@@ -111,9 +110,7 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 
 	HL_INTERVAL_START
 		monitor->setScene(pScene);
-		//monitor->setScene(pSkyBoxScene);
 	HL_INTERVAL_ENDSTR("monitor.setScene(pScene)");
-
 	
 
 	std::shared_ptr<MonitorManipulator> pMonitorManip =
@@ -121,15 +118,23 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 	monitor->setManipulator(std::static_pointer_cast<ManipulatorBase>(pMonitorManip));
 	
 	int minWidth = width * 0.25, minHeight = height * 0.25;
-	std::shared_ptr<CameraMini> pCamera =
-		std::make_shared<CameraMini>(minWidth, minHeight, width - minWidth, 0);
-									
+	std::shared_ptr<Camera> pCamera =
+		std::make_shared<Camera>(minWidth, minHeight, width - minWidth, 0);
+
 	std::shared_ptr<Camera> pDefaultCamera = monitor->getDefaultCamera();
+	float fovy, aspect, zNear, zFar;
+	pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
+
+	std::shared_ptr<Mesh> pCameraShape =
+		pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+								   glm::scale(glm::mat4(1.0f), glm::vec3(0.1*zNear)));
+	
+	pCamera->setCameraShape(pCameraShape);
+	
 	glm::vec3 eye, center, up;
 	pDefaultCamera->getCameraPose(eye, center, up);
 	glm::vec3 offsetDir = glm::normalize(center - eye);
-	float fovy, aspect, zNear, zFar;
-	pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
+	
 	float zNearAspect = 10.0f;
 	eye += offsetDir * zNear * zNearAspect;
 	eye -= up * 0.3f * zNear * zNearAspect;
@@ -148,10 +153,10 @@ int main(int argc, char *argv[])
 {
 	//..\..\3DModels\Drone0001\Drone166.lws
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
-	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Drone0003\\drone.obj";
+	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Drone0003\\drone.obj";
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Hall0003\\hall\\hall.obj";
-	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\citydetail-obj\\citydetail.obj";
-	std::string skyboxFolder = "";
+	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\citydetail-obj\\citydetail.obj";
+	std::string skyboxFolder = "skybox";
 
 	if (argc == 2)
 	{
