@@ -68,7 +68,10 @@ namespace SP
 			{
 				aiMaterial *aimaterial = aiscene->mMaterials[i];
 				vpMaterial[i] = _loadMaterial(aimaterial);
+				std::cout << "\rLoading Material(" << i + 1 << "/"
+					<< aiscene->mNumMaterials << ")" << std::flush;
 			}
+			std::cout << std::endl;
 
 			//Loading all meshes in the scene
 			mvMeshID.reserve(aiscene->mNumMeshes);
@@ -85,7 +88,11 @@ namespace SP
 				mvMeshID.push_back(pMesh->getMeshID());
 
 				mpScene->addMesh(pMesh);
+
+				std::cout << "\rLoading Mesh(" << i + 1 << "/"
+					<< aiscene->mNumMeshes << ")" << std::flush;
 			}
+			std::cout << std::endl;
 
 			//Traveling the scene tree for retrieving the instanceN vector and model matrix array
 			glm::mat4 initModelMatrix;
@@ -194,7 +201,7 @@ namespace SP
 			//Load the diffuse, ambient and specular value
 			//if these are existed
 			aiColor4D diffuse(1.0f), ambient(1.0f), specular(0.0f);
-			float shininess = 32;
+			float shininess = 32, shininessStrength = 0.5f;
 			if (aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS)
 			{
 				pMaterial->setDiffuseColor(glm::vec4(diffuse.r, diffuse.g, diffuse.b, diffuse.a));
@@ -211,6 +218,10 @@ namespace SP
 			if (aimaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
 			{
 				pMaterial->setShininess(shininess);
+			}
+			if (aimaterial->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength) == AI_SUCCESS)
+			{
+				pMaterial->setShininessStrength(shininessStrength);
 			}
 
 			return pMaterial;

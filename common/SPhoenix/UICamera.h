@@ -11,11 +11,17 @@ namespace SP
 		UICamera(int width = 0, int height = 0, int offsetX = 0, int offsetY = 0)
 			: Camera(width, height, offsetX, offsetY)
 		{
+			float left = mCOffsetX, right = mCOffsetX + mCWidth;
+			float bottom = mCOffsetY, top = mCOffsetY + mCHeight;
 
+			mProjMatrix = glm::ortho(left, right, bottom, top);
+
+			mZNear = -1;
+			mZFar = 1;
 		}
 
 		//Can be only called from inherited class of the GLWindowBase class
-		virtual void renderOneFrame(const std::vector<std::shared_ptr<Scene>>
+		virtual void renderSceneArray(const std::vector<std::shared_ptr<Scene>>
 									&vpScene)
 		{
 			if (!mbSetup)
@@ -31,8 +37,7 @@ namespace SP
 			}
 
 			//Bind the vbo point
-			
-
+			glBindBufferBase(GL_UNIFORM_BUFFER, VIEWUBO_BINDING_POINT, mViewUBO);
 			glViewport(mViewX, mViewY, mViewWidth, mViewHeight);
 
 			//Copy pre-rendered results
@@ -54,7 +59,9 @@ namespace SP
 			glDisable(GL_DEPTH_TEST);
 			for (size_t i = 0; i < vpScene.size(); i++)
 			{
-				drawScene(vpScene[i]);
+				const std::shared_ptr<Scene> &pScene = vpScene[i];
+				if (pScene.use_count() == 0) continue;
+				pScene->draw();
 			}
 			glEnable(GL_DEPTH_TEST);
 
@@ -71,6 +78,28 @@ namespace SP
 							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
+		}
+
+		virtual void roughRenderScene(const std::shared_ptr<Scene> &pScene)
+		{
+			if (!mbSetup)
+			{
+				SP_CERR("The current scen has not been uploaded befor drawing");
+				return;
+			}
+
+			//Bind the vbo point
+			glBindBufferBase(GL_UNIFORM_BUFFER, VIEWUBO_BINDING_POINT, mViewUBO);
+			glViewport(mViewX, mViewY, mViewWidth, mViewHeight);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			//draw the scene
+			glDisable(GL_DEPTH_TEST);
+			if (pScene.use_count() != 0)
+			{
+				pScene->draw();
+			}
+			glEnable(GL_DEPTH_TEST);
 		}
 
 		~UICamera() {}

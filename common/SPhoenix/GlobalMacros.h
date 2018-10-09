@@ -14,6 +14,7 @@
 #define MOUSE_COUNT 8
 
 #define DEFAULT_SHININESS 32.0f
+#define DEFAULT_SHININESS_STRENGTH 0.5f
 
 //When using the uniform buffer object
 //the VIEWUBO binging point set to 1
@@ -23,6 +24,10 @@
 
 #define MAX_VIEWPORT_SIZE 32768
 
+#define BOUNDING_BOX_PADDING 0.01
+#define BOUNDINT_BOX_POINT_NUM 8
+
+#define TEXT_CHAR_NUM 128
 
 
 #define GL_DEBUG_INVALID_ENUM \

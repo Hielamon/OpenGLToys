@@ -6,13 +6,7 @@
 //#define COLOR_ATTR 2, if HAVE_COLOR but not HAVE_TEXCOORD, this is necessary
 
 layout (location = 0) in vec3 aVertice;
-
-
-#if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 layout (location = TEXCOORD_ATTR) in vec2 aTexCoord;
-#elif defined(HAVE_COLOR)
-layout (location = COLOR_ATTR) in vec4 aColor;
-#endif
 
 layout (location = MMATRIX_ATTR) in mat4 aModelMatrix;
 
@@ -23,12 +17,7 @@ layout (std140) uniform ViewUBO
 	vec3 viewPos;    // 16
 };
 
-#if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 out vec2 TexCoord;
-#elif defined(HAVE_COLOR)
-out vec4 VertexColor;
-#endif
-
 
 void main()
 {
@@ -36,10 +25,6 @@ void main()
 	//vec4 worldPos = topMMatrix * aModelMatrix * vec4(aVertice, 1.0f);
 	gl_Position = projMatrix * viewMatrix * worldPos;
 
-#if defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)
 	TexCoord = vec2(aTexCoord.x, 1.0f - aTexCoord.y);
-#elif defined(HAVE_COLOR)
-	VertexColor = aColor;
-#endif
 }
 

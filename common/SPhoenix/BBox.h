@@ -3,6 +3,7 @@
 #include "Utils.h"
 #include <vector>
 
+
 namespace SP
 {
 	//The class of bounding box
@@ -70,7 +71,7 @@ namespace SP
 		//           3     2
 		std::vector<glm::vec3> getBBoxVertices()
 		{
-			std::vector<glm::vec3> vertices(8);
+			std::vector<glm::vec3> vertices(BOUNDINT_BOX_POINT_NUM);
 			vertices[0] = mMinVertex;
 			vertices[1] = glm::vec3(mMaxVertex.x, mMinVertex.y, mMinVertex.z);
 			vertices[2] = glm::vec3(mMaxVertex.x, mMinVertex.y, mMaxVertex.z);
@@ -95,7 +96,7 @@ namespace SP
 		//           3     2
 		std::vector<glm::vec3> getBBoxVertices() const
 		{
-			std::vector<glm::vec3> vertices(8);
+			std::vector<glm::vec3> vertices(BOUNDINT_BOX_POINT_NUM);
 			vertices[0] = mMinVertex;
 			vertices[1] = glm::vec3(mMaxVertex.x, mMinVertex.y, mMinVertex.z);
 			vertices[2] = glm::vec3(mMaxVertex.x, mMinVertex.y, mMaxVertex.z);
@@ -104,6 +105,31 @@ namespace SP
 			vertices[5] = glm::vec3(mMinVertex.x, mMaxVertex.y, mMinVertex.z);
 			vertices[6] = glm::vec3(mMaxVertex.x, mMaxVertex.y, mMinVertex.z);
 			vertices[7] = mMaxVertex;
+			return vertices;
+		}
+
+		//Get the six homograph points of a space box
+		//           5      6
+		//            *******   ^ y
+		//        4  *   7 **   | 
+		//          ******* *   |
+		//          *	  *	*    
+		//          *	  *	*   
+		//          *  0  * *1  
+		//          *	  **    
+		//          *******      ------->x
+		//           3     2
+		std::vector<glm::vec4> getHomoBBoxVertices()
+		{
+			std::vector<glm::vec4> vertices(BOUNDINT_BOX_POINT_NUM);
+			vertices[0] = glm::vec4(mMinVertex, 1.0f);
+			vertices[1] = glm::vec4(mMaxVertex.x, mMinVertex.y, mMinVertex.z, 1.0f);
+			vertices[2] = glm::vec4(mMaxVertex.x, mMinVertex.y, mMaxVertex.z, 1.0f);
+			vertices[3] = glm::vec4(mMinVertex.x, mMinVertex.y, mMaxVertex.z, 1.0f);
+			vertices[4] = glm::vec4(mMinVertex.x, mMaxVertex.y, mMaxVertex.z, 1.0f);
+			vertices[5] = glm::vec4(mMinVertex.x, mMaxVertex.y, mMinVertex.z, 1.0f);
+			vertices[6] = glm::vec4(mMaxVertex.x, mMaxVertex.y, mMinVertex.z, 1.0f);
+			vertices[7] = glm::vec4(mMaxVertex, 1.0f);
 			return vertices;
 		}
 
@@ -136,21 +162,23 @@ namespace SP
 			return mMaxVertex;
 		}
 
-
 		BBox operator +(const BBox &b)
 		{
+			BBox result = b;
 			{
-				const glm::vec3 &vertex = b.mMinVertex;
-				if (vertex.x < mMinVertex.x) mMinVertex.x = vertex.x;
-				if (vertex.y < mMinVertex.y) mMinVertex.y = vertex.y;
-				if (vertex.z < mMinVertex.z) mMinVertex.z = vertex.z;
+				glm::vec3 &vertex = result.mMinVertex;
+				if (vertex.x > mMinVertex.x) vertex.x = mMinVertex.x;
+				if (vertex.y > mMinVertex.y) vertex.y = mMinVertex.y;
+				if (vertex.z > mMinVertex.z) vertex.z = mMinVertex.z;
 			}
 			{
-				const glm::vec3 &vertex = b.mMaxVertex;
-				if (vertex.x > mMaxVertex.x) mMaxVertex.x = vertex.x;
-				if (vertex.y > mMaxVertex.y) mMaxVertex.y = vertex.y;
-				if (vertex.z > mMaxVertex.z) mMaxVertex.z = vertex.z;
+				glm::vec3 &vertex = result.mMaxVertex;
+				if (vertex.x < mMaxVertex.x) vertex.x = mMaxVertex.x;
+				if (vertex.y < mMaxVertex.y) vertex.y = mMaxVertex.y;
+				if (vertex.z < mMaxVertex.z) vertex.z = mMaxVertex.z;
 			}
+
+			return result;
 		}
 
 		BBox& operator +=(const BBox &b)
@@ -171,6 +199,45 @@ namespace SP
 			return *this;
 		}
 
+		//compute the overlap bounding box
+		BBox operator &(const BBox &b)
+		{
+			BBox result = b;
+			{
+				glm::vec3 &vertex = result.mMinVertex;
+				if (vertex.x < mMinVertex.x) vertex.x = mMinVertex.x;
+				if (vertex.y < mMinVertex.y) vertex.y = mMinVertex.y;
+				if (vertex.z < mMinVertex.z) vertex.z = mMinVertex.z;
+			}
+			{
+				glm::vec3 &vertex = result.mMaxVertex;
+				if (vertex.x > mMaxVertex.x) vertex.x = mMaxVertex.x;
+				if (vertex.y > mMaxVertex.y) vertex.y = mMaxVertex.y;
+				if (vertex.z > mMaxVertex.z) vertex.z = mMaxVertex.z;
+			}
+
+			return result;
+		}
+
+		bool operator ==(const BBox &b)
+		{
+			return mMinVertex == b.mMinVertex &&
+				mMaxVertex == b.mMaxVertex;
+		}
+
+		bool isValid()
+		{
+			return mMinVertex.x <= mMaxVertex.x &&
+				mMinVertex.y <= mMaxVertex.y &&
+				mMinVertex.z <= mMaxVertex.z;
+		}
+
+		void padding(float value)
+		{
+			mMinVertex -= glm::vec3(value);
+			mMaxVertex += glm::vec3(value);
+		}
+
 	private:
 		glm::vec3 mMinVertex, mMaxVertex;
 	};
@@ -178,7 +245,7 @@ namespace SP
 	inline BBox TransformBBox(const glm::mat4 &T, const BBox &box)
 	{
 		std::vector<glm::vec3> vBBoxVertex = box.getBBoxVertices();
-		for (size_t i = 0; i < vBBoxVertex.size(); i++)
+		for (size_t i = 0; i < BOUNDINT_BOX_POINT_NUM; i++)
 		{
 			glm::vec4 hVertex = glm::vec4(vBBoxVertex[i], 1.0f);
 			hVertex = T * hVertex;

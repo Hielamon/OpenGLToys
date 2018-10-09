@@ -256,19 +256,18 @@ namespace SP
 			float frameCostTime = mpMonitorWindow->getFrameCostTime();
 
 			//Do the Pre Rotation
-			if (vpCamera.size() >= 2)
+			/*if (vpCamera.size() >= 2)
 			{
 				JoyStick3D &joystick1 = vpCamera[1]->getJoyStick3D();
 				if (joystick1.getDoRotate())
 				{
-					//joystick1.setJoyStickSpace(vpCamera[1]->getViewMatrix());
 					glm::vec3 eye, center, up;
 					vpCamera[1]->getCameraPose(eye, center, up);
 					joystick1.executeTimeRotationViewSpace(eye, center, up,
 														   frameCostTime);
 					vpCamera[1]->setViewMatrix(eye, center, up);
 				}
-			}
+			}*/
 
 			//Do camera movement
 			if (mMoveDirCount > 0 && mpMonitorWindow.use_count() != 0)
@@ -348,8 +347,6 @@ namespace SP
 					//std::cout << "mMoveDirCount = " << mMoveDirCount << std::endl;
 				}
 			}
-
-			
 
 			WinManipulator::doFrameTasks();
 			return;
@@ -488,11 +485,9 @@ namespace SP
 				break;
 			}
 
-			{}
-
 			//Do the camera travelling for all cameras' joysticks
 			//If the rigid all cameras movement is not locked
-			//if (1)
+			if (1)
 			{
 				glm::vec3 tmpDir(0.0f);
 				int index = -1;
@@ -549,7 +544,7 @@ namespace SP
 			}
 
 			//If the second camera rotation is not locked
-			if (mpMonitorWindow->getNumCamera() >= 2)
+			/*if (mpMonitorWindow->getNumCamera() >= 2)
 			{
 				std::shared_ptr<Camera> pCamera1 = mpMonitorWindow->getCamera(1);
 				JoyStick3D &joystick1 = pCamera1->getJoyStick3D();
@@ -562,23 +557,13 @@ namespace SP
 				case GLFW_KEY_LEFT:
 					index = 0;
 					axis = glm::vec3(0.0f, -1.0f, 0.0f);
-					/*{
-						glm::mat4 RInv = glm::mat4(glm::mat3(viewMatrix1));
-						RInv = glm::transpose(RInv);
-						glm::mat4 Twl = RInv*viewMatrix1;
-						joystick1.setJoyStickSpace(Twl);
-					}*/
+					
 					joystick1.setJoyStickSpace(viewMatrix1);
 					break;
 				case GLFW_KEY_RIGHT:
 					index = 1;
 					axis = glm::vec3(0.0f, 1.0f, 0.0f);
-					/*{
-						glm::mat4 RInv = glm::mat4(glm::mat3(viewMatrix1));
-						RInv = glm::transpose(RInv);
-						glm::mat4 Twl = RInv*viewMatrix1;
-						joystick1.setJoyStickSpace(Twl);
-					}*/
+					
 					joystick1.setJoyStickSpace(viewMatrix1);
 					break;
 				case GLFW_KEY_UP:
@@ -607,7 +592,7 @@ namespace SP
 						joystick1.setDoRotate(false);
 					}
 				}
-			}
+			}*/
 			
 			WinManipulator::keyCallBackImpl(window, key, scancode, action, mods);
 		}

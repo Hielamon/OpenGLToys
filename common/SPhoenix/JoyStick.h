@@ -35,8 +35,8 @@ namespace SP
 			mMaxMoveSpeed = 0.05;
 			mAutoMinMoveSpeed = mMinMoveSpeed;
 
-			mAcSpeed = 0.0001;
-			mDeSpeed = -0.0002;
+			mAcSpeed = 0.00005;
+			mDeSpeed = -0.0001;
 		}
 	};
 

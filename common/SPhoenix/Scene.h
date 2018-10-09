@@ -9,8 +9,13 @@
 #include <io.h>
 #include <TraverFolder.h>
 
+#include <ppl.h>
+
+using namespace concurrency;
+
 namespace SP
 {
+	//The scene for common 3D rendering, use the SPhoenixScene shader
 	class Scene
 	{
 	public:
@@ -63,6 +68,7 @@ namespace SP
 				GLuint meshID = pMesh->getMeshID();
 				mmMeshIDToMesh[meshID] = pMesh;
 				mmMeshIDToShaderTmp[meshID] = pShaderProgramTmp;
+				mmMeshIDToVisible[meshID] = true;
 
 				if (mbUploaded) _uploadMesh(pMesh);
 			}
@@ -137,7 +143,7 @@ namespace SP
 				_uploadMesh(pMesh);
 			}
 
-			std::cout << "Shader ID count = " << mmLabelToMeshes.size() << std::endl;
+			//std::cout << "Shader ID count = " << mmLabelToMeshes.size() << std::endl;
 
 			mbUploaded = true;
 		}
@@ -172,7 +178,7 @@ namespace SP
 			}
 		}
 
-		virtual void draw()
+		virtual void drawOld2()
 		{
 			if (!mbUploaded)
 			{
@@ -195,14 +201,15 @@ namespace SP
 				
 				std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>>::iterator iterM;
 
+				bool vbTexAndColor[8] =
+				{
+					false, false, /**/true, false, /**/
+					false, true, /**/true, true/**/
+				};
+
 				for (iterM = mMaterialIndex.begin();
 					 iterM != mMaterialIndex.end(); iterM++)
 				{
-					bool vbTexAndColor[8] =
-					{
-						false, false, /**/true, false, /**/
-						false, true, /**/true, true/**/
-					};
 
 					for (size_t i = 0, j = 0; i < 4; i++, j += 2)
 					{
@@ -227,6 +234,184 @@ namespace SP
 					}
 				}
 			}
+		}
+
+		//The inputs is aimed for early pruning
+		virtual void draw()
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current scen has not been uploaded befor drawing");
+				return;
+			}
+
+			
+
+			std::map<std::string, std::shared_ptr<ShaderProgram>>::iterator iter;
+			for (iter = mmLabelToShader.begin();
+				 iter != mmLabelToShader.end(); iter++)
+			{
+				iter->second->useProgram();
+				GLuint programID = iter->second->getProgramID();
+
+				int uMeshIDLoc = glGetUniformLocation(programID, "uMeshID");
+
+				//For active same type materials only once
+				std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>>
+					&mMaterialIndex = mmLabelToMaterialIndex[iter->first];
+
+				std::map<std::shared_ptr<Material>, std::vector<ID2MeshMap>>::iterator iterM;
+
+				bool vbTexAndColor[8] =
+				{
+					false, false, /**/true, false, /**/
+					false, true, /**/true, true /**/
+				};
+
+				for (iterM = mMaterialIndex.begin();
+					 iterM != mMaterialIndex.end(); iterM++)
+				{
+
+					for (size_t i = 0, j = 0; i < 4; i++, j += 2)
+					{
+						std::map<GLuint, std::shared_ptr<Mesh>> &mMeshIDToMesh =
+							iterM->second[i].mMeshID2Mesh;
+
+						/*std::vector<std::shared_ptr<Mesh>> vVisibleMesh;
+						vVisibleMesh.reserve(mMeshIDToMesh.size());*/
+						int numVisible = 0;
+						std::for_each(mMeshIDToMesh.begin(), mMeshIDToMesh.end(),
+									  [&](std::pair<const GLuint,
+										  std::shared_ptr<Mesh>>&pair) 
+						{
+							if (pair.second->getVisible())
+								numVisible++;
+								//vVisibleMesh.push_back(pair.second);
+						});
+
+						//if (vVisibleMesh.size() > 0)
+						//if (mMeshIDToMesh.size() > 0)
+						if(numVisible > 0)
+						{
+							iterM->first->active(programID, vbTexAndColor[j],
+												 vbTexAndColor[j + 1]);
+
+							std::for_each(mMeshIDToMesh.begin(), mMeshIDToMesh.end(),
+										  [&](std::pair<const GLuint,
+											  std::shared_ptr<Mesh>>&pair)
+							{
+								if (/*pair.second->getInFrustum()*/
+									pair.second->getVisible())
+								{
+									glUniform1ui(uMeshIDLoc, pair.second->getMeshID());
+									pair.second->drawOnlyInScene(programID);
+									/*if (pair.second->getInFrustum())
+									{
+										std::cout << "Mesh " << pair.first << "totally in the frustum" << std::endl;
+									}*/
+								}
+							});
+
+							/*std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter_;
+							for (iter_ = mMeshIDToMesh.begin();
+								 iter_ != mMeshIDToMesh.end(); iter_++)
+							{
+								//if(mmMeshIDToVisible[iter_->first])
+								if(iter_->second->getVisible())
+								{
+									glUniform1ui(uMeshIDLoc, iter_->second->getMeshID());
+									iter_->second->drawOnlyInScene(programID);
+								}
+							}*/
+
+							/*std::for_each(vVisibleMesh.begin(), vVisibleMesh.end(),
+										  [&](const std::shared_ptr<Mesh> &mesh)
+							{
+								glUniform1ui(uMeshIDLoc, mesh->getMeshID());
+								mesh->drawOnlyInScene(programID);
+							});*/
+						}
+					}
+				}
+			}
+		}
+
+		virtual void filterVisible(const glm::mat4 &projMatrix,
+								   const glm::mat4 &viewMatrix,
+								   float zNear, float zFar)
+		{
+			//HL_INTERVAL_START;
+			{
+				/*Concurrency::parallel_for_each std::for_each*/
+				glm::mat3 R = glm::mat3(viewMatrix);
+				glm::vec3 t = glm::vec3(viewMatrix[3]);
+
+				/*std::*/parallel_for_each(mmMeshIDToMesh.begin(),
+										   mmMeshIDToMesh.end(),
+										   [&](std::pair<const GLuint,
+											   std::shared_ptr<Mesh>>&pair)
+				{
+					std::vector<glm::vec3> vViewPt(BOUNDINT_BOX_POINT_NUM);
+					BBox viewBBox;
+
+					const std::vector<glm::vec3> &vBBoxPt =
+						pair.second->getBBoxPoints();
+
+					for (size_t i = 0; i < BOUNDINT_BOX_POINT_NUM; i++)
+					{
+						vViewPt[i] = R*vBBoxPt[i] + t;
+					}
+
+					viewBBox.computeBBox(vViewPt);
+					glm::vec3 minVertex = viewBBox.getMinVertex();
+					glm::vec3 maxVertex = viewBBox.getMaxVertex();
+
+					if (minVertex.z < -zFar) minVertex.z = -zFar;
+					if (maxVertex.z > -zNear) maxVertex.z = -zNear;
+
+					//z section pruning
+					if (minVertex.z <= maxVertex.z)
+					{
+						BBox viewBBoxZ(minVertex, maxVertex);
+						std::vector<glm::vec4> vBBoxPtZ =
+							viewBBoxZ.getHomoBBoxVertices();
+
+						//mmMeshIDToVisible[pair.first] = true;
+						for (size_t i = 0; i < BOUNDINT_BOX_POINT_NUM; i++)
+						{
+							glm::vec4 projPt = projMatrix * vBBoxPtZ[i];
+							float wInv = 1.0f / projPt.w;
+							vViewPt[i] = glm::vec3(projPt * wInv);
+						}
+
+						glm::vec3 frustumMin(-1.0f, -1.0f, -1.0f);
+						glm::vec3 frustumMax(1.0f, 1.0f, 1.0f);
+						BBox frustumBBox(frustumMin, frustumMax);
+
+						viewBBoxZ.computeBBox(vViewPt);
+						glm::vec3 viewBBoxZMin = viewBBoxZ.getMinVertex();
+						glm::vec3 viewBBoxZMax = viewBBoxZ.getMaxVertex();
+
+						//Get the overlap Bounding Box
+						BBox overlapBBox = frustumBBox & viewBBoxZ;
+						bool visible = overlapBBox.isValid();
+
+						if (visible)
+						{
+							//Test whether the frustum include the viewBBoxZ
+							bool bInFrustum = overlapBBox == viewBBoxZ;
+							pair.second->setInFrustum(bInFrustum);
+						}
+						pair.second->setVisible(visible);
+					}
+					else {
+						//mmMeshIDToVisible[pair.first] = false;
+						pair.second->setVisible(false);
+					}
+				}
+				);
+			}
+			//HL_INTERVAL_ENDSTR("Pruning");
 		}
 
 		//if the id is not valid , vMeshID will be changed, which will remove the invalid ID
@@ -268,6 +453,7 @@ namespace SP
 
 		//The map for access the mesh easily by meshID
 		std::map<GLuint, std::shared_ptr<Mesh>> mmMeshIDToMesh;
+		std::map<GLuint, bool> mmMeshIDToVisible;
 
 		//The map for access the shaderProgram template easily by meshID
 		//If the corresponding shader program is nullptr, the default
@@ -343,11 +529,11 @@ namespace SP
 		}
 	};
 
-	//Take some hacks codes for more quikly frame rate
-	class Scene2D : public Scene
+	//The scene for the 2D graphic, use the SPhoenixScene-2DGraphic shader
+	class TwoDScene : public Scene
 	{
 	public:
-		Scene2D()
+		TwoDScene()
 		{
 			std::string __currentPATH = __FILE__;
 			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
@@ -357,7 +543,287 @@ namespace SP
 			setCommonShaderProgram(defaultShader);
 		}
 
-		~Scene2D() {}
+		~TwoDScene() {}
+
+		virtual void draw()
+		{
+			Scene::draw();
+		}
+	};
+
+	//The scene for the Skybox graphic, use the SPhoenixScene-SkyBox shader
+	class SkyBoxScene : public Scene
+	{
+	public:
+		SkyBoxScene(std::vector<std::shared_ptr<Texture>> vpTexture)
+		{
+			std::string __currentPATH = __FILE__;
+			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+			ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene-SkyBox.vert",
+										__currentPATH + "/Shaders/SPhoenixScene-SkyBox.frag");
+
+			setCommonShaderProgram(defaultShader);
+
+			std::vector<glm::vec3> vertices(8);
+			std::vector<GLuint> indices;
+			{
+				//Get the six points of a space box
+				//           5      6
+				//            *******   ^ y
+				//        4  *   7 **   | 
+				//          ******* *   |
+				//          *	  *	*    
+				//          *	  *	*   
+				//          *  0  * *1  
+				//          *	  **    
+				//          *******      ------->x
+				//           3     2
+				vertices[0] = glm::vec3(-0.5f, -0.5f, -0.5f);
+				vertices[1] = glm::vec3(0.5f, -0.5f, -0.5f);
+				vertices[2] = glm::vec3(0.5f, -0.5f, 0.5f);
+				vertices[3] = glm::vec3(-0.5f, -0.5f, 0.5f);
+				vertices[4] = glm::vec3(-0.5f, 0.5f, 0.5f);
+				vertices[5] = glm::vec3(-0.5f, 0.5f, -0.5f);
+				vertices[6] = glm::vec3(0.5f, 0.5f, -0.5f);
+				vertices[7] = glm::vec3(0.5f, 0.5f, 0.5f);
+
+				indices =
+				{
+					//Look inside
+					//Bottom
+					0, 2, 1, 0, 3, 2,
+					//Top
+					5, 6, 7, 5, 7, 4,
+					//Right
+					7, 6, 1, 7, 1, 2,
+					//Left
+					4, 0, 5, 4, 3, 0,
+					//Back
+					5, 1, 6, 5, 0, 1,
+					//Front
+					4, 7, 2, 4, 2, 3,
+				};
+			}
+			std::shared_ptr<VertexArray> pVA =
+				std::make_shared<VertexArray>(vertices, indices, PrimitiveType::TRIANGLES);
+			pVA->addInstance();
+
+			std::shared_ptr<MaterialCube> pMatrialCube = std::make_shared<MaterialCube>();
+			pMatrialCube->setCubeTextures(vpTexture);
+			mpSkyBoxMesh = std::make_shared<Mesh>(pVA, pMatrialCube);
+			addMesh(mpSkyBoxMesh);
+		}
+
+		~SkyBoxScene() {}
+
+		virtual void uploadToDevice()
+		{
+			Scene::uploadToDevice();
+
+			mpSkyBoxShader = mmLabelToShader[mmMeshToLabel[mpSkyBoxMesh]];
+		}
+
+		virtual void draw()
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current scene has not been uploaded befor drawing");
+				return;
+			}
+
+			mpSkyBoxShader->useProgram();
+			mpSkyBoxMesh->draw(mpSkyBoxShader->getProgramID());
+		}
+	private:
+		std::shared_ptr<Mesh> mpSkyBoxMesh;
+		std::shared_ptr<ShaderProgram> mpSkyBoxShader;
+	};
+
+	class TextScene : public Scene
+	{
+	public:
+		TextScene()
+		{
+			std::string __currentPATH = __FILE__;
+			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+			ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene-Text.vert",
+										__currentPATH + "/Shaders/SPhoenixScene-Text.frag");
+
+			setCommonShaderProgram(defaultShader);
+
+			initGlyphSet(24);
+		}
+
+		~TextScene() {}
+
+		/*static const std::shared_ptr<TextScene> getpInstance()
+		{
+			static TextScene *rpTextScene = new TextScene();
+			static std::shared_ptr<TextScene> pTextScene(rpTextScene);
+			return pTextScene;
+		}*/
+
+		void reset()
+		{
+			Scene::reset();
+			mmCharToMesh.clear();
+			mmMeshToChar.clear();
+			mpMaterialText.reset();
+		}
+
+		void initGlyphSet(int frontSize)
+		{
+			reset();
+
+			mpMaterialText = std::make_shared<MaterialText>(frontSize);
+			if (!mpMaterialText->isValidText())
+				return;
+
+			for (size_t i = 0; i < TEXT_CHAR_NUM; i++)
+			{
+				char c = char(i);
+				glm::vec2 glyphSize = mpMaterialText->getGlyphSize(c);
+				float width = glyphSize.x, height = glyphSize.y;
+				std::vector<glm::vec3> vertices = 
+				{
+					{ 0.0f, 0.0f, -1.0f },
+					{ width, 0.0f, -1.0f },
+					{ width, height, -1.0f },
+
+					{ 0.0f, 0.0f, -1.0f },
+					{ width, height, -1.0f },
+					{ 0.0f, height, -1.0f }
+				};
+
+				glm::vec2 lb, rb, rt, lt;
+				mpMaterialText->getTexCoord(c, lb, rb, rt, lt);
+
+				std::vector<glm::vec2> texcoords = 
+				{
+					lb, rb, rt,
+					lb, rt, lt
+				};
+
+				std::shared_ptr<VertexArray> pVA =
+					std::make_shared<VertexArray>(vertices);
+				pVA->setTexCoords(texcoords);
+
+				std::shared_ptr<Mesh> pMesh =
+					std::make_shared<Mesh>(pVA,/* std::static_pointer_cast<Material>*/
+										   (mpMaterialText));
+
+				addMesh(pMesh);
+				mmCharToMesh[c] = pMesh;
+				mmMeshToChar[pMesh] = c;
+			}
+		}
+
+		//Draw the text and return the end advance point
+		glm::vec2 setText(std::string text, glm::vec2 originPt,
+				  float scale = 1.0f, glm::vec4 color = glm::vec4(1.0f))
+		{
+			if (mpMaterialText.use_count() == 0 ||
+				!mpMaterialText->isValidText())
+			{
+				SP_CERR("The text material is not valid");
+				return glm::vec2(0.0f);
+			}
+
+			//Clear previous instances of the char meshes
+			std::for_each(mmMeshToChar.begin(), mmMeshToChar.end(),
+						  [&](std::pair<const std::shared_ptr<Mesh>, char> &pair) 
+			{
+				pair.first->clearAllInstance();
+			});
+
+			//Set the color
+			mpMaterialText->setCharColor(color);
+
+			//Set the char mesh instance model matrix
+			glm::vec2 cOriginPt = originPt;
+			for (size_t i = 0; i < text.size(); i++)
+			{
+				char &c = text[i];
+
+				glm::vec2 bearing = mpMaterialText->getGlyphBearing(c);
+				glm::vec2 cSize = mpMaterialText->getGlyphSize(c);
+				GLuint advance = mpMaterialText->getGlyphAdvance(c);
+
+				std::shared_ptr<Mesh> pCharMesh = mmCharToMesh[c];
+				glm::mat4 charMMatrix(1.0f);
+				//Move and scale the original char bitmap
+				float tx = bearing.x * scale + cOriginPt.x;
+				float ty = -(cSize.y - bearing.y) * scale + cOriginPt.y;
+				charMMatrix[0][0] = scale;
+				charMMatrix[1][1] = scale;
+				charMMatrix[3][0] = tx;
+				charMMatrix[3][1] = ty;
+
+				pCharMesh->addInstance(charMMatrix);
+
+				advance *= scale;
+				cOriginPt.x += advance;
+			}
+
+			return cOriginPt;
+		}
+
+		virtual void uploadToDevice()
+		{
+			if (mpMaterialText.use_count() == 0 ||
+				!mpMaterialText->isValidText())
+			{
+				SP_CERR("The text material is not valid for uploadToDevice");
+				return;
+			}
+
+			Scene::uploadToDevice();
+		}
+
+		virtual void filterVisible(const glm::mat4 &projMatrix,
+								   const glm::mat4 &viewMatrix,
+								   float zNear, float zFar)
+		{
+			//Do nothing
+		}
+
+		virtual void draw()
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current TextScene has not been uploaded befor drawing");
+				return;
+			}
+
+			std::map<std::string, std::shared_ptr<ShaderProgram>>::iterator iter;
+			//Only one shader for the text scene
+			iter = mmLabelToShader.begin();
+			{
+				iter->second->useProgram();
+				GLuint programID = iter->second->getProgramID();
+
+				mpMaterialText->active(programID);
+
+				int uCharIDLoc = glGetUniformLocation(programID, "uCharID");
+
+				std::map<std::shared_ptr<Mesh>, char>::iterator iterMesh;
+
+				for(iterMesh = mmMeshToChar.begin(); 
+					iterMesh != mmMeshToChar.end();
+					iterMesh++)
+				{
+					if (iterMesh->first->getNumInstance() > 0)
+					{
+						glUniform1ui(uCharIDLoc, iterMesh->second);
+						iterMesh->first->drawOnlyInScene(programID);
+					}
+				}
+			}
+		}
+	private:
+		std::map<char, std::shared_ptr<Mesh>> mmCharToMesh;
+		std::map<std::shared_ptr<Mesh>, char> mmMeshToChar;
+		std::shared_ptr<MaterialText> mpMaterialText;
 	};
 	
 	//SceneColorID will copy the existed Scene and change the material of
@@ -541,62 +1007,62 @@ namespace SP
 
 		}
 
-		std::shared_ptr<Scene> pSkyBoxScene = std::make_shared<Scene>();
+		std::shared_ptr<Scene> pSkyBoxScene = std::make_shared<SkyBoxScene>(vpTexture);
 
-		std::string __currentPATH = __FILE__;
-		__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
-		ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene-SkyBox.vert",
-									__currentPATH + "/Shaders/SPhoenixScene-SkyBox.frag");
-		pSkyBoxScene->setCommonShaderProgram(defaultShader);
+		//std::string __currentPATH = __FILE__;
+		//__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
+		//ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene-SkyBox.vert",
+		//							__currentPATH + "/Shaders/SPhoenixScene-SkyBox.frag");
+		//pSkyBoxScene->setCommonShaderProgram(defaultShader);
 
-		std::vector<glm::vec3> vertices(8);
-		std::vector<GLuint> indices;
-		{
-			//Get the six points of a space box
-			//           5      6
-			//            *******   ^ y
-			//        4  *   7 **   | 
-			//          ******* *   |
-			//          *	  *	*    
-			//          *	  *	*   
-			//          *  0  * *1  
-			//          *	  **    
-			//          *******      ------->x
-			//           3     2
-			vertices[0] = glm::vec3(-0.5f, -0.5f, -0.5f);
-			vertices[1] = glm::vec3(0.5f, -0.5f, -0.5f);
-			vertices[2] = glm::vec3(0.5f, -0.5f, 0.5f);
-			vertices[3] = glm::vec3(-0.5f, -0.5f, 0.5f);
-			vertices[4] = glm::vec3(-0.5f, 0.5f, 0.5f);
-			vertices[5] = glm::vec3(-0.5f, 0.5f, -0.5f);
-			vertices[6] = glm::vec3(0.5f, 0.5f, -0.5f);
-			vertices[7] = glm::vec3(0.5f, 0.5f, 0.5f);
+		//std::vector<glm::vec3> vertices(8);
+		//std::vector<GLuint> indices;
+		//{
+		//	//Get the six points of a space box
+		//	//           5      6
+		//	//            *******   ^ y
+		//	//        4  *   7 **   | 
+		//	//          ******* *   |
+		//	//          *	  *	*    
+		//	//          *	  *	*   
+		//	//          *  0  * *1  
+		//	//          *	  **    
+		//	//          *******      ------->x
+		//	//           3     2
+		//	vertices[0] = glm::vec3(-0.5f, -0.5f, -0.5f);
+		//	vertices[1] = glm::vec3(0.5f, -0.5f, -0.5f);
+		//	vertices[2] = glm::vec3(0.5f, -0.5f, 0.5f);
+		//	vertices[3] = glm::vec3(-0.5f, -0.5f, 0.5f);
+		//	vertices[4] = glm::vec3(-0.5f, 0.5f, 0.5f);
+		//	vertices[5] = glm::vec3(-0.5f, 0.5f, -0.5f);
+		//	vertices[6] = glm::vec3(0.5f, 0.5f, -0.5f);
+		//	vertices[7] = glm::vec3(0.5f, 0.5f, 0.5f);
 
-			indices =
-			{
-				//Look inside
-				//Bottom
-				0, 2, 1, 0, 3, 2,
-				//Top
-				5, 6, 7, 5, 7, 4,
-				//Right
-				7, 6, 1, 7, 1, 2,
-				//Left
-				4, 0, 5, 4, 3, 0,
-				//Back
-				5, 1, 6, 5, 0, 1,
-				//Front
-				4, 7, 2, 4, 2, 3,
-			};
-		}
-		std::shared_ptr<VertexArray> pVA =
-			std::make_shared<VertexArray>(vertices, indices, PrimitiveType::TRIANGLES);
-		pVA->addInstance();
+		//	indices =
+		//	{
+		//		//Look inside
+		//		//Bottom
+		//		0, 2, 1, 0, 3, 2,
+		//		//Top
+		//		5, 6, 7, 5, 7, 4,
+		//		//Right
+		//		7, 6, 1, 7, 1, 2,
+		//		//Left
+		//		4, 0, 5, 4, 3, 0,
+		//		//Back
+		//		5, 1, 6, 5, 0, 1,
+		//		//Front
+		//		4, 7, 2, 4, 2, 3,
+		//	};
+		//}
+		//std::shared_ptr<VertexArray> pVA =
+		//	std::make_shared<VertexArray>(vertices, indices, PrimitiveType::TRIANGLES);
+		//pVA->addInstance();
 
-		std::shared_ptr<MaterialCube> pMatrialCube = std::make_shared<MaterialCube>();
-		pMatrialCube->setCubeTextures(vpTexture);
-		std::shared_ptr<Mesh> pSkyBoxMesh = std::make_shared<Mesh>(pVA, pMatrialCube);
-		pSkyBoxScene->addMesh(pSkyBoxMesh);
+		//std::shared_ptr<MaterialCube> pMatrialCube = std::make_shared<MaterialCube>();
+		//pMatrialCube->setCubeTextures(vpTexture);
+		//std::shared_ptr<Mesh> pSkyBoxMesh = std::make_shared<Mesh>(pVA, pMatrialCube);
+		//pSkyBoxScene->addMesh(pSkyBoxMesh);
 		return pSkyBoxScene;
 	}
 

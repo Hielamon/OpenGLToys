@@ -184,6 +184,9 @@ namespace SP
 			return mpvColor.use_count() != 0;
 		}
 
+		/**************************************************************************/
+		/*****************************Instance operation***************************/
+
 		//Add the instance to model matrix array, if this VertexArray has been uploaded,
 		//Then this function will also upload the new model matrix array
 		//Add the instance by the absolute way, meanwhile we set the relative model
@@ -270,24 +273,6 @@ namespace SP
 			}
 		}
 
-		//Transform all instance matrix with one T matrix
-		void transformAllInstances(const glm::mat4 &T)
-		{
-			for (size_t i = 0; i < mNumInstance; i++)
-			{
-				glm::mat4 &modelMatrix = (*mpvInstanceMMatrix)[i];
-				modelMatrix = T*modelMatrix;
-			}
-
-			if (mbUploaded)
-			{
-				glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::mat4)*mNumInstance,
-								&((*mpvInstanceMMatrix)[0]));
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-			}
-		}
-
 		//Get the absolute instance model matrix in instanceID
 		glm::mat4 getInstanceMMatrix(GLuint instanceID)
 		{
@@ -322,12 +307,39 @@ namespace SP
 			return result;
 		}
 
+		//Transform all instance matrix with one T matrix
+		void transformAllInstances(const glm::mat4 &T)
+		{
+			for (size_t i = 0; i < mNumInstance; i++)
+			{
+				glm::mat4 &modelMatrix = (*mpvInstanceMMatrix)[i];
+				modelMatrix = T*modelMatrix;
+			}
+
+			if (mbUploaded)
+			{
+				glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
+				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::mat4)*mNumInstance,
+								&((*mpvInstanceMMatrix)[0]));
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+			}
+		}
 		
 		//Get the number of instances
 		GLuint getNumInstance()
 		{
 			return mpvInstanceMMatrix->size();
 		}
+
+		void clearAllInstance()
+		{
+			(*mpvInstanceMMatrix).clear();
+			(*mpvRelInstanceMMatrix).clear();
+			mNumInstance = 0;
+		}
+
+		/*****************************Instance operation***************************/
+		/**************************************************************************/
 
 		BBox getTotalBBox()
 		{
@@ -403,10 +415,13 @@ namespace SP
 			//upload the model matrix of all instances
 			_uploadArrayBuffer(GL_ARRAY_BUFFER, mMMatrixVBO, mpvInstanceMMatrix);
 
-			_uploadArrayBuffer(GL_ELEMENT_ARRAY_BUFFER, mEBO, mpvIndice);
-
 			mbDrawElements = mpvIndice.use_count() == 0 ? false : true;
-			if (mbDrawElements) mNumDrawVertice = mpvIndice->size();
+
+			if (mbDrawElements)
+			{
+				_uploadArrayBuffer(GL_ELEMENT_ARRAY_BUFFER, mEBO, mpvIndice);
+				mNumDrawVertice = mpvIndice->size();
+			}
 
 			//if (mNumInstance > 1) std::cout << "big instaces = " << mNumInstance << std::endl;
 
@@ -521,9 +536,10 @@ namespace SP
 		void _uploadArrayBuffer(GLenum target, GLuint &buffer,
 								const std::shared_ptr<std::vector<T>> &pvData)
 		{
-			if (pvData.use_count() == 0) return;
-
 			if (!mbUploaded) glGenBuffers(1, &buffer);
+
+			if (pvData.use_count() == 0 ||
+				(*pvData).size() == 0) return;
 
 			std::vector<T> &vData = *pvData;
 			glBindBuffer(target, buffer);

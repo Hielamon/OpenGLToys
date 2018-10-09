@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "UICamera.h"
+#include "OmniCamera.h"
 
 namespace SP
 {
@@ -17,14 +18,19 @@ namespace SP
 			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEPTH_TEST);
 			glDepthFunc(GL_LEQUAL);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 			//Set up the UI Scene
-			mpUIScene = std::make_shared<Scene2D>();
+			mpUIScene = std::make_shared<TwoDScene>();
 			mpUIScene->uploadToDevice();
 
 			mpUICamera = std::make_shared<UICamera>(mWidth, mHeight, 0, 0);
 			mpUICamera->setup(mWidth, mHeight);
+
+			mpTextScene = std::make_shared<TextScene>();
+			mpTextScene->uploadToDevice();
 
 			//We set the default Camera(same size with window) in mvpCamera[0],
 			//The Scene will be transformed to fit the mvpCamera[0]
@@ -65,7 +71,7 @@ namespace SP
 			//Add camera border to the mpUIScene
 			int cx, cy, cw, ch;
 			pCamera->getCanvas(cx, cy, cw, ch);
-			addRectangle(cx, cy, cw, ch);
+			addRectangle(cx, cy, cw, ch, 1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		}
 
 		std::shared_ptr<Camera> getCamera(int index)
@@ -158,14 +164,19 @@ namespace SP
 				pDefaultCamera->getCanvas(cx_, cy_, cw_, ch_);
 
 				pCamera->setCanvas(cx_, cy_, cw_, ch_);
-				pCamera->setViewport(0, 0, cw_, ch_);
+				pCamera->setViewport(0, 0, mWidth, mHeight);
 
 				pDefaultCamera->setCanvas(cx, cy, cw, ch);
-				pDefaultCamera->setViewport(0, 0, cw, ch);
+				pDefaultCamera->setViewport(0, 0, mWidth, mHeight);
 
 				//swap the pointer in the mvpCamera
 				mvpCamera[index] = pDefaultCamera;
 				mvpCamera[mDefaultCameraIndex] = pCamera;
+
+				//swap the camera shape pointer in the mvpCameraShapeScene
+				std::shared_ptr<Scene> pCameraShapeScene = mvpCameraShapeScene[index];
+				mvpCameraShapeScene[index] = mvpCameraShapeScene[mDefaultCameraIndex];
+				mvpCameraShapeScene[mDefaultCameraIndex] = pCameraShapeScene;
 			}
 		}
 
@@ -243,10 +254,10 @@ namespace SP
 		void addRectangle(int x, int y, int width, int height, int border = 1,
 						  glm::vec4 color = glm::vec4(1.0f))
 		{
-			float wInv = 1.0f / mWidth, hInv = 1.0f / mHeight;
+			/*float wInv = 1.0f / mWidth, hInv = 1.0f / mHeight;
 			float w_ = 2.0f * width * wInv, h_ = 2.0f * height * hInv;
 			float x_ = 2.0f * x * wInv - 1.0f;
-			float y_ = 2.0f * y * hInv - 1.0f;
+			float y_ = 2.0f * y * hInv - 1.0f;*/
 
 			PrimitiveType pType = border > 0 ? PrimitiveType::LINES :
 				PrimitiveType::TRIANGLES;
@@ -254,10 +265,14 @@ namespace SP
 			std::vector<glm::vec3> vertices(4);
 			std::vector<GLuint> indices;
 			{
-				vertices[0] = glm::vec3(x_, y_, -1.0f);
+				/*vertices[0] = glm::vec3(x_, y_, -1.0f);
 				vertices[1] = glm::vec3(x_ + w_, y_, -1.0f);
 				vertices[2] = glm::vec3(x_ + w_, y_ + h_, -1.0f);
-				vertices[3] = glm::vec3(x_, y_ + h_, -1.0f);
+				vertices[3] = glm::vec3(x_, y_ + h_, -1.0f);*/
+				vertices[0] = glm::vec3(x, y, -1.0f);
+				vertices[1] = glm::vec3(x + width, y, -1.0f);
+				vertices[2] = glm::vec3(x + width, y + height, -1.0f);
+				vertices[3] = glm::vec3(x, y + height, -1.0f);
 
 				if (border > 0)
 				{
@@ -289,6 +304,17 @@ namespace SP
 			mpUIScene->addMesh(pMesh);
 		}
 
+		void showText()
+		{
+			mpUICamera->roughRenderScene(mpTextScene);
+		}
+
+		void setText(std::string text, glm::vec2 originPt,
+					 float scale = 1.0f, glm::vec4 color = glm::vec4(1.0f))
+		{
+			mpTextScene->setText(text, originPt, scale, color);
+		}
+
 		/********************************UI operation*******************************/
 		/**************************************************************************/
 
@@ -304,12 +330,17 @@ namespace SP
 			std::vector<float> vFPS;
 			int frameCount = 0, frameID = 0;
 			start = std::chrono::high_resolution_clock::now();
-			std::cout << std::endl;
+			std::stringstream ioStr;
 			while (!isShutdown())
 			{
 				start_ = std::chrono::high_resolution_clock::now();
 
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
 				runOnce();
+
+				std::string frameText = ioStr.str();
+				showText();
 
 				glfwPollEvents();
 				glfwSwapBuffers(mGLFWWinPtr);
@@ -324,8 +355,15 @@ namespace SP
 				{
 					float tpf = mFrameCostTime / frameCount;
 					float fps = frameCount * 1000.0 / mFrameCostTime;
-					std::cout << "\rframe rate = " << fps <<
-						"fps ; frame time = " << tpf << " ms/frame" << std::flush;
+
+					ioStr.str("");
+					ioStr << "frame rate = " << std::fixed << std::setprecision(2)
+						<<  fps << " fps ; frame time = " << tpf << " ms/frame";
+						
+
+					setText(ioStr.str(), glm::vec2(10.0f, 10.0f), 1.0f,
+							glm::vec4(1.0f, 1.0f, 1.0f, 0.6f));
+
 					frameCount = 0;
 					start = end;
 				}
@@ -336,7 +374,6 @@ namespace SP
 				//std::cout << "frameID = " << frameID << std::endl;
 				frameID++;
 			}
-			std::cout << std::endl;
 		}
 
 		virtual void runOnce()
@@ -356,11 +393,12 @@ namespace SP
 				}
 
 				if (mpSkyBoxScene.use_count() != 0) vpScene.push_back(mpSkyBoxScene);
-				mvpCamera[i]->renderOneFrame(vpScene);
+
+				mvpCamera[i]->renderSceneArray(vpScene);
 			}
 
 			if (mpUIScene->getNumMesh() > 0)
-				mpUICamera->renderOneFrame(mpUIScene);
+				mpUICamera->renderScene(mpUIScene);
 		}
 
 	protected:
@@ -368,7 +406,9 @@ namespace SP
 		std::shared_ptr<Scene> mpSkyBoxScene;
 
 		std::shared_ptr<Scene> mpUIScene;
-		std::shared_ptr<Camera> mpUICamera;
+		std::shared_ptr<UICamera> mpUICamera;
+
+		std::shared_ptr<TextScene> mpTextScene;
 
 		//The first element mvpCamera[0] is the default camera
 		//which has the same canvas size with the window, and must be

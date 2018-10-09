@@ -34,7 +34,8 @@ namespace SP
 			 const std::shared_ptr<Material> &pMaterial =
 			 std::make_shared<Material>(),
 			 const glm::mat4 &relMMatrix = glm::mat4(1.0f))
-			: mbUploaded(false), mRelMMatrix(relMMatrix)
+			: mbUploaded(false), mRelMMatrix(relMMatrix),
+			mbVisible(true), mbInFrustum(false)
 		{
 			reset(pVertexArray, pMaterial);
 
@@ -65,6 +66,9 @@ namespace SP
 			mbHasVertexColor = mpVertexArray->hasVertexColor();
 
 			if (mbUploaded) mpVertexArray->uploadToDevice();
+
+			//Update the variables related to the bounding box
+			updateBBox();
 		}
 
 		void setMaterial(const std::shared_ptr<Material> &pMaterial)
@@ -97,16 +101,16 @@ namespace SP
 			return mbHasVertexColor;
 		}
 
-		//Means to transform all instances of the mesh with T matrix
-		void transformMesh(const glm::mat4 &T)
-		{
-			mpVertexArray->transformAllInstances(T);
-		}
+		/**************************************************************************/
+		/*****************************Instance operation***************************/
 
 		void setInstanceMMatrix(const glm::mat4 &instanceMMatrix,
 								GLuint instanceID)
 		{
 			mpVertexArray->setInstanceMMatrix(instanceMMatrix, instanceID);
+
+			//Update the variables related to the bounding box
+			updateBBox();
 		}
 
 		glm::mat4 getInstanceMMatrix(GLuint instanceID)
@@ -119,6 +123,9 @@ namespace SP
 		{
 			mpVertexArray->setRelInstanceMMatrix(relInstanceMMatrix, mRelMMatrix,
 												 instanceID);
+
+			//Update the variables related to the bounding box
+			updateBBox();
 		}
 
 		glm::mat4 getRelInstanceMMatrix(GLuint instanceID)
@@ -137,6 +144,18 @@ namespace SP
 
 				mpVertexArray->setInstanceMMatrix(instanceMMatrix, i);
 			}
+
+			//Update the variables related to the bounding box
+			updateBBox();
+		}
+
+		//Means to transform all instances of the mesh with T matrix
+		void transformMesh(const glm::mat4 &T)
+		{
+			mpVertexArray->transformAllInstances(T);
+
+			//Update the variables related to the bounding box
+			updateBBox();
 		}
 
 		int getNumInstance()
@@ -144,9 +163,23 @@ namespace SP
 			return mpVertexArray->getNumInstance();
 		}
 
-		BBox getTotalBBox()
+		void clearAllInstance()
 		{
-			return mpVertexArray->getTotalBBox();
+			mpVertexArray->clearAllInstance();
+		}
+
+		/*****************************Instance operation***************************/
+		/**************************************************************************/
+
+
+		const BBox& getTotalBBox()
+		{
+			return mBBox;
+		}
+
+		const std::vector<glm::vec3> &getBBoxPoints()
+		{
+			return mvBBoxVertice;
 		}
 
 		GLuint getMeshID()
@@ -158,6 +191,31 @@ namespace SP
 		{
 			mpVertexArray->addInstance(instanceMMatrix);
 			//mpVertexArray->addRelInstance(instanceMMatrix, mRelMMatrix);
+
+			//Update the variables related to the bounding box
+			updateBBox();
+		}
+
+		//Access the visible variable
+		bool getVisible()
+		{
+			return mbVisible;
+		}
+
+		void setVisible(bool bVisible)
+		{
+			mbVisible = bVisible;
+		}
+
+		//Access the InFrustum variable
+		bool getInFrustum()
+		{
+			return mbInFrustum;
+		}
+
+		void setInFrustum(bool bInFrustum)
+		{
+			mbInFrustum = bInFrustum;
 		}
 
 		virtual std::string getShaderMacros()
@@ -186,6 +244,7 @@ namespace SP
 				SP_CERR("The current mesh has not been uploaded befor drawing");
 				return;
 			}
+
 			mpVertexArray->draw(programID);
 		}
 
@@ -208,7 +267,19 @@ namespace SP
 		//For the inherited classes of the mesh£¬
 		//They must set the material and the vertex array explicite in
 		//the constructor function
-		Mesh() : mbUploaded(false) {}
+		Mesh() : mbUploaded(false), mRelMMatrix(glm::mat4(1.0f)),
+			mbVisible(true), mbInFrustum(false) 
+		{
+			MeshGlobal::getInstance().totalMeshCount++;
+			mMeshID = MeshGlobal::getInstance().totalMeshCount;
+		}
+
+		void updateBBox()
+		{
+			mBBox = mpVertexArray->getTotalBBox();
+			mBBox.padding(BOUNDING_BOX_PADDING);
+			mvBBoxVertice = mBBox.getBBoxVertices();
+		}
 
 		//The mpMaterial must be assign to in the constructor
 		//or the inherited class' constructor
@@ -223,26 +294,14 @@ namespace SP
 
 		glm::mat4 mRelMMatrix;
 
+		BBox mBBox;
+		std::vector<glm::vec3> mvBBoxVertice;
+
+		//Indicate whether the mesh can be viewed in the current frustum
+		bool mbVisible;
+		//Indicate whether the mesh is totally included in the current frustum
+		bool mbInFrustum;
+
 		GLuint mMeshID;
-	};
-
-	class FasterMesh : public Mesh
-	{
-	public:
-		FasterMesh(const std::shared_ptr<VertexArray> &pVertexArray,
-			 const std::shared_ptr<Material> &pMaterial =
-			 std::make_shared<Material>()) : Mesh(pVertexArray, pMaterial) {}
-		
-		virtual void draw(const GLuint &programID)
-		{
-			if (!mbUploaded)
-			{
-				SP_CERR("The current mesh has not been uploaded befor drawing");
-				return;
-			}
-
-			mpMaterial->active(programID, mbHasTexCoord, mbHasVertexColor);
-			mpVertexArray->draw(programID);
-		}
 	};
 }

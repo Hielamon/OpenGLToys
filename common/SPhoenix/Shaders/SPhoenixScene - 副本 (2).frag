@@ -26,7 +26,7 @@ struct Material
 
 #if defined(AMBIENT_TEXTURE) && defined(HAVE_TEXCOORD)
 	sampler2DArray ambient_maps;
-#elif !defined(DIFFUSE_TEXTURE) || !defined(HAVE_TEXCOORD)
+#elif !defined(DIFFUSE_TEXTURE)
 	vec4 uAmbient;
 #endif
 
@@ -45,7 +45,6 @@ struct Material
 #endif
 
 	float uShininess;
-	float uShininessStrength;
 };
 
 uniform Material material;
@@ -59,84 +58,81 @@ in vec3 ViewPos;
 
 void main()
 {	
-	vec3 lightColor = vec3(1.0f, 1.0f, 1.0f);
-	vec3 result = vec3(0.0f, 0.0f, 0.0f);
-	float alpha	= 1.0f;
+	vec4 lightColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	vec4 result = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 #if defined(HAVE_NORMAL)
-	float ambientFactor = 0.2f;
+	float ambientStrength = 0.2f;
 
 	vec3 normal = normalize(Normal);
 	vec3 lightDir = normalize(ViewPos - FragPos);
 	//vec3 lightDir = normalize(light.position - FragPos);
-	float diffuseFactor = max(dot(normal, lightDir), 0.0f);
+	float diffuseStrength = max(dot(normal, lightDir), 0.0f);
 
 	//Blinn-Phong specular
 	vec3 viewDir = normalize(ViewPos - FragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
-	float specularFactor = pow(max(dot(halfwayDir, normal), 0.0f), /*32.0f*/material.uShininess);
-	specularFactor *= 0.0;
-	//specularFactor *= material.uShininessStrength;
+	float specularStrength = pow(max(dot(halfwayDir, normal), 0.0f), material.uShininess);
 #else
-	float ambientFactor = 0.2f;
-	float diffuseFactor = 0.8f;
-	float specularFactor = 0.0f;
+	float ambientStrength = 0.2f;
+	float diffuseStrength = 0.8f;
+	float specularStrength = 0.0f;
 #endif
 
-	vec3 diffuse = vec3(0.0f, 0.0f, 0.0f);
-	vec3 ambient = diffuse;
-	vec3 specular = vec3(0.0f, 0.0f, 0.0f);
+	vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	vec4 ambient = diffuse;
+	vec4 specular = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
 #if (defined(HAVE_TEXTURE) && defined(HAVE_TEXCOORD)) || !defined(HAVE_COLOR)
 
 #if defined(DIFFUSE_TEXTURE) && defined(HAVE_TEXCOORD)
-	diffuse = vec3(1.0f, 1.0f, 1.0f);
+	diffuse = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	ivec3 diffuse_size = textureSize(material.diffuse_maps, 0);
 	int diffuse_layers = diffuse_size.z;
 	for(int i = 0; i < diffuse_layers; i++)
 	{
-		diffuse *= vec3(texture(material.diffuse_maps, vec3(TexCoord, float(i))));
+		diffuse *= /*vec3*/(texture(material.diffuse_maps, vec3(TexCoord, float(i))));
 		//diffuse *= vec3(1.0f, 0.0f, 0.0f);
 	}
 	ambient = diffuse;
 #else
-	diffuse = vec3(material.uDiffuse);
+	diffuse = /*vec3*/(material.uDiffuse);
 #endif
 
 #if defined(AMBIENT_TEXTURE) && defined(HAVE_TEXCOORD)
-	ambient = vec3(1.0f, 1.0f, 1.0f);
+	ambient = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	ivec3 ambient_size = textureSize(material.ambient_maps, 0);
 	int ambient_layers = ambient_size.z;
 	for(int i = 0; i < ambient_layers; i++)
 	{
-		ambient *= vec3(texture(material.ambient_maps, vec3(TexCoord, float(i))));
+		ambient *= /*vec3*/(texture(material.ambient_maps, vec3(TexCoord, float(i))));
 	}
 #elif !defined(DIFFUSE_TEXTURE) || !defined(HAVE_TEXCOORD)
-	ambient = vec3(material.uAmbient);
+	ambient = /*vec3*/(material.uAmbient);
 #endif
 
 #if defined(SPECULAR_TEXTURE) && defined(HAVE_TEXCOORD)
-	specular = vec3(1.0f, 1.0f, 1.0f);
+	specular = /*vec3*/(1.0f, 1.0f, 1.0f, 1.0f);
 	ivec3 specular_size = textureSize(material.specular_maps, 0);
 	int specular_layers = specular_size.z;
 	for(int i = 0; i < specular_layers; i++)
 	{
-		specular *= vec3(texture(material.specular_maps, vec3(TexCoord, float(i))));
+		specular *= /*vec3*/(texture(material.specular_maps, vec3(TexCoord, float(i))));
 	}
 #else
-	specular = vec3(material.uSpecular);
+	specular = /*vec3*/(material.uSpecular);
 #endif
 
 #else
 //Use the vertex color
-	diffuse = vec3(VertexColor);
+	diffuse = /*vec3*/(VertexColor);
 	ambient = diffuse;
-	alpha = VertexColor.a;
 	//specular = diffuse;
 #endif
 
-	result = (ambientFactor * ambient + diffuseFactor * diffuse) * lightColor;
-	result += specularFactor * specular * lightColor;
+	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;
+	result += specularStrength * specular * lightColor;
 	//result = vec3(1.0f, 1.0f, 1.0f);
-	FragColor = vec4(result/*.z, result.y, result.x*/, alpha);
+	FragColor = result;
+	//FragColor = vec4(result/*.z, result.y, result.x*/, 1.0f);
 	MeshID = uMeshID;
 }

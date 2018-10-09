@@ -31,6 +31,12 @@
     <Filter Include="Header Files\SPhoenix\WindowClass">
       <UniqueIdentifier>{4717bd9e-ea4a-4401-ada5-862ddac89f5b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\SPhoenix\Material">
+      <UniqueIdentifier>{1305674d-365f-4028-a161-768b09d8c745}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\SPhoenix\Scene">
+      <UniqueIdentifier>{4a394d8d-9440-44b8-9a10-f48866dd625c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SphereRender.cpp">
@@ -56,11 +62,14 @@
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-2DGraphic.frag">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-Text.frag">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-Text.vert">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\common\SPhoenix\Scene.h">
-      <Filter>Header Files\SPhoenix</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\SPhoenix\Manipulator.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
@@ -71,9 +80,6 @@
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\VertexArray.h">
-      <Filter>Header Files\SPhoenix</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\SPhoenix\Material.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\BBox.h">
@@ -90,9 +96,6 @@
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\Mesh.h">
       <Filter>Header Files\SPhoenix\Mesh</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\SPhoenix\SceneAssimpLoader.h">
-      <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\ShaderProgram.h">
       <Filter>Header Files\SPhoenix</Filter>
@@ -117,6 +120,21 @@
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\MonitorWindow.h">
       <Filter>Header Files\SPhoenix\WindowClass</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\MultiThreadWindow.h">
+      <Filter>Header Files\SPhoenix\WindowClass</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Material.h">
+      <Filter>Header Files\SPhoenix\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Scene.h">
+      <Filter>Header Files\SPhoenix\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\SceneAssimpLoader.h">
+      <Filter>Header Files\SPhoenix\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\OmniCamera.h">
+      <Filter>Header Files\SPhoenix\Camera</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

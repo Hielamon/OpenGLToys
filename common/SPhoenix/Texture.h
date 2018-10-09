@@ -69,11 +69,14 @@ namespace SP
 		{
 			unsigned char * data = SOIL_load_image(imagePath.c_str(),
 												   &mWidth, &mHeight,
-												   &mChannels, mForceChannels/*SOIL_LOAD_AUTO*/);
+												   &mChannels, /*mForceChannels*/SOIL_LOAD_AUTO);
+			
+			
 			if (!data)
 			{
 				SP_CERR("Failed to Open Texture File: " + imagePath);
 				mbValid = false;
+				return;
 			}
 
 			std::shared_ptr<unsigned char> pData(data, SOILImageDeleter);
@@ -101,6 +104,11 @@ namespace SP
 		int getHeight()
 		{
 			return mHeight;
+		}
+
+		int getChannel()
+		{
+			return mChannels;
 		}
 
 		bool IsValid()

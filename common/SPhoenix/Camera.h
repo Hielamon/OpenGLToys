@@ -14,8 +14,7 @@ namespace SP
 	public:
 		Camera(int width = 0, int height = 0, int offsetX = 0, int offsetY = 0)
 			: mCWidth(width), mCHeight(height), mCOffsetX(offsetX),
-			 mCOffsetY(offsetY), mbSetup(false), mViewX(0), mViewY(0),
-			 mViewWidth(width), mViewHeight(height), mbClearPerFrame(true)
+			 mCOffsetY(offsetY), mbSetup(false), mbClearPerFrame(true)
 		{
 			setProjectionMatrix();
 			setViewMatrix();
@@ -154,7 +153,6 @@ namespace SP
 			center = mCenter;
 			up = mUp;
 		}
-		
 
 		JoyStick3D &getJoyStick3D()
 		{
@@ -200,7 +198,6 @@ namespace SP
 			mJoyStick3D.executeTimeRotation(mEye, mCenter, mUp, milisecond);
 			setViewMatrix(mEye, mCenter, mUp);
 		}
-
 
 		void setCameraShape(const std::shared_ptr<Mesh> &pCameraShape)
 		{
@@ -339,7 +336,13 @@ namespace SP
 			}
 
 			if (mbSetup) return;
-			mbSetup = true;
+
+			mViewX = 0;
+			mViewY = 0;
+			mViewWidth = winWidth;
+			mViewHeight = winHeight;
+			mBWidth = winWidth;
+			mBHeight = winHeight;
 
 			//Using uniform buffers
 			glGenBuffers(1, &mViewUBO);
@@ -351,20 +354,22 @@ namespace SP
 			_uploadViewMatrix();
 
 			//Create MultiSample FBO
-			_createMultiSampleFBO(winWidth, winWidth);
+			_createMultiSampleFBO();
 
 			//Create RAW FBO
-			_createNormalFBO(winWidth, winWidth);
+			_createNormalFBO();
+
+			mbSetup = true;
 		}
 
 		//Can be only called from inherited class of the GLWindowBase class
-		virtual void renderOneFrame(const std::shared_ptr<Scene> &pScene)
+		virtual void renderScene(const std::shared_ptr<Scene> &pScene)
 		{
-			renderOneFrame(std::vector<std::shared_ptr<Scene>>(1, pScene));
+			renderSceneArray(std::vector<std::shared_ptr<Scene>>(1, pScene));
 		}
 
 		//Can be only called from inherited class of the GLWindowBase class
-		virtual void renderOneFrame(const std::vector<std::shared_ptr<Scene>>
+		virtual void renderSceneArray(const std::vector<std::shared_ptr<Scene>>
 									&vpScene)
 		{
 			if (!mbSetup)
@@ -386,44 +391,70 @@ namespace SP
 			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
 
 			if (mbClearPerFrame)
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 			//draw the scene
 			for (size_t i = 0; i < vpScene.size(); i++)
 			{
-				drawScene(vpScene[i]);
+				const std::shared_ptr<Scene> &pScene = vpScene[i];
+				if (pScene.use_count() == 0) continue;
+				pScene->filterVisible(mProjMatrix, mViewMatrix, mZNear, mZFar);
+				pScene->draw();
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			//Copy the color buffer from mMSFBO to mFBO
-			/*glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFBO);
 			glReadBuffer(GL_COLOR_ATTACHMENT0);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
-			glBlitFramebuffer(0, 0, mCWidth, mCHeight,
-							  0, 0, mCWidth, mCHeight,
-							  GL_COLOR_BUFFER_BIT, GL_NEAREST);*/
+			glBlitFramebuffer(0, 0, mBWidth, mBHeight,
+							  0, 0, mBWidth, mBHeight,
+							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
+							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
 			//Copy the color buffer from mFBO to default FBO
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, mFBO);
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 			glReadBuffer(GL_COLOR_ATTACHMENT0);
 			glDrawBuffer(GL_BACK_LEFT);
 
-			glBlitFramebuffer(0, 0, mCWidth, mCHeight, mCOffsetX, mCOffsetY,
+			glBlitFramebuffer(0, 0, mBWidth, mBHeight, mCOffsetX, mCOffsetY,
 							  mCWidth + mCOffsetX, mCHeight + mCOffsetY,
 							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
 		}
 
-	protected:
-		virtual void drawScene(const std::shared_ptr<Scene> &pScene)
+		virtual void readColorBuffer(std::shared_ptr<unsigned char> &pData,
+									 int &width, int &height, int &channel)
 		{
-			if (pScene.use_count() == 0) return;
-			pScene->draw();
+			width = mBWidth;
+			height = mBHeight;
+			channel = 3;
+
+			unsigned char *data = new unsigned char[width * height * channel];
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, mFBO);
+			glReadBuffer(GL_COLOR_ATTACHMENT0);
+			glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+			unsigned char *dataFlip = new unsigned char[width * height * channel];
+
+			int rowWidth = width * channel;
+			for (size_t i = 0, c1 = 0, c2 = rowWidth*(height - 1); 
+				 i < height; i++, c1 += rowWidth, c2 -= rowWidth)
+			{
+				memcpy(dataFlip + c1, data + c2, rowWidth);
+			}
+
+			std::shared_ptr<unsigned char> pData_(dataFlip, [](unsigned char *d)
+			{
+				delete[] d;
+			});
+
+			pData = pData_;
 		}
 
 	protected:
@@ -462,15 +493,19 @@ namespace SP
 		//the raw FBO mFBO acting as the temporary FBO
 		GLuint mMSFBO, mFBO;
 
+		//Samples for Super sample Anti-aliasing
+		static const int mNumSamples = 8;
+
+		//The buffer width and buffer height
+		int mBWidth, mBHeight;
+
 		//The buffers for the mMSFBO and mFBO
 		//The mColorTexture is not used currently
 		GLuint mMSColorTexture, mColorTexture;
 		GLuint mMSMeshIDTexture, mMeshIDTexture;
 		GLuint mMSDepthStencilRBO, mDepthStencilRBO;
 
-	private:
-		//Samples for Super sample Anti-aliasing
-		static const int mNumSamples = 8;
+	//private:
 
 		////////////////////////////////////////////////////////
 		//Some variables for manipulate the camera
@@ -480,10 +515,10 @@ namespace SP
 		bool mbClearPerFrame;
 
 	private:
-		void _createMultiSampleFBO(int winWidth, int winHeight)
+		void _createMultiSampleFBO()
 		{
-			int bufferW = winWidth;
-			int bufferH = winHeight;
+			int bufferW = mBWidth;
+			int bufferH = mBHeight;
 
 			glGenFramebuffers(1, &mMSFBO);
 			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
@@ -530,10 +565,10 @@ namespace SP
 		}
 
 		//Create the FBO without the SSAA technique
-		void _createNormalFBO(int winWidth, int winHeight)
+		void _createNormalFBO()
 		{
-			int bufferW = winWidth;
-			int bufferH = winHeight;
+			int bufferW = mBWidth;
+			int bufferH = mBHeight;
 
 			glGenFramebuffers(1, &mFBO);
 			glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
@@ -558,12 +593,12 @@ namespace SP
 			glDrawBuffers(2, buffers);
 
 			//Depth and stencil renderbuffer
-			/*glGenRenderbuffers(1, &mDepthStencilRBO);
+			glGenRenderbuffers(1, &mDepthStencilRBO);
 			glBindRenderbuffer(GL_RENDERBUFFER, mDepthStencilRBO);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, mwidth, mheight);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, bufferW, bufferH);
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
 			GL_RENDERBUFFER, mDepthStencilRBO);
-			glBindRenderbuffer(GL_RENDERBUFFER, 0);*/
+			glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
 				GL_FRAMEBUFFER_COMPLETE)
@@ -588,132 +623,6 @@ namespace SP
 			glBindBuffer(GL_UNIFORM_BUFFER, mViewUBO);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, 64, glm::value_ptr(mProjMatrix));
 			glBindBuffer(GL_UNIFORM_BUFFER, 0);
-		}
-	};
-
-	//Add the camera border for distinction between the mini camera and major camera
-	class CameraMini : public Camera
-	{
-	public:
-		CameraMini(int width = 0, int height = 0, int offsetX = 0, int offsetY = 0)
-			: Camera(width, height, offsetX, offsetY)
-		{
-			//Setup the border scene
-			{
-				mpBorderScene = std::make_shared<Scene>();
-				std::string __currentPATH = __FILE__;
-				__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
-				ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene-2DGraphic.vert",
-											__currentPATH + "/Shaders/SPhoenixScene-2DGraphic.frag");
-				mpBorderScene->setCommonShaderProgram(defaultShader);
-
-				std::vector<glm::vec3> vertices(4);
-				std::vector<GLuint> indices;
-				{
-					vertices[0] = glm::vec3(1.0f, 1.0f, -1.0f);
-					vertices[1] = glm::vec3(1.0f, -1.0f, -1.0f);
-					vertices[2] = glm::vec3(-1.0f, -1.0f, -1.0f);
-					vertices[3] = glm::vec3(-1.0f, 1.0f, -1.0f);
-
-					indices =
-					{
-						0, 1, 
-						1, 2,
-						2, 3,
-						3, 0
-					};
-				}
-				std::shared_ptr<VertexArray> pVA = 
-					std::make_shared<VertexArray>(vertices, indices, PrimitiveType::LINES);
-				pVA->addInstance();
-
-				std::shared_ptr<Material> pMatrial = std::make_shared<Material>();
-				std::shared_ptr<Mesh> pBorderMesh = std::make_shared<Mesh>(pVA, pMatrial);
-				mpBorderScene->addMesh(pBorderMesh);
-			}
-
-			//Setup the camera shape scene
-			{
-				mpCameraShapeScene = std::make_shared<Scene>();
-
-				std::string __currentPATH = __FILE__;
-				__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
-				ShaderProgram defaultShader(__currentPATH + "/Shaders/SPhoenixScene.vert",
-											__currentPATH + "/Shaders/SPhoenixScene.frag");
-				mpCameraShapeScene->setCommonShaderProgram(defaultShader);
-
-				std::vector<glm::vec3> vertices(5);
-				std::vector<GLuint> indices;
-				{
-					float tanHalfFovy = std::tan(mFovy*0.5);
-					float tanHalfFovx = tanHalfFovy * mAspect;
-
-					float shift = 0.0f/*-mZNear*/;
-					vertices[0] = glm::vec3(0.0f, 0.0f, shift);
-					vertices[1] = glm::vec3(tanHalfFovx, tanHalfFovy, -1.0f);
-					vertices[2] = glm::vec3(tanHalfFovx, -tanHalfFovy, -1.0f);
-					vertices[3] = glm::vec3(-tanHalfFovx, -tanHalfFovy, -1.0f);
-					vertices[4] = glm::vec3(-tanHalfFovx, tanHalfFovy, -1.0f);
-
-					indices =
-					{
-						0, 1,
-						0, 2,
-						0, 3,
-						0, 4,
-						1, 2,
-						2, 3,
-						3, 4,
-						4, 1
-					};
-				}
-
-				std::shared_ptr<VertexArray> pVA =
-					std::make_shared<VertexArray>(vertices, indices, PrimitiveType::LINES);
-
-				glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
-				pVA->addInstance(scale);
-
-				glm::vec4 cameraColor(1.0f, 1.0f, 0.0f, 1.0f);
-				std::shared_ptr<Material> pMatrial = std::make_shared<Material>(cameraColor);
-				std::shared_ptr<Mesh> pCameraShape = std::make_shared<Mesh>(pVA, pMatrial);
-				setCameraShape(pCameraShape);
-				mpCameraShapeScene->addMesh(mpCameraShape);
-			}
-
-		}
-
-		virtual std::shared_ptr<Scene> getCameraShapeScene()
-		{
-			return mpCameraShapeScene;
-		}
-
-		virtual void setup(int winWidth, int winHeight)
-		{
-			Camera::setup(winWidth, winHeight);
-			mpBorderScene->uploadToDevice();
-			mpCameraShapeScene->uploadToDevice();
-		}
-
-		virtual void setViewMatrix(glm::vec3 &eye = glm::vec3(0.0f, 0.0f, 0.0f),
-								   glm::vec3 &center = glm::vec3(0.0f, 0.0f, -1.0f),
-								   glm::vec3 &up = glm::vec3(0.0f, 1.0f, 0.0f))
-		{
-			Camera::setViewMatrix(eye, center, up);
-			
-			//update the camera shape model matrix
-			/*glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
-			mpCameraShape->setInstanceMMatrix(glm::inverse(mViewMatrix) * scale, 0);*/
-		}
-
-	protected:
-		std::shared_ptr<Scene> mpBorderScene;
-		std::shared_ptr<Scene> mpCameraShapeScene;
-
-		virtual void drawScene(const std::shared_ptr<Scene> &pScene)
-		{
-			Camera::drawScene(pScene);
-			mpBorderScene->draw();
 		}
 	};
 }

@@ -157,6 +157,8 @@
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-2DGraphic.vert" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-SkyBox.frag" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-SkyBox.vert" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-Text.frag" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-Text.vert" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.frag" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene.vert" />
   </ItemGroup>
@@ -167,6 +169,8 @@
     <ClInclude Include="..\common\SPhoenix\AxisMesh.h" />
     <ClInclude Include="..\common\SPhoenix\BBoxMesh.h" />
     <ClInclude Include="..\common\SPhoenix\JoyStick.h" />
+    <ClInclude Include="..\common\SPhoenix\MultiThreadWindow.h" />
+    <ClInclude Include="..\common\SPhoenix\OmniCamera.h" />
     <ClInclude Include="..\common\SPhoenix\Sphere.h" />
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />
     <ClInclude Include="..\common\SPhoenix\ManipulatorBase.h" />

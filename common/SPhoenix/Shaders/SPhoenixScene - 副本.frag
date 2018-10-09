@@ -26,7 +26,7 @@ struct Material
 
 #if defined(AMBIENT_TEXTURE) && defined(HAVE_TEXCOORD)
 	sampler2DArray ambient_maps;
-#elif !defined(DIFFUSE_TEXTURE) || !defined(HAVE_TEXCOORD)
+#elif !defined(DIFFUSE_TEXTURE)
 	vec4 uAmbient;
 #endif
 
@@ -45,7 +45,6 @@ struct Material
 #endif
 
 	float uShininess;
-	float uShininessStrength;
 };
 
 uniform Material material;
@@ -61,25 +60,22 @@ void main()
 {	
 	vec3 lightColor = vec3(1.0f, 1.0f, 1.0f);
 	vec3 result = vec3(0.0f, 0.0f, 0.0f);
-	float alpha	= 1.0f;
 #if defined(HAVE_NORMAL)
-	float ambientFactor = 0.2f;
+	float ambientStrength = 0.2f;
 
 	vec3 normal = normalize(Normal);
 	vec3 lightDir = normalize(ViewPos - FragPos);
 	//vec3 lightDir = normalize(light.position - FragPos);
-	float diffuseFactor = max(dot(normal, lightDir), 0.0f);
+	float diffuseStrength = max(dot(normal, lightDir), 0.0f);
 
 	//Blinn-Phong specular
 	vec3 viewDir = normalize(ViewPos - FragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
-	float specularFactor = pow(max(dot(halfwayDir, normal), 0.0f), /*32.0f*/material.uShininess);
-	specularFactor *= 0.0;
-	//specularFactor *= material.uShininessStrength;
+	float specularStrength = pow(max(dot(halfwayDir, normal), 0.0f), material.uShininess);
 #else
-	float ambientFactor = 0.2f;
-	float diffuseFactor = 0.8f;
-	float specularFactor = 0.0f;
+	float ambientStrength = 0.2f;
+	float diffuseStrength = 0.8f;
+	float specularStrength = 0.0f;
 #endif
 
 	vec3 diffuse = vec3(0.0f, 0.0f, 0.0f);
@@ -130,13 +126,12 @@ void main()
 //Use the vertex color
 	diffuse = vec3(VertexColor);
 	ambient = diffuse;
-	alpha = VertexColor.a;
 	//specular = diffuse;
 #endif
 
-	result = (ambientFactor * ambient + diffuseFactor * diffuse) * lightColor;
-	result += specularFactor * specular * lightColor;
+	result = (ambientStrength * ambient + diffuseStrength * diffuse) * lightColor;
+	result += specularStrength * specular * lightColor;
 	//result = vec3(1.0f, 1.0f, 1.0f);
-	FragColor = vec4(result/*.z, result.y, result.x*/, alpha);
+	FragColor = vec4(result/*.z, result.y, result.x*/, 1.0f);
 	MeshID = uMeshID;
 }
