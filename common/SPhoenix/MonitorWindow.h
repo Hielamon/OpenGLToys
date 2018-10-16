@@ -142,9 +142,9 @@ namespace SP
 		{
 			for (size_t i = 0; i < vpCamera.size(); i++)
 			{
-				int cx, cy, cw, ch;
-				vpCamera[i]->getCanvas(cx, cy, cw, ch);
-				vpCamera[i]->setViewport(0, 0, cw, ch);
+				/*int cx, cy, cw, ch;
+				vpCamera[i]->getCanvas(cx, cy, cw, ch);*/
+				vpCamera[i]->setViewport(0, 0, mWidth, mHeight);
 			}
 		}
 
@@ -339,7 +339,7 @@ namespace SP
 
 				runOnce();
 
-				std::string frameText = ioStr.str();
+				//std::string frameText = ioStr.str();
 				showText();
 
 				glfwPollEvents();
@@ -361,8 +361,8 @@ namespace SP
 						<<  fps << " fps ; frame time = " << tpf << " ms/frame";
 						
 
-					setText(ioStr.str(), glm::vec2(10.0f, 10.0f), 1.0f,
-							glm::vec4(1.0f, 1.0f, 1.0f, 0.6f));
+					setText(ioStr.str(), glm::vec2(10.0f, 10.0f), 0.5f,
+							glm::vec4(1.0f, 1.0f, 1.0f, 0.7f));
 
 					frameCount = 0;
 					start = end;

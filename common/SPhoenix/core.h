@@ -9,6 +9,17 @@
 
 namespace SP
 {
+	class SPConfigure
+	{
+	public:
+
+	private:
+		SPConfigure()
+		{
+
+		}
+	};
+
 	class GlfwConfigure
 	{
 	public:
@@ -17,8 +28,13 @@ namespace SP
 			static GlfwConfigure glfwConf;
 		}
 
-	private:
+		~GlfwConfigure()
+		{
+			SP_LOG("Terminate the glfw library");
+			glfwTerminate();
+		}
 
+	private:
 		GlfwConfigure()
 		{
 			if (!glfwInit())
@@ -33,13 +49,10 @@ namespace SP
 
 			//atexit(glfwTerminate);
 		}
-
-		~GlfwConfigure()
-		{
-			SP_LOG("Terminate the glfw library");
-			glfwTerminate();
-		}
+		
 	};
+
+	
 
 	//OpenGL window base
 	class GLWindowBase

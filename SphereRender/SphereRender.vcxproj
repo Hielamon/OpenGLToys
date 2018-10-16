@@ -169,7 +169,6 @@
     <ClInclude Include="..\common\SPhoenix\AxisMesh.h" />
     <ClInclude Include="..\common\SPhoenix\BBoxMesh.h" />
     <ClInclude Include="..\common\SPhoenix\JoyStick.h" />
-    <ClInclude Include="..\common\SPhoenix\MultiThreadWindow.h" />
     <ClInclude Include="..\common\SPhoenix\OmniCamera.h" />
     <ClInclude Include="..\common\SPhoenix\Sphere.h" />
     <ClInclude Include="..\common\SPhoenix\Manipulator.h" />

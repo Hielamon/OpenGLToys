@@ -74,8 +74,8 @@ void main()
 	vec3 viewDir = normalize(ViewPos - FragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
 	float specularFactor = pow(max(dot(halfwayDir, normal), 0.0f), /*32.0f*/material.uShininess);
-	specularFactor *= 0.0;
-	//specularFactor *= material.uShininessStrength;
+	//specularFactor *= 0.0;
+	specularFactor *= material.uShininessStrength;
 #else
 	float ambientFactor = 0.2f;
 	float diffuseFactor = 0.8f;

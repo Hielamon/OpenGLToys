@@ -121,9 +121,6 @@
     <ClInclude Include="..\common\SPhoenix\MonitorWindow.h">
       <Filter>Header Files\SPhoenix\WindowClass</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\SPhoenix\MultiThreadWindow.h">
-      <Filter>Header Files\SPhoenix\WindowClass</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\SPhoenix\Material.h">
       <Filter>Header Files\SPhoenix\Material</Filter>
     </ClInclude>

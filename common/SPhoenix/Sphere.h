@@ -173,9 +173,9 @@ namespace SP
 					glm::vec3 midVert01 = 0.5f*(vVertice[indice0] + vVertice[indice1]);
 					glm::vec3 midVert12 = 0.5f*(vVertice[indice1] + vVertice[indice2]);
 					glm::vec3 midVert20 = 0.5f*(vVertice[indice2] + vVertice[indice0]);
-					midVert01 = glm::normalize(midVert01)*radius;
+					/*midVert01 = glm::normalize(midVert01)*radius;
 					midVert12 = glm::normalize(midVert12)*radius;
-					midVert20 = glm::normalize(midVert20)*radius;
+					midVert20 = glm::normalize(midVert20)*radius;*/
 
 					GLuint indice01 = vVertice.size();
 					vVertice.push_back(midVert01);
@@ -197,10 +197,22 @@ namespace SP
 				vIndiceTmp = vIndice;
 			}
 
+			std::vector<glm::vec4> vColor;
+			for (size_t i = 0; i < vVertice.size(); i++)
+			{
+				glm::vec3 &vert = vVertice[i];
+
+				glm::vec3 color = 0.5f * (glm::normalize(vert) + glm::vec3(1.0f));
+				//glm::vec3 color =  vert;
+				vColor.push_back(glm::vec4(color, 1.0f));
+				vert = glm::normalize(vert) * radius;
+			}
+
 			std::shared_ptr<VertexArray> pVertexArray = std::make_shared<VertexArray>(
 				vVertice, vIndice, TRIANGLES);
 			pVertexArray->setNormals(vVertice);
-			//pVertexArray->setColors(vColor);
+			
+			pVertexArray->setColors(vColor);
 
 			std::shared_ptr<Material> pMaterial = std::make_shared<Material>(
 				glm::vec4(color, 1.0f), glm::vec4(0.0f));
@@ -208,11 +220,19 @@ namespace SP
 			setMaterial(pMaterial);
 			setVertexArray(pVertexArray);
 			addInstance();
+
+			mNumFace = vIndice.size() / 3;
+			mNumVertice = vVertice.size();
 		}
 
 		int getNumVertice()
 		{
 			return mNumVertice;
+		}
+
+		int getNumFace()
+		{
+			return mNumFace;
 		}
 
 	private:
@@ -232,5 +252,601 @@ namespace SP
 			mpVertexArray->draw(programID);
 			glPolygonMode(GL_FRONT_AND_BACK, rastMode);
 		}*/
+	};
+
+	class UVSphere : public Mesh
+	{
+	public:
+		UVSphere(float radius, glm::vec3 color, int subdivison = 0)
+		{
+			int numLongitude = 1 << (subdivison + 2);
+			int numLatitude = (1 << (subdivison + 1)) - 1;
+
+			int numVertice = 2 + numLatitude * numLongitude;
+			int numFace = numLatitude * numLongitude * 2;
+
+			std::vector<glm::vec3> vVertice(numVertice);
+			std::vector<GLuint> vIndice(numFace*3);
+			{
+				vVertice[0] = { 0.0f,  radius, 0.0f };
+				int numInterval = 1 << subdivison;
+				float angleInterval = glm::half_pi<float>() /  numInterval;
+
+				//Add the first row triangles
+				{
+					float fai = angleInterval;
+					float y = cos(fai) * radius;
+					float xz = sin(fai) * radius;
+					vVertice[1] = { xz, y, 0 };
+					int vertIdx = 2, indiceIdx = 0;
+
+					for (int j = 1; j < numLongitude; j++)
+					{
+						float theta = j * angleInterval;
+						float x = cos(theta) * xz;
+						float z = -sin(theta) * xz;
+						vVertice[vertIdx] = { x, y, z };
+						vIndice[indiceIdx] = vertIdx;
+						vIndice[indiceIdx + 1] = 0;
+						vIndice[indiceIdx + 2] = vertIdx - 1;
+
+						vertIdx++;
+						indiceIdx += 3;
+					}
+
+					vIndice[indiceIdx] = 1;
+					vIndice[indiceIdx + 1] = 0;
+					vIndice[indiceIdx + 2] = vertIdx - 1;
+				}
+
+				//Add the middle rows triangles
+				{
+					int vertIdx = numLongitude + 1;
+					int indiceIdx = numLongitude * 3;
+
+					for (int i = 2; i <= numLatitude; i++)
+					{
+						float fai = i * angleInterval;
+						float y = cos(fai) * radius;
+						float xz = sin(fai) * radius;
+						vVertice[vertIdx] = { xz, y, 0 };
+						int vertX0Idx = vertIdx;
+
+						vertIdx++;
+
+						for (int j = 1; j < numLongitude; j++)
+						{
+							float theta = j * angleInterval;
+							float x = cos(theta) * xz;
+							float z = -sin(theta) * xz;
+							vVertice[vertIdx] = { x, y, z };
+
+							vIndice[indiceIdx] = vertIdx;
+							vIndice[indiceIdx + 1] = vertIdx - numLongitude - 1;
+							vIndice[indiceIdx + 2] = vertIdx - 1;
+							vIndice[indiceIdx + 3] = vertIdx;
+							vIndice[indiceIdx + 4] = vertIdx - numLongitude;
+							vIndice[indiceIdx + 5] = vertIdx - numLongitude - 1;
+
+							vertIdx++;
+							indiceIdx += 6;
+						}
+
+						vIndice[indiceIdx] = vertX0Idx;
+						vIndice[indiceIdx + 1] = vertX0Idx - 1;
+						vIndice[indiceIdx + 2] = vertIdx - 1;
+						vIndice[indiceIdx + 3] = vertX0Idx;
+						vIndice[indiceIdx + 4] = vertX0Idx - numLongitude;
+						vIndice[indiceIdx + 5] = vertX0Idx - 1;
+
+						indiceIdx += 6;
+					}
+				}
+
+				vVertice[numVertice - 1] = { 0.0f,  -radius, 0.0f };
+				//Add the last row triangles
+				{
+					int vertIdx = numVertice - numLongitude;
+					int indiceIdx = (numFace - numLongitude) * 3;
+
+					for (int j = 1; j < numLongitude; j++)
+					{
+						vIndice[indiceIdx] = vertIdx;
+						vIndice[indiceIdx + 1] = vertIdx - 1;
+						vIndice[indiceIdx + 2] = numVertice - 1;
+
+						vertIdx++;
+						indiceIdx += 3;
+					}
+
+					vIndice[indiceIdx] = numVertice - numLongitude - 1;
+					vIndice[indiceIdx + 1] = numVertice - 2;
+					vIndice[indiceIdx + 2] = numVertice - 1;
+				}
+
+			}
+			
+
+			std::shared_ptr<VertexArray> pVertexArray = std::make_shared<VertexArray>(
+				vVertice, vIndice, PrimitiveType::TRIANGLES);
+			pVertexArray->setNormals(vVertice);
+			std::vector<glm::vec4> vColor;
+			std::for_each(vVertice.begin(), vVertice.end(), [&](glm::vec3 &vert)
+			{
+				glm::vec3 color = 0.5f * (vert + glm::vec3(1.0f));
+				//glm::vec3 color =  vert;
+				vColor.push_back(glm::vec4(color, 1.0f));
+			});
+			pVertexArray->setColors(vColor);
+
+			std::shared_ptr<Material> pMaterial = std::make_shared<Material>(
+				glm::vec4(color, 1.0f), glm::vec4(0.0f));
+
+			setMaterial(pMaterial);
+			setVertexArray(pVertexArray);
+			addInstance();
+
+			mNumFace = vIndice.size() / 3;
+			mNumVertice = vVertice.size();
+		}
+
+		int getNumVertice()
+		{
+			return mNumVertice;
+		}
+
+		int getNumFace()
+		{
+			return mNumFace;
+		}
+
+	private:
+		int mNumFace;
+		int mNumVertice;
+	};
+
+	class CubeSphere : public Mesh
+	{
+	public:
+		CubeSphere(float radius, glm::vec3 color, int subdivison = 0)
+		{
+			//icosahedron parameters a, b for the rectangle height and width
+			float a =  2.0f * std::sqrtf(3.0f) * radius / 3.0f;
+			float a_2 = a * 0.5f;
+			std::vector<glm::vec3> vCubeVertice =
+			{
+				//up rectangle
+				{ a_2, a_2, a_2 },
+				{ a_2, a_2, -a_2 },
+				{ -a_2, a_2, -a_2 },
+				{ -a_2, a_2, a_2 },
+
+				//down rectangle
+				{ a_2, -a_2, a_2 },
+				{ a_2, -a_2, -a_2 },
+				{ -a_2, -a_2, -a_2 },
+				{ -a_2, -a_2, a_2 }
+			};
+
+			std::vector<GLuint> vCubeIndice =
+			{
+				0, 1, 2,/*  */0, 2, 3, //y-positive up 
+				//////////////////////
+				0, 7, 4,/*  */0, 3, 7, //z-positive back 
+				//////////////////////
+				0, 4, 5,/*  */0, 5, 1, //x-positive right
+				////////////////////// 
+				3, 6, 7,/*  */3, 2, 6, //x-negative left
+				//////////////////////
+				1, 5, 6,/*  */1, 6, 2, //z-negative front
+				//////////////////////
+				4, 6, 5,/*  */4, 7, 6  //y-negative down 
+			};
+
+			int numInterval = 1 << subdivison;
+			int numVertice = 2 * (numInterval + 1) * (numInterval + 1) +
+				(numInterval - 1) * numInterval * 4;
+			int numFace = 6 * numInterval * numInterval * 2;
+
+			std::vector<glm::vec3> vVertice(numVertice);
+			std::vector<GLuint> vIndice(numFace * 3);
+			
+			{
+				float aInterval = a / numInterval;
+
+				//Add the top cube sphere part
+				{
+					int vertIdx = 0, indiceIdx = 0;
+
+					float xStart = -a_2;
+					for (int i = 0; i <= numInterval; i++)
+					{
+						vVertice[vertIdx] = { xStart, a_2, a_2 };
+						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						vertIdx++;
+						xStart += aInterval;
+					}
+					
+					float zStart = a_2 - aInterval;
+					for (int i = 1; i <= numInterval; i++)
+					{
+						vVertice[vertIdx] = { -a_2, a_2, zStart };
+						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						vertIdx++;
+
+						xStart = -a_2 + aInterval;
+						for (int j = 1; j <= numInterval; j++)
+						{
+							vVertice[vertIdx] = { xStart, a_2, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							vIndice[indiceIdx] = vertIdx;
+							vIndice[indiceIdx + 1] = vertIdx - 1;
+							vIndice[indiceIdx + 2] = vertIdx - numInterval - 2;
+							vIndice[indiceIdx + 3] = vertIdx;
+							vIndice[indiceIdx + 4] = vertIdx - numInterval - 2;
+							vIndice[indiceIdx + 5] = vertIdx - numInterval - 1;
+
+							vertIdx++;
+							indiceIdx += 6;
+
+							xStart += aInterval;
+						}
+
+						zStart -= aInterval;
+					}
+
+
+				}
+
+				std::vector<GLuint> vLastUpRowVertIdx(numInterval * 4);
+				{
+					//Left up
+					for (int i = 0, vertIdx = 0;
+						 i < numInterval; i++, vertIdx += (numInterval + 1))
+						vLastUpRowVertIdx[i] = vertIdx;
+					//Front up
+					for (int i = 0, vertIdx = (numInterval + 1) * numInterval;
+						 i < numInterval; i++, vertIdx++)
+						vLastUpRowVertIdx[i + numInterval] = vertIdx;
+					//Right up
+					for (int i = 0, vertIdx = (numInterval + 1) * (numInterval + 1) - 1;
+						 i < numInterval; i++, vertIdx -= (numInterval + 1))
+						vLastUpRowVertIdx[i + numInterval*2] = vertIdx;
+					//Back up
+					for (int i = 0, vertIdx = numInterval;
+						 i < numInterval; i++, vertIdx--)
+						vLastUpRowVertIdx[i + numInterval*3] = vertIdx;
+				}
+
+				//Add the middle cube sphere parts
+				//Left-->Front-->Right-->Back
+				{
+					int vertIdx = (numInterval + 1) * (numInterval + 1),
+						indiceIdx = (numInterval * numInterval * 2) * 3;
+
+					if (numInterval > 1)
+					{
+						float yStart = a_2 - aInterval;
+						int vertStartIdx = vertIdx;
+						vVertice[vertIdx] = { -a_2, yStart, a_2 };
+						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						vertIdx++;
+						//Left
+						float zStart = a_2 - aInterval, xStart = -a_2;
+						for (int i = 1; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
+							vIndice[indiceIdx + 2] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							zStart -= aInterval;
+						}
+						//Front
+						zStart = -a_2, xStart = -a_2;
+						for (int i = 0; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
+							vIndice[indiceIdx + 2] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							xStart += aInterval;
+						}
+						//Right
+						zStart = -a_2, xStart = a_2;
+						for (int i = 0; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
+							vIndice[indiceIdx + 2] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							zStart += aInterval;
+						}
+						//Back
+						zStart = a_2, xStart = a_2;
+						for (int i = 0; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
+							vIndice[indiceIdx + 2] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vLastUpRowVertIdx[vertIdx - vertStartIdx];
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							xStart -= aInterval;
+						}
+
+						vIndice[indiceIdx] = vertIdx - 1;
+						vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
+						vIndice[indiceIdx + 2] = vLastUpRowVertIdx[0];
+						vIndice[indiceIdx + 3] = vertIdx - 1;
+						vIndice[indiceIdx + 4] = vLastUpRowVertIdx[0];
+						vIndice[indiceIdx + 5] = vertStartIdx;
+						indiceIdx += 6;
+					}
+
+					for (int i = 2; i < numInterval; i++)
+					{
+						float yStart = a_2 - float(i) * aInterval;
+						int vertStartIdx = vertIdx;
+						vVertice[vertIdx] = { -a_2, yStart, a_2 };
+						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						vertIdx++;
+						//Left
+						float zStart = a_2 - aInterval, xStart = -a_2;
+						for (int i = 1; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
+							vIndice[indiceIdx + 2] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							zStart -= aInterval;
+						}
+						//Front
+						zStart = -a_2, xStart = -a_2;
+						for (int i = 0; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
+							vIndice[indiceIdx + 2] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							xStart += aInterval;
+						}
+						//Right
+						zStart = -a_2, xStart = a_2;
+						for (int i = 0; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
+							vIndice[indiceIdx + 2] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							zStart += aInterval;
+						}
+						//Back
+						zStart = a_2, xStart = a_2;
+						for (int i = 0; i < numInterval; i++)
+						{
+							vVertice[vertIdx] = { xStart, yStart, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+
+							vIndice[indiceIdx] = vertIdx - 1;
+							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
+							vIndice[indiceIdx + 2] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 3] = vertIdx - 1;
+							vIndice[indiceIdx + 4] = vertIdx - numInterval * 4;
+							vIndice[indiceIdx + 5] = vertIdx;
+
+							indiceIdx += 6;
+							vertIdx++;
+
+							xStart -= aInterval;
+						}
+
+						vIndice[indiceIdx] = vertIdx - 1;
+						vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
+						vIndice[indiceIdx + 2] = vertStartIdx - numInterval * 4;
+						vIndice[indiceIdx + 3] = vertIdx - 1;
+						vIndice[indiceIdx + 4] = vertStartIdx - numInterval * 4;
+						vIndice[indiceIdx + 5] = vertStartIdx;
+						indiceIdx += 6;
+
+						yStart -= aInterval;
+					}
+
+					if (numInterval > 1)
+					{
+						int vertIdx = numVertice - (numInterval + 1) * (numInterval + 1)
+							- numInterval * 4;
+						for (int i = 0; i < numInterval * 4; i++)
+						{
+							vLastUpRowVertIdx[i] = vertIdx;
+							vertIdx++;
+						}
+					}
+				}
+
+				//Add the bottom cube sphere part
+				{
+					int vertIdx = numVertice - (numInterval + 1) * (numInterval + 1),
+						indiceIdx = (numFace - numInterval * numInterval * 2) * 3;
+
+					float xStart = -a_2;
+					for (int i = 0; i <= numInterval; i++)
+					{
+						vVertice[vertIdx] = { xStart, -a_2, -a_2 };
+						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						vertIdx++;
+						xStart += aInterval;
+					}
+
+					float zStart = -a_2 + aInterval;
+					for (int i = 1; i <= numInterval; i++)
+					{
+						vVertice[vertIdx] = { -a_2, -a_2, zStart };
+						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						vertIdx++;
+
+						xStart = -a_2 + aInterval;
+						for (int j = 1; j <= numInterval; j++)
+						{
+							vVertice[vertIdx] = { xStart, -a_2, zStart };
+							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							vIndice[indiceIdx] = vertIdx;
+							vIndice[indiceIdx + 1] = vertIdx - 1;
+							vIndice[indiceIdx + 2] = vertIdx - numInterval - 2;
+							vIndice[indiceIdx + 3] = vertIdx;
+							vIndice[indiceIdx + 4] = vertIdx - numInterval - 2;
+							vIndice[indiceIdx + 5] = vertIdx - numInterval - 1;
+
+							vertIdx++;
+							indiceIdx += 6;
+
+							xStart += aInterval;
+						}
+
+						zStart += aInterval;
+					}
+				}
+
+				std::vector<GLuint> vDownRowVertIdx(numInterval * 4);
+				{
+					//Left down
+					for (int i = 0, vertIdx = numVertice - (numInterval + 1);
+						 i < numInterval; i++, vertIdx -= (numInterval + 1))
+						vDownRowVertIdx[i] = vertIdx;
+					//Front down
+					for (int i = 0, vertIdx = numVertice - (numInterval + 1) * (numInterval + 1);
+						 i < numInterval; i++, vertIdx++)
+						vDownRowVertIdx[i + numInterval] = vertIdx;
+					//Right down
+					for (int i = 0, vertIdx = numVertice - (numInterval + 1) * numInterval - 1;
+						 i < numInterval; i++, vertIdx += (numInterval + 1))
+						vDownRowVertIdx[i + numInterval*2] = vertIdx;
+					//Back down
+					for (int i = 0, vertIdx = numVertice - 1;
+						 i < numInterval; i++, vertIdx--)
+						vDownRowVertIdx[i + numInterval*3] = vertIdx;
+				}
+
+				//Add the faces between the last up and the Down row vertices
+				{
+					int indiceIdx = (numFace - (numInterval + 4) * numInterval * 2) * 3;
+					int i = 0;
+					for (; i < numInterval * 4 - 1; i++)
+					{
+						vIndice[indiceIdx] = vDownRowVertIdx[i];
+						vIndice[indiceIdx + 1] = vLastUpRowVertIdx[i];
+						vIndice[indiceIdx + 2] = vLastUpRowVertIdx[i + 1];
+						vIndice[indiceIdx + 3] = vDownRowVertIdx[i];
+						vIndice[indiceIdx + 4] = vLastUpRowVertIdx[i + 1];
+						vIndice[indiceIdx + 5] = vDownRowVertIdx[i + 1];
+						indiceIdx += 6;
+					}
+
+					vIndice[indiceIdx] = vDownRowVertIdx[i];
+					vIndice[indiceIdx + 1] = vLastUpRowVertIdx[i];
+					vIndice[indiceIdx + 2] = vLastUpRowVertIdx[0];
+					vIndice[indiceIdx + 3] = vDownRowVertIdx[i];
+					vIndice[indiceIdx + 4] = vLastUpRowVertIdx[0];
+					vIndice[indiceIdx + 5] = vDownRowVertIdx[0];
+				}
+				
+			}
+
+			std::shared_ptr<VertexArray> pVertexArray = std::make_shared<VertexArray>(
+				vVertice, vIndice, TRIANGLES);
+			pVertexArray->setNormals(vVertice);
+			std::vector<glm::vec4> vColor;
+			std::for_each(vVertice.begin(), vVertice.end(), [&](glm::vec3 &vert)
+			{
+				glm::vec3 color = 0.5f * (vert + glm::vec3(1.0f));
+				//glm::vec3 color =  vert;
+				vColor.push_back(glm::vec4(color, 1.0f));
+			});
+			pVertexArray->setColors(vColor);
+
+			std::shared_ptr<Material> pMaterial = std::make_shared<Material>(
+				glm::vec4(color, 1.0f), glm::vec4(0.0f));
+
+			setMaterial(pMaterial);
+			setVertexArray(pVertexArray);
+			addInstance();
+
+			mNumFace = vIndice.size() / 3;
+			mNumVertice = vVertice.size();
+		}
+
+		int getNumVertice()
+		{
+			return mNumVertice;
+		}
+
+		int getNumFace()
+		{
+			return mNumFace;
+		}
+
+	private:
+		int mNumFace;
+		int mNumVertice;
 	};
 }

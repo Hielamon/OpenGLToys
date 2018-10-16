@@ -356,6 +356,6 @@ namespace SP
 	class FishEyeCamera : public OmniCamera
 	{
 	public:
-
+		 
 	};
 }

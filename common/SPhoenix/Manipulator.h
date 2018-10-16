@@ -445,6 +445,64 @@ namespace SP
 					}
 				}
 				break;
+
+			case GLFW_KEY_F:
+				if (action == GLFW_PRESS && 
+					mkeyState[GLFW_KEY_LEFT_CONTROL])
+				{
+					std::vector<std::shared_ptr<Camera>> vpCamera =
+						mpMonitorWindow->getAllCameras();
+
+					std::shared_ptr<Camera> pDefaultCamera =
+						mpMonitorWindow->getDefaultCamera();
+
+					std::shared_ptr<Scene> pScene = mpMonitorWindow->getScene();
+					BBox bbox = pScene->getTotalBBox();
+					glm::mat4 keyVMatrix = pDefaultCamera->getViewMatrix();
+					glm::vec3 minVertex = bbox.getMinVertex();
+					glm::vec3 maxVertex = bbox.getMaxVertex();
+					glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
+
+					float fovy, aspect, zNear, zFar;
+					pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
+
+					glm::vec3 center(0.0f, 0.0f, 0.0f);
+					glm::vec3 up(0.0f, 1.0f, 0.0f);
+					float boxDepth = maxVertex.z - minVertex.z;
+					float boxWidth = maxVertex.x - minVertex.x;
+					float boxHeight = maxVertex.y - minVertex.y;
+					float tanHalfFovy = tan(fovy*0.5f);
+					float fy = boxDepth*0.5f + boxHeight*0.5f / tanHalfFovy;
+					float fx = boxDepth*0.5f + boxWidth*0.5f / (tanHalfFovy*aspect);
+					float f = std::max(fx, fy);
+
+					glm::vec3 eye(0.0f, 0.0f, f);
+					pDefaultCamera->setViewMatrix(eye, center, up);
+
+					glm::mat4 dT = glm::inverse(pDefaultCamera->getViewMatrix()) * keyVMatrix;
+
+					glm::mat3 dR = glm::mat3(dT);
+					glm::vec3 dTs = glm::vec3(dT[3]);
+
+					//Rigidly adjust the pose of vpCamera, except for the keyCamera
+					for (size_t i = 0; i < vpCamera.size(); i++)
+					{
+						if (vpCamera[i] == pDefaultCamera) continue;
+
+						glm::vec3 eye, center, up;
+						vpCamera[i]->getCameraPose(eye, center, up);
+
+						eye = dR * eye + dTs;
+						center = dR * center + dTs;
+						up = dR * up;
+
+						vpCamera[i]->setViewMatrix(eye, center, up);
+					}
+
+					//Reset the viewport of cameras
+					mpMonitorWindow->resetCamerasViewport(vpCamera);
+				}
+				break;
 			/*case GLFW_KEY_RIGHT:
 			{
 				std::shared_ptr<Camera> pCameraMini = mpMonitorWindow->getCamera(1);
@@ -748,48 +806,6 @@ namespace SP
 			WinManipulator::cursorPosCallBackImpl(window, xpos, ypos);
 		}
 
-	private:
-		void _setCamerasMoveDir(const glm::vec3 &direction, 
-								bool bInCameraSpace = true,
-								const glm::mat4 &Twj = glm::mat4())
-		{
-			std::vector<std::shared_ptr<Camera>> vpCamera =
-				mpMonitorWindow->getAllCameras();
-
-			for (size_t i = 0; i < vpCamera.size(); i++)
-			{
-				JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
-				joystick.setDoTranslate(true);
-
-				if (mmouseButtonState[GLFW_MOUSE_BUTTON_LEFT])
-					joystick.accelerateTsVelocity(CAMERA_MOVE_ACSPEED);
-				else if (mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT])
-					joystick.accelerateTsVelocity(CAMERA_MOVE_DESPEED);
-
-				if (bInCameraSpace)
-				{
-					joystick.setJoyStickSpace(vpCamera[i]->getViewMatrix());
-				}
-				else
-				{
-					joystick.setJoyStickSpace(Twj);
-				}
-
-				joystick.setTranslateDir(direction);
-			}
-		}
-
-		void _stopCamerasMove()
-		{
-			std::vector<std::shared_ptr<Camera>> vpCamera =
-				mpMonitorWindow->getAllCameras();
-
-			for (size_t i = 0; i < vpCamera.size(); i++)
-			{
-				JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
-				joystick.setDoTranslate(false);
-			}
-		}
 	};
 }
 
