@@ -9,17 +9,6 @@
 
 namespace SP
 {
-	class SPConfigure
-	{
-	public:
-
-	private:
-		SPConfigure()
-		{
-
-		}
-	};
-
 	class GlfwConfigure
 	{
 	public:

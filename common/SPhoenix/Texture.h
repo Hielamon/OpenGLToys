@@ -28,28 +28,28 @@ namespace SP
 			return texGSet;
 		}
 
-		std::map<aiTextureType, TextureType> mAitextypeToTextype;
-		std::map<TextureType, std::string> mTextypeToMacro;
-		std::map<TextureType, std::string> mTextypeToMaterialName;
+		std::map<aiTextureType, TextureType> aiTextypeToTextype;
+		std::map<TextureType, std::string> TextypeToMacro;
+		std::map<TextureType, std::string> TextypeToMaterialName;
 
 	private:
 		TextureGlobal()
 		{
-			mAitextypeToTextype = {
+			aiTextypeToTextype = {
 				{ aiTextureType_AMBIENT, Tex_AMBIENT },
 				{ aiTextureType_DIFFUSE, Tex_DIFFUSE },
 				{ aiTextureType_SPECULAR, Tex_SPECULAR }/*,
 														{ aiTextureType_NORMALS, Tex_NORMALS }*/
 			};
 
-			mTextypeToMacro = {
+			TextypeToMacro = {
 				{ Tex_AMBIENT , "#define AMBIENT_TEXTURE \n" },
 				{ Tex_DIFFUSE , "#define DIFFUSE_TEXTURE \n" },
 				{ Tex_SPECULAR, "#define SPECULAR_TEXTURE\n" },
 				{ Tex_CUBE, "#define CUBE_TEXTURE\n" }
 			};
 
-			mTextypeToMaterialName =
+			TextypeToMaterialName =
 			{
 				{ Tex_AMBIENT , "material.ambient_maps" },
 				{ Tex_DIFFUSE , "material.diffuse_maps" },

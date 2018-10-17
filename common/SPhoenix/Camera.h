@@ -13,8 +13,9 @@ namespace SP
 	{
 	public:
 		Camera(int width = 0, int height = 0, int offsetX = 0, int offsetY = 0)
-			: mCWidth(width), mCHeight(height), mCOffsetX(offsetX),
-			 mCOffsetY(offsetY), mbSetup(false), mbClearPerFrame(true)
+			: mCWidth(width), mCHeight(height), mCOffsetX(offsetX), mCOffsetY(offsetY),
+			mViewX(offsetX), mViewY(offsetY), mViewWidth(width), mViewHeight(height),
+			mbSetup(false), mbClearPerFrame(true)
 		{
 			setProjectionMatrix();
 			setViewMatrix();
@@ -118,7 +119,7 @@ namespace SP
 
 			if (mpCameraShape.use_count())
 			{
-				//mpCameraShape->setRelMMatrix(glm::inverse(mViewMatrix));
+				mpCameraShape->setRelMMatrix(glm::inverse(mViewMatrix));
 
 				/*glm::mat4 curM = mpCameraShape->getInstanceMMatrix(0);
 
@@ -137,8 +138,8 @@ namespace SP
 					std::cout << std::endl;
 				}*/
 				
-				glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
-				mpCameraShape->setInstanceMMatrix(glm::inverse(mViewMatrix) * scale, 0);
+				/*glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
+				mpCameraShape->setInstanceMMatrix(glm::inverse(mViewMatrix) * scale, 0);*/
 			}
 		}
 		
@@ -337,10 +338,7 @@ namespace SP
 
 			if (mbSetup) return;
 
-			mViewX = 0;
-			mViewY = 0;
-			mViewWidth = winWidth;
-			mViewHeight = winHeight;
+			
 			mBWidth = winWidth;
 			mBHeight = winHeight;
 
@@ -421,8 +419,8 @@ namespace SP
 			glReadBuffer(GL_COLOR_ATTACHMENT0);
 			glDrawBuffer(GL_BACK_LEFT);
 
-			glBlitFramebuffer(0, 0, mBWidth, mBHeight, mCOffsetX, mCOffsetY,
-							  mCWidth + mCOffsetX, mCHeight + mCOffsetY,
+			glBlitFramebuffer(mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
+							  mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
 							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
@@ -465,6 +463,7 @@ namespace SP
 		glm::vec3 mEye, mCenter, mUp;
 		//The matrix transforming the world coordinates to camera coordinates
 		glm::mat4 mViewMatrix;
+
 		//The Mesh for showing the camera shape
 		std::shared_ptr<Mesh> mpCameraShape;
 		glm::mat4 mCameraShapeMMatrix;

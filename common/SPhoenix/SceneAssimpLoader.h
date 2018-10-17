@@ -36,7 +36,7 @@ namespace SP
 
 			mDirectory = path.substr(0, path.find_last_of("/\\"));
 
-			mTypeMap = TextureGlobal::getInstance().mAitextypeToTextype;
+			mTypeMap = TextureGlobal::getInstance().aiTextypeToTextype;
 
 			HL_INTERVAL_START;
 			_loadToScene(aiscene);
@@ -74,6 +74,7 @@ namespace SP
 			std::cout << std::endl;
 
 			//Loading all meshes in the scene
+			if (mvMeshID.size() > 0)mvMeshID.clear();
 			mvMeshID.reserve(aiscene->mNumMeshes);
 
 			for (size_t i = 0; i < aiscene->mNumMeshes; i++)

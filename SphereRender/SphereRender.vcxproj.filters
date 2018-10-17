@@ -134,4 +134,9 @@
       <Filter>Header Files\SPhoenix\Camera</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\common\SPhoenix\SPConfigure.txt">
+      <Filter>Header Files\SPhoenix</Filter>
+    </Text>
+  </ItemGroup>
 </Project>

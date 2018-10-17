@@ -19,8 +19,8 @@ namespace SP
 				exit(-1);
 			}
 			
-			memset(mkeyState, GL_FALSE, KEY_COUNT);
-			memset(mmouseButtonState, GL_FALSE, MOUSE_COUNT);
+			memset(mKeyState, GL_FALSE, KEY_COUNT);
+			memset(mMouseButtonState, GL_FALSE, MOUSE_COUNT);
 		}
 
 		WinManipulator() = delete;
@@ -71,7 +71,7 @@ namespace SP
 				break;
 			/*case GLFW_KEY_R:
 				mpCam->setProjectionMatrix(mfovy, maspect, mzNear, mzFar);
-				if(mkeyState[GLFW_KEY_LEFT_CONTROL])
+				if(mKeyState[GLFW_KEY_LEFT_CONTROL])
 					mpCam->setViewMatrix(meye, mcenter, mup);
 				mpCam->deleteManipulator();
 				return;
@@ -87,7 +87,7 @@ namespace SP
 				break;
 			}
 
-			mkeyState[key] = action;
+			mKeyState[key] = action;
 		}
 
 		virtual void scrollCallBackImpl(GLFWwindow *window, double xoffset, double yoffset)
@@ -104,7 +104,7 @@ namespace SP
 		{
 			/*if (button == GLFW_MOUSE_BUTTON_LEFT &&
 				action == GLFW_PRESS &&
-				mmouseButtonState[button] == GLFW_RELEASE)
+				mMouseButtonState[button] == GLFW_RELEASE)
 			{
 				double x, y;
 				glfwGetCursorPos(mpCam->getGLFWWinPtr(), &x, &y);
@@ -114,7 +114,7 @@ namespace SP
 				GLuint meshID = 0;
 				meshID = mpCam->getPointMeshID(bufferx, buffery);
 
-				if (mkeyState[GLFW_KEY_LEFT_CONTROL])
+				if (mKeyState[GLFW_KEY_LEFT_CONTROL])
 				{
 					mpCam->addSelectedID(meshID);
 					if (meshID > 0)
@@ -122,7 +122,7 @@ namespace SP
 						std::cout << "MeshID = " << meshID << std::endl;
 					}
 				}
-				else if(mkeyState[GLFW_KEY_LEFT_SHIFT])
+				else if(mKeyState[GLFW_KEY_LEFT_SHIFT])
 				{
 					mpCam->deleteSelectedID(meshID);
 				}
@@ -133,7 +133,7 @@ namespace SP
 				
 			}*/
 
-			mmouseButtonState[button] = action;
+			mMouseButtonState[button] = action;
 		}
 
 		virtual void cursorPosCallBackImpl(GLFWwindow *window, double xpos, double ypos)
@@ -147,10 +147,10 @@ namespace SP
 		std::shared_ptr<GLWindowBase> mpGLWindowBase;
 
 		//indicate whether the key is pressed
-		bool mkeyState[KEY_COUNT];
+		bool mKeyState[KEY_COUNT];
 
 		//indicate whether the mouse button is pressed
-		bool mmouseButtonState[MOUSE_COUNT];
+		bool mMouseButtonState[MOUSE_COUNT];
 
 		//record current-frame's cursor corrdinate
 		double mCursorPosX, mCursorPosY;
@@ -231,7 +231,7 @@ namespace SP
 	public:
 		MonitorManipulator(const std::shared_ptr<MonitorWindow> &pMonitorWindow)
 			: WinManipulator(pMonitorWindow), mpMonitorWindow(pMonitorWindow),
-			mMoveDirCount(0)
+			mMoveDirCount(0), mFollowedCameraIdx(0), mMaximizeCameraIdx(0)
 		{
 			mvMoveDir.resize(6, glm::vec3(0.0f));
 			mAcEyeVary = glm::vec3(0.0f);
@@ -253,6 +253,8 @@ namespace SP
 		{
 			std::vector<std::shared_ptr<Camera>> vpCamera =
 				mpMonitorWindow->getAllCameras();
+			std::shared_ptr<Camera> pDefaultCamera = mpMonitorWindow->getDefaultCamera();
+
 			float frameCostTime = mpMonitorWindow->getFrameCostTime();
 
 			//Do the Pre Rotation
@@ -278,16 +280,26 @@ namespace SP
 					direction += mvMoveDir[i];
 				}
 
-				glm::mat4 viewMatrix0 = mpMonitorWindow->getDefaultCamera()->getViewMatrix();
-
 				if (glm::dot(direction, direction) > 1e-1)
 				{
-					if (mkeyState[GLFW_KEY_LEFT_ALT])
+					std::shared_ptr<Camera> pCurrentCamera = vpCamera[mMaximizeCameraIdx];
+					std::shared_ptr<Camera> pFollowedCamera = vpCamera[mFollowedCameraIdx];
+					std::shared_ptr<Camera> pReferCamera = pCurrentCamera;
+						
+					if (pDefaultCamera == pReferCamera &&
+						pDefaultCamera != pFollowedCamera)
+					{
+						pReferCamera = pFollowedCamera;
+					}
+
+					glm::mat4 referVM = pReferCamera->getViewMatrix();
+
+					if (mKeyState[GLFW_KEY_LEFT_ALT])
 					{
 						JoyStickGlobal::getInstance().accelerateAutoMiniSpeed(
 							CAMERA_MOVE_ACSPEED);
 					}
-					else if(mkeyState[GLFW_KEY_LEFT_CONTROL])
+					else if(mKeyState[GLFW_KEY_LEFT_CONTROL])
 					{
 						JoyStickGlobal::getInstance().accelerateAutoMiniSpeed(
 							CAMERA_MOVE_DESPEED);
@@ -302,28 +314,35 @@ namespace SP
 					std::cout << "before eyeDiff = " << eyeDiff.x << "," << eyeDiff.y << "," << eyeDiff.z << std::endl;
 					std::cout << "before upDiff = " << upDiff.x << "," << upDiff.y << "," << upDiff.z << std::endl;*/
 
-					direction = glm::transpose(glm::mat3(viewMatrix0))
+					direction = glm::transpose(glm::mat3(referVM))
 						* direction;
 
-					for (size_t i = 0; i < vpCamera.size(); i++)
+					JoyStick3D &referJoy = pReferCamera->getJoyStick3D();
+					referJoy.setJoyStickSpace(glm::mat4(1.0f));
+					referJoy.setTranslateDir(direction);
+					referJoy.setDoTranslate(true);
+
+					if (mKeyState[GLFW_KEY_LEFT_SHIFT] ||
+						mKeyState[GLFW_KEY_LEFT_ALT])
 					{
-						JoyStick3D &joystick = vpCamera[i]->getJoyStick3D();
-						joystick.setJoyStickSpace(glm::mat4(1.0f));
-						joystick.setTranslateDir(direction);
-						joystick.setDoTranslate(true);
+						referJoy.accelerateTsVelocity(CAMERA_MOVE_ACSPEED);
+					}
+					else
+					{
+						referJoy.accelerateTsVelocity(CAMERA_MOVE_DESPEED);
+					}
 
-						if (mkeyState[GLFW_KEY_LEFT_SHIFT] || 
-							mkeyState[GLFW_KEY_LEFT_ALT])
-						{
-							joystick.accelerateTsVelocity(CAMERA_MOVE_ACSPEED);
-						}
-						else
-						{
-							joystick.accelerateTsVelocity(CAMERA_MOVE_DESPEED);
-						}
+					pReferCamera->excuteJoyStick3DTranslate(frameCostTime);
+					referJoy.setDoTranslate(false);
 
-						vpCamera[i]->excuteJoyStick3DTranslate(frameCostTime);
-						joystick.setDoTranslate(false);
+					//If the default camera was anchored, excute the follow
+					if (pDefaultCamera != pFollowedCamera && 
+						pFollowedCamera == pReferCamera)
+					{
+						//Move the default camera to the indicated position
+						followCamera(pFollowedCamera, pDefaultCamera,
+									 SPConfigure::getInstance().FollowedEye,
+									 SPConfigure::getInstance().FollowedUp);
 					}
 
 					/*vpCamera[0]->getCameraPose(eye1, center1, up1);
@@ -360,6 +379,11 @@ namespace SP
 		//key: W, S, A, D, E, Q
 		std::vector<glm::vec3> mvMoveDir;
 
+		//The index of camera which the default camera will follow
+		int mFollowedCameraIdx;
+		//The index of camera which will be set the major maximize screen
+		int mMaximizeCameraIdx;
+
 		glm::vec3 mAcEyeVary, mAcUpVary;
 
 	protected:
@@ -379,9 +403,14 @@ namespace SP
 				break;
 
 			case GLFW_KEY_SPACE:
-				if (action == GLFW_PRESS && mpMonitorWindow->getNumCamera() >= 2)
+				if (action == GLFW_PRESS && mKeyState[GLFW_KEY_LEFT_ALT])
 				{
-					mpMonitorWindow->swapWithDefaultCamera(1);
+					//Retive the default camera canvas with the current maximized camera
+					mpMonitorWindow->swapCanvasWithDefaultCamera(mMaximizeCameraIdx);
+					mMaximizeCameraIdx = (mMaximizeCameraIdx + 1) % mpMonitorWindow->getNumCamera();
+					//Maximize the mMaximizeCameraIdx camera
+					mpMonitorWindow->swapCanvasWithDefaultCamera(mMaximizeCameraIdx);
+					mpMonitorWindow->setFirstRunCamera(mMaximizeCameraIdx);
 				}
 				break;
 
@@ -394,24 +423,41 @@ namespace SP
 					std::shared_ptr<Camera> pDefaultCamera = 
 						mpMonitorWindow->getDefaultCamera();
 
-					if (mkeyState[GLFW_KEY_LEFT_CONTROL])
+					if (mKeyState[GLFW_KEY_LEFT_CONTROL])
 					{
 						std::shared_ptr<Scene> pScene = mpMonitorWindow->getScene();
 
 						if (pScene.use_count() != 0)
 						{
-							mpMonitorWindow->adjustCameraToScene(pDefaultCamera,
-																 pScene, vpCamera);
+							std::shared_ptr<Camera> pCurrentCamera = vpCamera[mMaximizeCameraIdx];
+							std::shared_ptr<Camera> pFollowedCamera = vpCamera[mFollowedCameraIdx];
+							std::shared_ptr<Camera> pReferCamera = pCurrentCamera;
+
+							if (pDefaultCamera == pReferCamera &&
+								pDefaultCamera != pFollowedCamera)
+							{
+								pReferCamera = pFollowedCamera;
+							}
+
+							std::vector<std::shared_ptr<Camera>> vAnchorCamera;
+							if (pDefaultCamera != pFollowedCamera &&
+								pFollowedCamera == pReferCamera)
+							{
+								vAnchorCamera.push_back(pDefaultCamera);
+							}
+
+							mpMonitorWindow->adjustCameraToScene(pReferCamera,
+																 pScene, vAnchorCamera);
 						}
 					}
 					
 					//Uniform all camera rotation to the default camera
-					if (mkeyState[GLFW_KEY_LEFT_SHIFT])
+					/*if (mKeyState[GLFW_KEY_LEFT_SHIFT])
 					{
 						glm::mat4 viewMatrix0 = pDefaultCamera->getViewMatrix();
 						mpMonitorWindow->unifyCamerasDirection(pDefaultCamera,
 															   vpCamera);
-					}
+					}*/
 
 					//Reset the viewport of cameras
 					mpMonitorWindow->resetCamerasViewport(vpCamera);
@@ -427,28 +473,46 @@ namespace SP
 					std::shared_ptr<Camera> pDefaultCamera =
 						mpMonitorWindow->getDefaultCamera();
 
-					glm::mat4 viewMatrix0 = pDefaultCamera->getViewMatrix();
+					std::shared_ptr<Camera> pCurrentCamera = vpCamera[mMaximizeCameraIdx];
+					std::shared_ptr<Camera> pFollowedCamera = vpCamera[mFollowedCameraIdx];
+					std::shared_ptr<Camera> pReferCamera = pCurrentCamera;
 
-					glm::mat3 R0 = glm::mat3(viewMatrix0);
-					glm::vec3 Ts0 = glm::vec3(viewMatrix0[3]);
+					if (pDefaultCamera == pReferCamera &&
+						pDefaultCamera != pFollowedCamera)
+					{
+						pReferCamera = pFollowedCamera;
+					}
 
-					//Reset the viewport of cameras
-					for (size_t i = 0; i < vpCamera.size(); i++)
+					glm::mat4 referVM = pReferCamera->getViewMatrix();
+
+					glm::mat3 R0 = glm::mat3(referVM);
+					glm::vec3 Ts0 = glm::vec3(referVM[3]);
+
+					std::vector<std::shared_ptr<Camera>> vBundleCamera;
+					vBundleCamera.push_back(pReferCamera);
+					if (pDefaultCamera != pFollowedCamera &&
+						pFollowedCamera == pReferCamera)
+					{
+						vBundleCamera.push_back(pDefaultCamera);
+					}
+
+					//Home the pReferCamera and adjust the follow default camera
+					//if it follows
+					for (size_t i = 0; i < vBundleCamera.size(); i++)
 					{
 						//vpCamera[i]->setViewport(0, 0, cw, ch);
 						glm::vec3 eye, center, up;
-						vpCamera[i]->getCameraPose(eye, center, up);
+						vBundleCamera[i]->getCameraPose(eye, center, up);
 						eye = R0 * eye + Ts0;
 						center = R0 * center + Ts0;
 						up = R0 * up;
-						vpCamera[i]->setViewMatrix(eye, center, up);
+						vBundleCamera[i]->setViewMatrix(eye, center, up);
 					}
 				}
 				break;
 
 			case GLFW_KEY_F:
-				if (action == GLFW_PRESS && 
-					mkeyState[GLFW_KEY_LEFT_CONTROL])
+				if (action == GLFW_PRESS )
 				{
 					std::vector<std::shared_ptr<Camera>> vpCamera =
 						mpMonitorWindow->getAllCameras();
@@ -456,51 +520,79 @@ namespace SP
 					std::shared_ptr<Camera> pDefaultCamera =
 						mpMonitorWindow->getDefaultCamera();
 
-					std::shared_ptr<Scene> pScene = mpMonitorWindow->getScene();
-					BBox bbox = pScene->getTotalBBox();
-					glm::mat4 keyVMatrix = pDefaultCamera->getViewMatrix();
-					glm::vec3 minVertex = bbox.getMinVertex();
-					glm::vec3 maxVertex = bbox.getMaxVertex();
-					glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
-
-					float fovy, aspect, zNear, zFar;
-					pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
-
-					glm::vec3 center(0.0f, 0.0f, 0.0f);
-					glm::vec3 up(0.0f, 1.0f, 0.0f);
-					float boxDepth = maxVertex.z - minVertex.z;
-					float boxWidth = maxVertex.x - minVertex.x;
-					float boxHeight = maxVertex.y - minVertex.y;
-					float tanHalfFovy = tan(fovy*0.5f);
-					float fy = boxDepth*0.5f + boxHeight*0.5f / tanHalfFovy;
-					float fx = boxDepth*0.5f + boxWidth*0.5f / (tanHalfFovy*aspect);
-					float f = std::max(fx, fy);
-
-					glm::vec3 eye(0.0f, 0.0f, f);
-					pDefaultCamera->setViewMatrix(eye, center, up);
-
-					glm::mat4 dT = glm::inverse(pDefaultCamera->getViewMatrix()) * keyVMatrix;
-
-					glm::mat3 dR = glm::mat3(dT);
-					glm::vec3 dTs = glm::vec3(dT[3]);
-
-					//Rigidly adjust the pose of vpCamera, except for the keyCamera
-					for (size_t i = 0; i < vpCamera.size(); i++)
+					if (mKeyState[GLFW_KEY_LEFT_ALT])
 					{
-						if (vpCamera[i] == pDefaultCamera) continue;
+						std::shared_ptr<Camera> pFollowedCamera = vpCamera[mFollowedCameraIdx];
+						if (pFollowedCamera != pDefaultCamera)
+						{
+							//Change the camera shape color according to the configure
+							std::shared_ptr<Mesh> pMesh = pFollowedCamera->getCameraShape();
+							if (pMesh.use_count() != 0)
+								pMesh->getMaterial()->setDiffuseColor(
+									SPConfigure::getInstance().CameraColor);
+						}
 
-						glm::vec3 eye, center, up;
-						vpCamera[i]->getCameraPose(eye, center, up);
+						mFollowedCameraIdx = (mFollowedCameraIdx + 1) % vpCamera.size();
+						pFollowedCamera = vpCamera[mFollowedCameraIdx];
+						if (pFollowedCamera != pDefaultCamera)
+						{
+							//Move the default camera to the indicated position
+							followCamera(pFollowedCamera, pDefaultCamera,
+										 SPConfigure::getInstance().FollowedEye,
+										 SPConfigure::getInstance().FollowedUp);
 
-						eye = dR * eye + dTs;
-						center = dR * center + dTs;
-						up = dR * up;
-
-						vpCamera[i]->setViewMatrix(eye, center, up);
+							//Change the camera shape color according to the configure
+							std::shared_ptr<Mesh> pMesh = pFollowedCamera->getCameraShape();
+							if (pMesh.use_count() != 0)
+								pMesh->getMaterial()->setDiffuseColor(
+									SPConfigure::getInstance().FollowedCameraColor);
+						}
 					}
+					else if(mKeyState[GLFW_KEY_LEFT_CONTROL])
+					{
+						std::shared_ptr<Camera> pCurrentCamera = vpCamera[mMaximizeCameraIdx];
+						std::shared_ptr<Camera> pFollowedCamera = vpCamera[mFollowedCameraIdx];
+						std::shared_ptr<Camera> pReferCamera = pCurrentCamera;
 
-					//Reset the viewport of cameras
-					mpMonitorWindow->resetCamerasViewport(vpCamera);
+						if (pDefaultCamera == pReferCamera &&
+							pDefaultCamera != pFollowedCamera)
+						{
+							pReferCamera = pFollowedCamera;
+						}
+
+						std::shared_ptr<Scene> pScene = mpMonitorWindow->getScene();
+						BBox bbox = pScene->getTotalBBox();
+						glm::vec3 minVertex = bbox.getMinVertex();
+						glm::vec3 maxVertex = bbox.getMaxVertex();
+						glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
+
+						float fovy, aspect, zNear, zFar;
+						pReferCamera->getFrustum(fovy, aspect, zNear, zFar);
+
+						glm::vec3 center(0.0f, 0.0f, 0.0f);
+						glm::vec3 up(0.0f, 1.0f, 0.0f);
+						float boxDepth = maxVertex.z - minVertex.z;
+						float boxWidth = maxVertex.x - minVertex.x;
+						float boxHeight = maxVertex.y - minVertex.y;
+						float tanHalfFovy = tan(fovy*0.5f);
+						float fy = boxDepth*0.5f + boxHeight*0.5f / tanHalfFovy;
+						float fx = boxDepth*0.5f + boxWidth*0.5f / (tanHalfFovy*aspect);
+						float f = std::max(fx, fy);
+
+						glm::vec3 eye(0.0f, 0.0f, f);
+						pReferCamera->setViewMatrix(eye, center, up);
+
+						//If the default camera was anchored, excute the follow
+						if (pDefaultCamera != pFollowedCamera &&
+							pFollowedCamera == pReferCamera)
+						{
+							//Move the default camera to the indicated position
+							followCamera(pFollowedCamera, pDefaultCamera,
+										 SPConfigure::getInstance().FollowedEye,
+										 SPConfigure::getInstance().FollowedUp);
+						}
+						
+					}
 				}
 				break;
 			/*case GLFW_KEY_RIGHT:
@@ -661,19 +753,20 @@ namespace SP
 			if (yoffset < -9) yoffset = -9;
 			scale += (yoffset * 0.1);
 			int vx, vy, vw, vh;
-			std::shared_ptr<Camera> pDefaultCamera =
-				mpMonitorWindow->getDefaultCamera();
+
+			std::shared_ptr<Camera> pCurrentCamera = 
+				mpMonitorWindow->getCamera(mMaximizeCameraIdx);
 
 			//pDefaultCamera = mpMonitorWindow->getCamera(1);
 
 			//scale the viewport of camera
-			pDefaultCamera->getViewport(vx, vy, vw, vh);
+			pCurrentCamera->getViewport(vx, vy, vw, vh);
 
 			vw *= scale;
 			vh *= scale;
 
 			int cx, cy, cw, ch;
-			pDefaultCamera->getCanvas(cx, cy, cw, ch);
+			pCurrentCamera->getCanvas(cx, cy, cw, ch);
 
 			double scaleXPos = mCursorPosX - cx;
 			double scaleYPos = mpMonitorWindow->getWindowSize()[1] - mCursorPosY - cy;
@@ -685,14 +778,14 @@ namespace SP
 			vy -= vYPos*(scale - 1.0f);
 
 			if(vw < MAX_VIEWPORT_SIZE && vh < MAX_VIEWPORT_SIZE)
-				pDefaultCamera->setViewport(vx, vy, vw, vh);
+				pCurrentCamera->setViewport(vx, vy, vw, vh);
 		}
 
 		virtual void mouseButtonCallBackImpl(GLFWwindow *window, int button, int action, int mods)
 		{
 			/*if (button == GLFW_MOUSE_BUTTON_LEFT &&
 			action == GLFW_PRESS &&
-			mmouseButtonState[button] == GLFW_RELEASE)
+			mMouseButtonState[button] == GLFW_RELEASE)
 			{
 			double x, y;
 			glfwGetCursorPos(mpCam->getGLFWWinPtr(), &x, &y);
@@ -702,7 +795,7 @@ namespace SP
 			GLuint meshID = 0;
 			meshID = mpCam->getPointMeshID(bufferx, buffery);
 
-			if (mkeyState[GLFW_KEY_LEFT_CONTROL])
+			if (mKeyState[GLFW_KEY_LEFT_CONTROL])
 			{
 			mpCam->addSelectedID(meshID);
 			if (meshID > 0)
@@ -710,7 +803,7 @@ namespace SP
 			std::cout << "MeshID = " << meshID << std::endl;
 			}
 			}
-			else if(mkeyState[GLFW_KEY_LEFT_SHIFT])
+			else if(mKeyState[GLFW_KEY_LEFT_SHIFT])
 			{
 			mpCam->deleteSelectedID(meshID);
 			}
@@ -730,20 +823,32 @@ namespace SP
 			double dx = xpos - mCursorPosX;
 			double dy = ypos - mCursorPosY;
 
-			if (mmouseButtonState[GLFW_MOUSE_BUTTON_RIGHT] && 
+			if (mMouseButtonState[GLFW_MOUSE_BUTTON_RIGHT] && 
 				(abs(dx) >= 1.0 || abs(dy) >= 1.0))
 			{
 				std::shared_ptr<Camera> pDefaultCamera =
 					mpMonitorWindow->getDefaultCamera();
+
+				std::shared_ptr<Camera> pCurrentCamera = 
+					mpMonitorWindow->getCamera(mMaximizeCameraIdx);
+				std::shared_ptr<Camera> pFollowedCamera = 
+					mpMonitorWindow->getCamera(mFollowedCameraIdx);
+				std::shared_ptr<Camera> pReferCamera = pCurrentCamera;
+
+				if (pDefaultCamera == pReferCamera &&
+					pDefaultCamera != pFollowedCamera)
+				{
+					pReferCamera = pFollowedCamera;
+				}
 				
 				float fovy, aspect, zNear, zFar;
-				pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
+				pCurrentCamera->getFrustum(fovy, aspect, zNear, zFar);
 				float tanHalfFovy = std::tan(fovy*0.5);
 				float tanHalfFovx = tanHalfFovy * aspect;
 				float fovx = std::atan(tanHalfFovx) * 2;
 
 				int cx, cy, cw, ch;
-				pDefaultCamera->getCanvas(cx, cy, cw, ch);
+				pCurrentCamera->getCanvas(cx, cy, cw, ch);
 
 				float dxRad = fovx * dx / ch;
 				float dyRad = fovx * dy / cw;
@@ -752,60 +857,59 @@ namespace SP
 				joystick.setDoRotate(true);
 				float angle = 0.0f;
 
-				glm::mat4 viewMatrix0 = pDefaultCamera->getViewMatrix();
+				glm::mat4 referVM = pReferCamera->getViewMatrix();
 
 				if (abs(dx) > abs(dy))
 				{
-					glm::mat4 RInv = glm::mat4(glm::mat3(viewMatrix0));
+					glm::mat4 RInv = glm::mat4(glm::mat3(referVM));
 					RInv = glm::transpose(RInv);
-					glm::mat4 Twl = RInv*viewMatrix0;
+					glm::mat4 Twl = RInv*referVM;
 					joystick.setJoyStickSpace(Twl);
 					joystick.setRotateAxis(glm::vec3(0.0f, 1.0f, 0.0f));
 					angle = -dxRad;
 				}
 				else
 				{
-					joystick.setJoyStickSpace(viewMatrix0);
+					joystick.setJoyStickSpace(referVM);
 					joystick.setRotateAxis(glm::vec3(1.0f, 0.0f, 0.0f));
 
 					angle = -dyRad;
 				}
+				
+				glm::vec3 eye, center, up;
+				pReferCamera->getCameraPose(eye, center, up);
 
-				std::vector<std::shared_ptr<Camera>> vpCamera =
-					mpMonitorWindow->getAllCameras();
+				joystick.executeRotation(eye, center, up, angle);
+				pReferCamera->setViewMatrix(eye, center, up);
 
-
-				for (size_t i = 0; i < vpCamera.size(); i++)
+				//If the default camera was anchored, excute the follow
+				if (pDefaultCamera != pFollowedCamera &&
+					pFollowedCamera == pReferCamera)
 				{
-					/*if (i == 0)
-					{
-						glm::vec3 eye, center, up;
-						vpCamera[i]->getCameraPose(eye, center, up);
-
-						glm::vec3 eyeTmp = eye;
-
-						joystick.executeRotation(eye, center, up, angle);
-						vpCamera[i]->setViewMatrix(eye, center, up);
-
-						eyeTmp = eye - eyeTmp;
-						mAcEyeVary += eyeTmp;
-
-						std::cout << "acc eye vary  : " << mAcEyeVary.x << ", " << mAcEyeVary.y << ", " << mAcEyeVary.z << std::endl;
-						std::cout << std::endl;
-						continue;
-					}*/
-					
-					glm::vec3 eye, center, up;
-					vpCamera[i]->getCameraPose(eye, center, up);
-
-					joystick.executeRotation(eye, center, up, angle);
-					vpCamera[i]->setViewMatrix(eye, center, up);
+					followCamera(pFollowedCamera, pDefaultCamera,
+								 SPConfigure::getInstance().FollowedEye,
+								 SPConfigure::getInstance().FollowedUp);
 				}
 			}
 
 			WinManipulator::cursorPosCallBackImpl(window, xpos, ypos);
 		}
 
+	protected:
+		void followCamera(const std::shared_ptr<Camera> &pFollowedCamera,
+						  const std::shared_ptr<Camera> &pCamera, 
+						  const glm::vec3 &relativeEye,
+						  const glm::vec3 &relativeUp)
+		{
+			glm::mat4 targetVM = pFollowedCamera->getViewMatrix();
+			glm::mat3 targetRInv = glm::transpose(glm::mat3(targetVM));
+			glm::vec3 targetTsInv = -targetRInv * glm::vec3(targetVM[3]);
+
+			glm::vec3 eye = targetRInv * relativeEye + targetTsInv;
+			glm::vec3 center = targetTsInv;
+			glm::vec3 up = targetRInv * relativeUp;
+			pCamera->setViewMatrix(eye, center, up);
+		}
 	};
 }
 

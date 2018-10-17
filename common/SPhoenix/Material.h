@@ -127,11 +127,11 @@ namespace SP
 
 		//Get the macro for the shader codes, which defines some necessary variable 
 		//Such as texture type the material holds, which is picked from the
-		//mTextypeToMacro of the TextureGlobal
+		//TextypeToMacro of the TextureGlobal
 		virtual std::string getShaderMacros()
 		{
 			std::string macros = "";
-
+			
 			if (mTextureTotalCount == 0) return macros;
 
 			macros += "#define HAVE_TEXTURE\n";
@@ -139,7 +139,7 @@ namespace SP
 			std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
 			for (iter = mmTextypeToTex.begin(); iter != mmTextypeToTex.end(); iter++)
 			{
-				macros += TextureGlobal::getInstance().mTextypeToMacro[iter->first];
+				macros += TextureGlobal::getInstance().TextypeToMacro[iter->first];
 			}
 
 			return macros;
@@ -160,9 +160,9 @@ namespace SP
 			}
 
 			//Set the existence of texture maps
-			mbDiffuseMap = mmTextypeToTex.find(Tex_DIFFUSE) != mmTextypeToTex.end();
-			mbAmbientMap = mmTextypeToTex.find(Tex_AMBIENT) != mmTextypeToTex.end();
-			mbSpecularMap = mmTextypeToTex.find(Tex_SPECULAR) != mmTextypeToTex.end();
+			mbDiffuseMap = mmTexunitToTexbuffer.find(Tex_DIFFUSE) != mmTexunitToTexbuffer.end();
+			mbAmbientMap = mmTexunitToTexbuffer.find(Tex_AMBIENT) != mmTexunitToTexbuffer.end();
+			mbSpecularMap = mmTexunitToTexbuffer.find(Tex_SPECULAR) != mmTexunitToTexbuffer.end();
 
 			mbUploaded = true;
 		}
@@ -208,7 +208,7 @@ namespace SP
 
 			if (bValidTexCoord)
 			{
-				std::map<TextureType, std::string> &nameMap = TextureGlobal::getInstance().mTextypeToMaterialName;
+				std::map<TextureType, std::string> &nameMap = TextureGlobal::getInstance().TextypeToMaterialName;
 				std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
 				for (iter = mmTextypeToTex.begin(); iter != mmTextypeToTex.end(); iter++)
 				{
@@ -339,6 +339,41 @@ namespace SP
 	
 	};
 
+	class MaterialFBO : public Material
+	{
+	public:
+		MaterialFBO() {}
+		~MaterialFBO() {}
+
+		void setTexbuffer(TextureType type, GLuint buffer)
+		{
+			mmTexunitToTexbuffer[type] = buffer;
+		}
+
+		//Get the macro for the shader codes, which defines some necessary variable 
+		//Such as texture type the material holds, which is picked from the
+		//TextypeToMacro of the TextureGlobal
+		virtual std::string getShaderMacros()
+		{
+			std::string macros = "";
+
+			if (mmTexunitToTexbuffer.size() == 0) return macros;
+
+			macros += "#define HAVE_TEXTURE\n";
+
+			std::map<int, GLuint>::iterator iter;
+			for (iter = mmTexunitToTexbuffer.begin(); 
+				 iter != mmTexunitToTexbuffer.end(); iter++)
+			{
+				TextureType type = TextureType(iter->first);
+				macros += TextureGlobal::getInstance().TextypeToMacro[type];
+			}
+
+			return macros;
+		}
+
+	};
+
 	//The mvpCubeFaceTexture vector holds the six face texture of the cube,
 	//following the order:right, left, top, bottom, back, front
 	class MaterialCube : public Material
@@ -418,7 +453,7 @@ namespace SP
 			}
 
 			std::map<TextureType, std::string> &nameMap = 
-				TextureGlobal::getInstance().mTextypeToMaterialName;
+				TextureGlobal::getInstance().TextypeToMaterialName;
 
 			{
 				int samplerLoc = glGetUniformLocation(programID, nameMap[Tex_CUBE].c_str());
@@ -475,6 +510,12 @@ namespace SP
 			glActiveTexture(GL_TEXTURE0);
 		}
 	};
+
+	/*class MaterialCubeFBO : public MaterialCube
+	{
+	public:
+		MaterialCubeFBO
+	};*/
 
 	class MaterialText : public Material
 	{
@@ -685,7 +726,7 @@ namespace SP
 			uploadColor(programID, "uCharColor", mCharColor);
 
 			std::map<TextureType, std::string> &nameMap =
-				TextureGlobal::getInstance().mTextypeToMaterialName;
+				TextureGlobal::getInstance().TextypeToMaterialName;
 
 			{
 				int samplerLoc = glGetUniformLocation(programID, nameMap[Tex_DIFFUSE].c_str());

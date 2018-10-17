@@ -73,8 +73,8 @@ namespace SP
 			glReadBuffer(GL_COLOR_ATTACHMENT0);
 			glDrawBuffer(GL_BACK_LEFT);
 
-			glBlitFramebuffer(0, 0, mCWidth, mCHeight, mCOffsetX, mCOffsetY,
-							  mCWidth + mCOffsetX, mCHeight + mCOffsetY,
+			glBlitFramebuffer(mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
+							  mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
 							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 

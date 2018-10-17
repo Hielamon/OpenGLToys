@@ -12,7 +12,7 @@ namespace SP
 		MonitorWindow(const std::string &win_name = "Untitled",
 					  int width = 0, int height = 0)
 			: GLWindowBase(win_name, width, height), mFrameCostTime(0),
-			mDefaultCameraIndex(0)
+			mDefaultCameraIndex(0), mFirstRunCameraIdx(0)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_MULTISAMPLE);
@@ -142,15 +142,16 @@ namespace SP
 		{
 			for (size_t i = 0; i < vpCamera.size(); i++)
 			{
-				/*int cx, cy, cw, ch;
-				vpCamera[i]->getCanvas(cx, cy, cw, ch);*/
-				vpCamera[i]->setViewport(0, 0, mWidth, mHeight);
+				int cx, cy, cw, ch;
+				vpCamera[i]->getCanvas(cx, cy, cw, ch);
+				vpCamera[i]->setViewport(cx, cy, cw, ch);
+				//vpCamera[i]->setViewport(0, 0, mWidth, mHeight);
 			}
 		}
 
 		//Swap the default camera, we will swap the default camera with the 
 		//input index camera and swap the canvas size, if the input index is valid
-		void swapWithDefaultCamera(int index)
+		void swapCanvasWithDefaultCamera(int index)
 		{
 			std::shared_ptr<Camera> pCamera = getCamera(index);
 			if (pCamera.use_count() != 0)
@@ -164,20 +165,28 @@ namespace SP
 				pDefaultCamera->getCanvas(cx_, cy_, cw_, ch_);
 
 				pCamera->setCanvas(cx_, cy_, cw_, ch_);
-				pCamera->setViewport(0, 0, mWidth, mHeight);
+				pCamera->setViewport(cx_, cy_, cw_, ch_);
+				//pCamera->setViewport(0, 0, mWidth, mHeight);
 
 				pDefaultCamera->setCanvas(cx, cy, cw, ch);
-				pDefaultCamera->setViewport(0, 0, mWidth, mHeight);
+				pDefaultCamera->setViewport(cx, cy, cw, ch);
+				//pDefaultCamera->setViewport(0, 0, mWidth, mHeight);
 
 				//swap the pointer in the mvpCamera
-				mvpCamera[index] = pDefaultCamera;
-				mvpCamera[mDefaultCameraIndex] = pCamera;
+				/*mvpCamera[index] = pDefaultCamera;
+				mvpCamera[mDefaultCameraIndex] = pCamera;*/
 
 				//swap the camera shape pointer in the mvpCameraShapeScene
-				std::shared_ptr<Scene> pCameraShapeScene = mvpCameraShapeScene[index];
+				/*std::shared_ptr<Scene> pCameraShapeScene = mvpCameraShapeScene[index];
 				mvpCameraShapeScene[index] = mvpCameraShapeScene[mDefaultCameraIndex];
-				mvpCameraShapeScene[mDefaultCameraIndex] = pCameraShapeScene;
+				mvpCameraShapeScene[mDefaultCameraIndex] = pCameraShapeScene;*/
 			}
+		}
+
+		void setFirstRunCamera(int firstRunCameraIdx)
+		{
+			if (firstRunCameraIdx >= 0 && firstRunCameraIdx < mvpCamera.size())
+				mFirstRunCameraIdx = firstRunCameraIdx;
 		}
 
 		//Uniform cameras rotation to the  keyCamera
@@ -227,10 +236,10 @@ namespace SP
 			pScene->uploadToDevice();
 			mpScene = pScene;
 
-			std::shared_ptr<Camera> defaultCamera = getDefaultCamera();
-			_adjustSceneToCamera(mpScene, defaultCamera);
+			std::shared_ptr<Camera> pDefaultCamera = getDefaultCamera();
+			adjustSceneToCamera(mpScene, pDefaultCamera);
 
-			adjustCameraToScene(defaultCamera, mpScene, mvpCamera);
+			adjustCameraToScene(pDefaultCamera, mpScene, mvpCamera);
 		}
 
 		std::shared_ptr<Scene> getScene()
@@ -381,20 +390,11 @@ namespace SP
 			if (mpManipulator.use_count() != 0)
 				mpManipulator->doFrameTasks();
 
+			runCamera(mFirstRunCameraIdx);
 			for (size_t i = 0; i < mvpCamera.size(); i++)
 			{
-				std::vector<std::shared_ptr<Scene>> vpScene;
-				if (mpScene.use_count() != 0) vpScene.push_back(mpScene);
-
-				for (size_t j = 0; j < mvpCamera.size(); j++)
-				{
-					if (j == i || mvpCameraShapeScene[j].use_count() == 0) continue;
-					vpScene.push_back(mvpCameraShapeScene[j]);
-				}
-
-				if (mpSkyBoxScene.use_count() != 0) vpScene.push_back(mpSkyBoxScene);
-
-				mvpCamera[i]->renderSceneArray(vpScene);
+				if(i != mFirstRunCameraIdx)
+					runCamera(i);
 			}
 
 			if (mpUIScene->getNumMesh() > 0)
@@ -402,29 +402,7 @@ namespace SP
 		}
 
 	protected:
-		std::shared_ptr<Scene> mpScene;
-		std::shared_ptr<Scene> mpSkyBoxScene;
-
-		std::shared_ptr<Scene> mpUIScene;
-		std::shared_ptr<UICamera> mpUICamera;
-
-		std::shared_ptr<TextScene> mpTextScene;
-
-		//The first element mvpCamera[0] is the default camera
-		//which has the same canvas size with the window, and must be
-		//set in the constructor of this class or inherited class
-		std::vector<std::shared_ptr<Camera>> mvpCamera;
-		std::vector<std::shared_ptr<Scene>> mvpCameraShapeScene;
-
-	private:
-		//Cost time for the current frame, in millisecond
-		float mFrameCostTime;
-
-		//The index of the default camera in the mvpCamera vector
-		int mDefaultCameraIndex;
-
-	private:
-		void _adjustSceneToCamera(const std::shared_ptr<Scene> &pScene,
+		void adjustSceneToCamera(const std::shared_ptr<Scene> &pScene,
 								  const std::shared_ptr<Camera> &pCamera)
 		{
 			if (pScene.use_count() == 0 || pCamera.use_count() == 0)
@@ -462,5 +440,48 @@ namespace SP
 			pScene->transformMesh(ms*mt);
 		}
 
+		void runCamera(int cameraIdx)
+		{
+			std::vector<std::shared_ptr<Scene>> vpScene;
+			if (mpScene.use_count() != 0) vpScene.push_back(mpScene);
+
+			for (size_t j = 0; j < mvpCamera.size(); j++)
+			{
+				if (j == cameraIdx || mvpCameraShapeScene[j].use_count() == 0) continue;
+				vpScene.push_back(mvpCameraShapeScene[j]);
+			}
+
+			if (mpSkyBoxScene.use_count() != 0) vpScene.push_back(mpSkyBoxScene);
+
+			mvpCamera[cameraIdx]->renderSceneArray(vpScene);
+		}
+
+	protected:
+		std::shared_ptr<Scene> mpScene;
+		std::shared_ptr<Scene> mpSkyBoxScene;
+
+		std::shared_ptr<Scene> mpUIScene;
+		std::shared_ptr<UICamera> mpUICamera;
+
+		std::shared_ptr<TextScene> mpTextScene;
+
+		//The first element mvpCamera[0] is the default camera
+		//which has the same canvas size with the window, and must be
+		//set in the constructor of this class or inherited class
+		std::vector<std::shared_ptr<Camera>> mvpCamera;
+		std::vector<std::shared_ptr<Scene>> mvpCameraShapeScene;
+
+	private:
+		//Cost time for the current frame, in millisecond
+		float mFrameCostTime;
+
+		//The index of the default camera in the mvpCamera vector
+		int mDefaultCameraIndex;
+		int mFirstRunCameraIdx;
+
+	private:
+		
+
+		
 	};
 }

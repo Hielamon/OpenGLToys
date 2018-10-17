@@ -157,36 +157,61 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 		std::make_shared<MonitorManipulator>(monitor);
 	monitor->setManipulator(std::static_pointer_cast<ManipulatorBase>(pMonitorManip));
 	
-	/*int faceSide = 50, faceTexSide = 1024;
-	std::shared_ptr<OmniCamera> pCamera =
+	{
+		/*int faceSide = 50, faceTexSide = 1024;
+		std::shared_ptr<OmniCamera> pCamera =
 		std::make_shared<OmniCamera>(faceSide, faceTexSide, width - faceSide *4, 0);*/
-	int minWidth = width * 0.25, minHeight = height * 0.25;
-	std::shared_ptr<Camera> pCamera =
-		std::make_shared<Camera>(minWidth, minHeight, width - minWidth, 0);
+		int minWidth = width * 0.25, minHeight = height * 0.25;
+		std::shared_ptr<Camera> pCamera =
+			std::make_shared<Camera>(minWidth, minHeight, width - minWidth, 0);
 
-	std::shared_ptr<Camera> pDefaultCamera = monitor->getDefaultCamera();
-	float fovy, aspect, zNear, zFar;
-	pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
+		std::shared_ptr<Camera> pDefaultCamera = monitor->getDefaultCamera();
+		float fovy, aspect, zNear, zFar;
+		pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
 
-	std::shared_ptr<Mesh> pCameraShape =
-		pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
-								   glm::scale(glm::mat4(1.0f), glm::vec3(0.1*zNear)));
+		std::shared_ptr<Mesh> pCameraShape =
+			pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+									   glm::scale(glm::mat4(1.0f), glm::vec3(0.1/**zNear*/)));
+
+		pCamera->setCameraShape(pCameraShape);
+
+		/*glm::vec3 eye, center, up;
+		pDefaultCamera->getCameraPose(eye, center, up);
+		glm::vec3 offsetDir = glm::normalize(center - eye);
+
+		float zNearAspect = 10.0f;
+		eye += offsetDir * zNear * zNearAspect;
+		eye -= up * 0.3f * zNear * zNearAspect;
+		center -= up * 0.3f * zNear * zNearAspect;
+		pCamera->setViewMatrix(eye, center, up);*/
+		pCamera->setViewMatrix(glm::vec3(0.0f, 0.0f, 4.0f),
+							   glm::vec3(0.0f), 
+							   glm::vec3(0.0f, 1.0f, 0.0f));
+		monitor->addCamera(pCamera);
+
+		glm::mat4 axisM = glm::mat4(1.0f);
+		std::shared_ptr<AxisMesh> axismesh = std::make_shared<AxisMesh>(5.0f, axisM);
+		pScene->addMesh(axismesh);
+	}
 	
-	pCamera->setCameraShape(pCameraShape);
+	{
+		int minWidth = width * 0.25, minHeight = height * 0.25;
+		std::shared_ptr<Camera> pCamera =
+			std::make_shared<Camera>(minWidth, minHeight, width - minWidth, minHeight);
+
+		std::shared_ptr<Camera> pDefaultCamera = monitor->getDefaultCamera();
+		float fovy, aspect, zNear, zFar;
+		pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
+
+		std::shared_ptr<Mesh> pCameraShape =
+			pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+									   glm::scale(glm::mat4(1.0f), glm::vec3(0.1/**zNear*/)));
+
+		pCamera->setCameraShape(pCameraShape);
+		monitor->addCamera(pCamera);
+	}
+
 	
-	glm::vec3 eye, center, up;
-	pDefaultCamera->getCameraPose(eye, center, up);
-	glm::vec3 offsetDir = glm::normalize(center - eye);
-	
-	float zNearAspect = 10.0f;
-	eye += offsetDir * zNear * zNearAspect;
-	eye -= up * 0.3f * zNear * zNearAspect;
-	center -= up * 0.3f * zNear * zNearAspect;
-	pCamera->setViewMatrix(eye, center, up);
-	monitor->addCamera(pCamera);
-	/*glm::mat4 axisM = glm::inverse(pScene->getTopModelMatrix());
-	std::shared_ptr<AxisMesh> axismesh = std::make_shared<AxisMesh>(5.0f, axisM);
-	cam.addMeshToScene(axismesh);*/
 
 	monitor->run();
 }
