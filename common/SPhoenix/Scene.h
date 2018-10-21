@@ -15,7 +15,7 @@ using namespace concurrency;
 
 namespace SP
 {
-	//The scene for common 3D rendering, use the SPhoenixScene shader
+	//The scenee for common 3D rendering, use the SPhoenixScene shader
 	class Scene
 	{
 	public:
@@ -60,8 +60,8 @@ namespace SP
 			mpCommonShaderProgram = std::make_shared<ShaderProgram>(shaderProgram);
 		}
 
-		void addMesh(const std::shared_ptr<Mesh>& pMesh,
-					 const std::shared_ptr<ShaderProgram> &pShaderProgramTmp = nullptr)
+		virtual void addMesh(const std::shared_ptr<Mesh>& pMesh,
+							 const std::shared_ptr<ShaderProgram> &pShaderProgramTmp = nullptr)
 		{
 			if (pMesh.use_count() != 0)
 			{
@@ -88,7 +88,7 @@ namespace SP
 		}
 
 		//Retrive the all meshes in a meshID-mesh map
-		std::map<GLuint, std::shared_ptr<Mesh>> getAllMeshes()
+		std::map<GLuint, std::shared_ptr<Mesh>> &getAllMeshes()
 		{
 			return mmMeshIDToMesh;
 		}
@@ -113,7 +113,7 @@ namespace SP
 			return result;
 		}
 
-		//Transform the scene, which will transform all meshes in the scene
+		//Transform the scenee, which will transform all meshes in the scenee
 		void transformMesh(const glm::mat4 &T)
 		{
 			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
@@ -127,7 +127,7 @@ namespace SP
 			}
 		}
 
-		//upload the scene information to the device,
+		//upload the scenee information to the device,
 		virtual void uploadToDevice()
 		{
 			if (mbUploaded) return;
@@ -152,7 +152,7 @@ namespace SP
 		{
 			if (!mbUploaded)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current scene has not been uploaded befor drawing");
 				return;
 			}
 
@@ -182,7 +182,7 @@ namespace SP
 		{
 			if (!mbUploaded)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current scene has not been uploaded befor drawing");
 				return;
 			}
 
@@ -241,7 +241,7 @@ namespace SP
 		{
 			if (!mbUploaded)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current scene has not been uploaded befor drawing");
 				return;
 			}
 
@@ -300,7 +300,7 @@ namespace SP
 										  [&](std::pair<const GLuint,
 											  std::shared_ptr<Mesh>>&pair)
 							{
-								if (/*pair.second->getInFrustum()*/
+								if (pair.second->getAccessible() && /*pair.second->getInFrustum()*/
 									pair.second->getVisible())
 								{
 									glUniform1ui(uMeshIDLoc, pair.second->getMeshID());
@@ -351,62 +351,65 @@ namespace SP
 										   [&](std::pair<const GLuint,
 											   std::shared_ptr<Mesh>>&pair)
 				{
-					std::vector<glm::vec3> vViewPt(BOUNDINT_BOX_POINT_NUM);
-					BBox viewBBox;
-
-					const std::vector<glm::vec3> &vBBoxPt =
-						pair.second->getBBoxPoints();
-
-					for (size_t i = 0; i < BOUNDINT_BOX_POINT_NUM; i++)
+					if (pair.second->getAccessible())
 					{
-						vViewPt[i] = R*vBBoxPt[i] + t;
-					}
+						std::vector<glm::vec3> vViewPt(BOUNDINT_BOX_POINT_NUM);
+						BBox viewBBox;
 
-					viewBBox.computeBBox(vViewPt);
-					glm::vec3 minVertex = viewBBox.getMinVertex();
-					glm::vec3 maxVertex = viewBBox.getMaxVertex();
+						const std::vector<glm::vec3> &vBBoxPt =
+							pair.second->getBBoxPoints();
 
-					if (minVertex.z < -zFar) minVertex.z = -zFar;
-					if (maxVertex.z > -zNear) maxVertex.z = -zNear;
-
-					//z section pruning
-					if (minVertex.z <= maxVertex.z)
-					{
-						BBox viewBBoxZ(minVertex, maxVertex);
-						std::vector<glm::vec4> vBBoxPtZ =
-							viewBBoxZ.getHomoBBoxVertices();
-
-						//mmMeshIDToVisible[pair.first] = true;
 						for (size_t i = 0; i < BOUNDINT_BOX_POINT_NUM; i++)
 						{
-							glm::vec4 projPt = projMatrix * vBBoxPtZ[i];
-							float wInv = 1.0f / projPt.w;
-							vViewPt[i] = glm::vec3(projPt * wInv);
+							vViewPt[i] = R*vBBoxPt[i] + t;
 						}
 
-						glm::vec3 frustumMin(-1.0f, -1.0f, -1.0f);
-						glm::vec3 frustumMax(1.0f, 1.0f, 1.0f);
-						BBox frustumBBox(frustumMin, frustumMax);
+						viewBBox.computeBBox(vViewPt);
+						glm::vec3 minVertex = viewBBox.getMinVertex();
+						glm::vec3 maxVertex = viewBBox.getMaxVertex();
 
-						viewBBoxZ.computeBBox(vViewPt);
-						glm::vec3 viewBBoxZMin = viewBBoxZ.getMinVertex();
-						glm::vec3 viewBBoxZMax = viewBBoxZ.getMaxVertex();
+						if (minVertex.z < -zFar) minVertex.z = -zFar;
+						if (maxVertex.z > -zNear) maxVertex.z = -zNear;
 
-						//Get the overlap Bounding Box
-						BBox overlapBBox = frustumBBox & viewBBoxZ;
-						bool visible = overlapBBox.isValid();
-
-						if (visible)
+						//z section pruning
+						if (minVertex.z <= maxVertex.z)
 						{
-							//Test whether the frustum include the viewBBoxZ
-							bool bInFrustum = overlapBBox == viewBBoxZ;
-							pair.second->setInFrustum(bInFrustum);
+							BBox viewBBoxZ(minVertex, maxVertex);
+							std::vector<glm::vec4> vBBoxPtZ =
+								viewBBoxZ.getHomoBBoxVertices();
+
+							//mmMeshIDToVisible[pair.first] = true;
+							for (size_t i = 0; i < BOUNDINT_BOX_POINT_NUM; i++)
+							{
+								glm::vec4 projPt = projMatrix * vBBoxPtZ[i];
+								float wInv = 1.0f / projPt.w;
+								vViewPt[i] = glm::vec3(projPt * wInv);
+							}
+
+							glm::vec3 frustumMin(-1.0f, -1.0f, -1.0f);
+							glm::vec3 frustumMax(1.0f, 1.0f, 1.0f);
+							BBox frustumBBox(frustumMin, frustumMax);
+
+							viewBBoxZ.computeBBox(vViewPt);
+							glm::vec3 viewBBoxZMin = viewBBoxZ.getMinVertex();
+							glm::vec3 viewBBoxZMax = viewBBoxZ.getMaxVertex();
+
+							//Get the overlap Bounding Box
+							BBox overlapBBox = frustumBBox & viewBBoxZ;
+							bool visible = overlapBBox.isValid();
+
+							if (visible)
+							{
+								//Test whether the frustum include the viewBBoxZ
+								bool bInFrustum = overlapBBox == viewBBoxZ;
+								pair.second->setInFrustum(bInFrustum);
+							}
+							pair.second->setVisible(visible);
 						}
-						pair.second->setVisible(visible);
-					}
-					else {
-						//mmMeshIDToVisible[pair.first] = false;
-						pair.second->setVisible(false);
+						else {
+							//mmMeshIDToVisible[pair.first] = false;
+							pair.second->setVisible(false);
+						}
 					}
 				}
 				);
@@ -419,7 +422,7 @@ namespace SP
 		{
 			if (!mbUploaded)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current scene has not been uploaded befor drawing");
 				return;
 			}
 
@@ -489,7 +492,8 @@ namespace SP
 			ioStr << macros << "//" << pShaderProgramTmp;
 			std::string label = ioStr.str();
 
-			if (mmLabelToShader.find(label) == mmLabelToShader.end())
+			if (mmLabelToShader.find(label) == mmLabelToShader.end()
+				|| mmLabelToShader[label].use_count() == 0)
 			{
 				std::shared_ptr<ShaderProgram> pShaderProgram =
 					std::make_shared<ShaderProgram>(*pShaderProgramTmp);
@@ -529,7 +533,7 @@ namespace SP
 		}
 	};
 
-	//The scene for the 2D graphic, use the SPhoenixScene-2DGraphic shader
+	//The scenee for the 2D graphic, use the SPhoenixScene-2DGraphic shader
 	class TwoDScene : public Scene
 	{
 	public:
@@ -551,7 +555,7 @@ namespace SP
 		}
 	};
 
-	//The scene for the Skybox graphic, use the SPhoenixScene-SkyBox shader
+	//The scenee for the Skybox graphic, use the SPhoenixScene-SkyBox shader
 	class SkyBoxScene : public Scene
 	{
 	public:
@@ -627,7 +631,7 @@ namespace SP
 		{
 			if (!mbUploaded)
 			{
-				SP_CERR("The current scene has not been uploaded befor drawing");
+				SP_CERR("The current scenee has not been uploaded befor drawing");
 				return;
 			}
 
@@ -796,7 +800,7 @@ namespace SP
 			}
 
 			std::map<std::string, std::shared_ptr<ShaderProgram>>::iterator iter;
-			//Only one shader for the text scene
+			//Only one shader for the text scenee
 			iter = mmLabelToShader.begin();
 			{
 				iter->second->useProgram();
@@ -847,7 +851,7 @@ namespace SP
 			std::string undefColor = "#undef HAVE_COLOR\n";
 			pDefaultShaderTmp->addMacros(undefColor);
 
-			std::map<GLuint, std::shared_ptr<Mesh>> mExistedMeshes =
+			std::map<GLuint, std::shared_ptr<Mesh>> &mExistedMeshes =
 				pScene->getAllMeshes();
 
 			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
@@ -896,7 +900,7 @@ namespace SP
 			std::string undefColor = "#undef HAVE_COLOR\n";
 			pDefaultShaderTmp->addMacros(undefColor);
 
-			std::map<GLuint, std::shared_ptr<Mesh>> mExistedMeshes =
+			std::map<GLuint, std::shared_ptr<Mesh>> &mExistedMeshes =
 				pScene->getAllMeshes();
 
 			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;

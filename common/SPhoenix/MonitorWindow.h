@@ -1,11 +1,11 @@
 #pragma once
-#include "Core.h"
+#include "GLWindowBase.h"
 #include "UICamera.h"
 #include "OmniCamera.h"
 
 namespace SP
 {
-	//The Monitor Window for showing the scene by cameras
+	//The Monitor Window for showing the scenee by cameras
 	class MonitorWindow : public GLWindowBase
 	{
 	public:
@@ -18,8 +18,14 @@ namespace SP
 			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEPTH_TEST);
 			glDepthFunc(GL_LEQUAL);
+			//glEnable(GL_CULL_FACE);
+			//glCullFace(GL_BACK);
+
+			//For Opengl Transparent
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+			//For transfer buffers with any size
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 			//Set up the UI Scene
@@ -56,22 +62,15 @@ namespace SP
 
 			pCamera->setup(mWidth, mHeight);
 			mvpCamera.push_back(pCamera);
-
-			//Set the camera shape scene
-			std::shared_ptr<Mesh> pCameraShape = pCamera->getCameraShape();
-			std::shared_ptr<Scene> pCameraShapeScene = nullptr;
-			if (pCameraShape.use_count() != 0)
-			{
-				pCameraShapeScene = std::make_shared<Scene>();
-				pCameraShapeScene->addMesh(pCameraShape);
-				pCameraShapeScene->uploadToDevice();
-			}
-			mvpCameraShapeScene.push_back(pCameraShapeScene);
+			mvpScene.push_back(pCamera->getAttachedScene());
 
 			//Add camera border to the mpUIScene
-			int cx, cy, cw, ch;
-			pCamera->getCanvas(cx, cy, cw, ch);
-			addRectangle(cx, cy, cw, ch, 1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			if(pCamera->getShowCanvas())
+			{
+				int cx, cy, cw, ch;
+				pCamera->getCanvas(cx, cy, cw, ch);
+				addRectangle(cx, cy, cw, ch, 1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			}
 		}
 
 		std::shared_ptr<Camera> getCamera(int index)
@@ -171,15 +170,6 @@ namespace SP
 				pDefaultCamera->setCanvas(cx, cy, cw, ch);
 				pDefaultCamera->setViewport(cx, cy, cw, ch);
 				//pDefaultCamera->setViewport(0, 0, mWidth, mHeight);
-
-				//swap the pointer in the mvpCamera
-				/*mvpCamera[index] = pDefaultCamera;
-				mvpCamera[mDefaultCameraIndex] = pCamera;*/
-
-				//swap the camera shape pointer in the mvpCameraShapeScene
-				/*std::shared_ptr<Scene> pCameraShapeScene = mvpCameraShapeScene[index];
-				mvpCameraShapeScene[index] = mvpCameraShapeScene[mDefaultCameraIndex];
-				mvpCameraShapeScene[mDefaultCameraIndex] = pCameraShapeScene;*/
 			}
 		}
 
@@ -226,15 +216,16 @@ namespace SP
 		/**************************************************************************/
 		/******************************Scene operation*****************************/
 
-		//Set the scene to the MonitorWindow, meanwhile upload the scene to device
-		//This function all adjust(transform) the scene to the world center and 
-		//scale the scene, meanwhile move the first camera in the monitor to the 
-		//(1, 1, 1) corner of the moved scene cube bounding box, keep the relative 
+		//Set the scenee to the MonitorWindow, meanwhile upload the scenee to device
+		//This function all adjust(transform) the scenee to the world center and 
+		//scale the scenee, meanwhile move the first camera in the monitor to the 
+		//(1, 1, 1) corner of the moved scenee cube bounding box, keep the relative 
 		//pose between the cameras synchronous
 		void setScene(const std::shared_ptr<Scene> &pScene)
 		{
 			pScene->uploadToDevice();
 			mpScene = pScene;
+			mvpScene.insert(mvpScene.begin(), pScene);
 
 			std::shared_ptr<Camera> pDefaultCamera = getDefaultCamera();
 			adjustSceneToCamera(mpScene, pDefaultCamera);
@@ -251,6 +242,7 @@ namespace SP
 		{
 			pSkyBoxScene->uploadToDevice();
 			mpSkyBoxScene = pSkyBoxScene;
+			mvpScene.push_back(pSkyBoxScene);
 		}
 
 		/******************************Scene operation*****************************/
@@ -415,21 +407,21 @@ namespace SP
 			glGetIntegerv(GL_MAX_VIEWPORT_DIMS, p);
 			std::cout << "max width = " << p[0] << ";" << "max height = " << p[1] << std::endl;*/
 
-			BBox sceneBBox = pScene->getTotalBBox();
-			glm::vec3 minVertex = sceneBBox.getMinVertex();
-			glm::vec3 maxVertex = sceneBBox.getMaxVertex();
-			glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
+			BBox sceneeBBox = pScene->getTotalBBox();
+			glm::vec3 minVertex = sceneeBBox.getMinVertex();
+			glm::vec3 maxVertex = sceneeBBox.getMaxVertex();
+			glm::vec3 sceneeCenter = (minVertex + maxVertex)*0.5f;
 
-			pCamera->adjustCameraPose(sceneBBox);
+			pCamera->adjustCameraPose(sceneeBBox);
 			glm::vec3 eye, center, up;
 			pCamera->getCameraPose(eye, center, up);
-			glm::vec3 halfDiagonal = minVertex - sceneCenter;
-			glm::vec3 viewAxis = eye - sceneCenter;
+			glm::vec3 halfDiagonal = minVertex - sceneeCenter;
+			glm::vec3 viewAxis = eye - sceneeCenter;
 			float depthRange = std::sqrt(glm::dot(viewAxis, viewAxis)) +
 				std::sqrt(glm::dot(halfDiagonal, halfDiagonal));
 
 			glm::mat4 mt;
-			mt = glm::translate(mt, -sceneCenter);
+			mt = glm::translate(mt, -sceneeCenter);
 
 			float fovy, aspect, zNear, zFar;
 			pCamera->getFrustum(fovy, aspect, zNear, zFar);
@@ -442,23 +434,25 @@ namespace SP
 
 		void runCamera(int cameraIdx)
 		{
-			std::vector<std::shared_ptr<Scene>> vpScene;
-			if (mpScene.use_count() != 0) vpScene.push_back(mpScene);
-
-			for (size_t j = 0; j < mvpCamera.size(); j++)
+			std::shared_ptr<Mesh> &pCameraShape = mvpCamera[cameraIdx]->getCameraShape();
+			if (pCameraShape.use_count() != 0)
 			{
-				if (j == cameraIdx || mvpCameraShapeScene[j].use_count() == 0) continue;
-				vpScene.push_back(mvpCameraShapeScene[j]);
+				pCameraShape->setAccessible(false);
+				mvpCamera[cameraIdx]->renderSceneArray(mvpScene);
+				pCameraShape->setAccessible(true);
 			}
-
-			if (mpSkyBoxScene.use_count() != 0) vpScene.push_back(mpSkyBoxScene);
-
-			mvpCamera[cameraIdx]->renderSceneArray(vpScene);
+			else
+			{
+				mvpCamera[cameraIdx]->renderSceneArray(mvpScene);
+			}
+			
 		}
 
 	protected:
 		std::shared_ptr<Scene> mpScene;
 		std::shared_ptr<Scene> mpSkyBoxScene;
+		std::vector<std::shared_ptr<Scene>> mvpScene;
+
 
 		std::shared_ptr<Scene> mpUIScene;
 		std::shared_ptr<UICamera> mpUICamera;
@@ -469,7 +463,6 @@ namespace SP
 		//which has the same canvas size with the window, and must be
 		//set in the constructor of this class or inherited class
 		std::vector<std::shared_ptr<Camera>> mvpCamera;
-		std::vector<std::shared_ptr<Scene>> mvpCameraShapeScene;
 
 	private:
 		//Cost time for the current frame, in millisecond

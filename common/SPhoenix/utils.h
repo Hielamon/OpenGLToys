@@ -37,13 +37,15 @@ namespace SP
 
 		glm::vec3 FollowedEye, FollowedUp;
 		glm::vec4 CameraColor, FollowedCameraColor;
+		float DefaultShininess, DefaultShininessStrength;
 
 	private:
 		SPConfigure() :
 			FollowedEye(0.0f, 0.1f, 0.3f),
 			FollowedUp(0.0f, 1.0f, 0.0f),
 			CameraColor(1.0f, 0.0f, 0.0f, 1.0f),
-			FollowedCameraColor(1.0f, 1.0f, 0.0f, 1.0f)
+			FollowedCameraColor(1.0f, 1.0f, 0.0f, 1.0f),
+			DefaultShininess(32.f), DefaultShininessStrength(0.5f)
 		{
 			std::string __currentPATH = __FILE__;
 			__currentPATH = __currentPATH.substr(0, __currentPATH.find_last_of("/\\"));
@@ -69,19 +71,27 @@ namespace SP
 				{
 					ioStr >> FollowedEye.x >> FollowedEye.y >> FollowedEye.z;
 				}
-				else if(label == "FollowedUp")
+				else if (label == "FollowedUp")
 				{
 					ioStr >> FollowedUp.x >> FollowedUp.y >> FollowedUp.z;
 				}
 				else if (label == "CameraColor")
 				{
-					ioStr >> CameraColor.r >> CameraColor.g >> 
+					ioStr >> CameraColor.r >> CameraColor.g >>
 						CameraColor.b >> CameraColor.w;
 				}
 				else if (label == "FollowedCameraColor")
 				{
 					ioStr >> FollowedCameraColor.r >> FollowedCameraColor.g >>
 						FollowedCameraColor.b >> FollowedCameraColor.w;
+				}
+				else if (label == "DefaultShininess")
+				{
+					ioStr >> DefaultShininess;
+				}
+				else if (label == "DefaultShininessStrength")
+				{
+					ioStr >> DefaultShininessStrength;
 				}
 			}
 		}
@@ -90,7 +100,7 @@ namespace SP
 		{
 			std::cout << "The default setting is :" << std::endl;
 
-			std::cout << "FollowedEye : [" << FollowedEye.x << ", " << FollowedEye.y 
+			std::cout << "FollowedEye : [" << FollowedEye.x << ", " << FollowedEye.y
 				<< ", " << FollowedEye.z << "]" << std::endl;
 
 			std::cout << "FollowedUp : [" << FollowedUp.x << ", " << FollowedUp.y
@@ -101,8 +111,14 @@ namespace SP
 
 			std::cout << "FollowedCameraColor : [" << FollowedCameraColor.r << ", " << FollowedCameraColor.g
 				<< ", " << FollowedCameraColor.b << ", " << FollowedCameraColor.w << "]" << std::endl;
+
+			std::cout << "DefaultShininess : " << DefaultShininess << std::endl;
+			std::cout << "DefaultShininessStrength : " << DefaultShininessStrength << std::endl;
 		}
 	};
+
+#define DEFAULT_SHININESS SPConfigure::getInstance().DefaultShininess
+#define DEFAULT_SHININESS_STRENGTH SPConfigure::getInstance().DefaultShininessStrength
 
 	/**Get the resolution of primary screen*/
 	inline glm::u32vec2 GetScreenResolution()

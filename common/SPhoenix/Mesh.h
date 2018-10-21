@@ -35,9 +35,23 @@ namespace SP
 			 std::make_shared<Material>(),
 			 const glm::mat4 &relMMatrix = glm::mat4(1.0f))
 			: mbUploaded(false), mRelMMatrix(relMMatrix),
-			mbVisible(true), mbInFrustum(false)
+			mbAccessible(true), mbVisible(true), mbInFrustum(false)
 		{
 			reset(pVertexArray, pMaterial);
+
+			MeshGlobal::getInstance().totalMeshCount++;
+			mMeshID = MeshGlobal::getInstance().totalMeshCount;
+		}
+
+		Mesh(const Mesh &mesh)
+		{
+			mbUploaded = mesh.mbUploaded;
+			mRelMMatrix = mesh.mRelMMatrix;
+			mbAccessible = mesh.mbAccessible;
+			mbVisible = mesh.mbVisible;
+			mbInFrustum = mesh.mbInFrustum;
+
+			reset(mesh.mpVertexArray, mesh.mpMaterial);
 
 			MeshGlobal::getInstance().totalMeshCount++;
 			mMeshID = MeshGlobal::getInstance().totalMeshCount;
@@ -69,6 +83,11 @@ namespace SP
 
 			//Update the variables related to the bounding box
 			updateBBox();
+		}
+
+		std::shared_ptr<VertexArray> getVertexArray()
+		{
+			return mpVertexArray;
 		}
 
 		void setMaterial(const std::shared_ptr<Material> &pMaterial)
@@ -196,6 +215,17 @@ namespace SP
 			updateBBox();
 		}
 
+		//Access the accessible variable
+		bool getAccessible()
+		{
+			return mbAccessible;
+		}
+
+		void setAccessible(bool bAccessible)
+		{
+			mbAccessible = bAccessible;
+		}
+
 		//Access the visible variable
 		bool getVisible()
 		{
@@ -268,7 +298,7 @@ namespace SP
 		//They must set the material and the vertex array explicite in
 		//the constructor function
 		Mesh() : mbUploaded(false), mRelMMatrix(glm::mat4(1.0f)),
-			mbVisible(true), mbInFrustum(false) 
+			mbAccessible(true), mbVisible(true), mbInFrustum(false)
 		{
 			MeshGlobal::getInstance().totalMeshCount++;
 			mMeshID = MeshGlobal::getInstance().totalMeshCount;
@@ -297,6 +327,8 @@ namespace SP
 		BBox mBBox;
 		std::vector<glm::vec3> mvBBoxVertice;
 
+		//The top switch for determining whether to render the mesh
+		bool mbAccessible;
 		//Indicate whether the mesh can be viewed in the current frustum
 		bool mbVisible;
 		//Indicate whether the mesh is totally included in the current frustum

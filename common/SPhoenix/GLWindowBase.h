@@ -41,8 +41,6 @@ namespace SP
 		
 	};
 
-	
-
 	//OpenGL window base
 	class GLWindowBase
 	{
@@ -223,13 +221,13 @@ namespace SP
 	//		mpScene = pScene;
 	//		pScene->uploadToDevice();
 
-	//		//Update the model matrix according the scene bounding box
-	//		BBox sceneBBox = pScene->getTotalBBox();
-	//		glm::vec3 minVertex = sceneBBox.getMinVertex();
-	//		glm::vec3 maxVertex = sceneBBox.getMaxVertex();
-	//		glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
+	//		//Update the model matrix according the scenee bounding box
+	//		BBox sceneeBBox = pScene->getTotalBBox();
+	//		glm::vec3 minVertex = sceneeBBox.getMinVertex();
+	//		glm::vec3 maxVertex = sceneeBBox.getMaxVertex();
+	//		glm::vec3 sceneeCenter = (minVertex + maxVertex)*0.5f;
 	//		glm::mat4 mt;
-	//		mt = glm::translate(mt, -sceneCenter);
+	//		mt = glm::translate(mt, -sceneeCenter);
 
 
 	//		glm::vec3 center(0.0f, 0.0f, 0.0f);
@@ -313,7 +311,7 @@ namespace SP
 	//protected:
 	//	std::shared_ptr<Scene> mpScene;
 
-	//	//mpColorSceneUtil is used to showing the id colored scene
+	//	//mpColorSceneUtil is used to showing the id colored scenee
 	//	std::shared_ptr<SceneColorID> mpColorScene;
 	//	bool mbShowIDColor;
 

@@ -7,7 +7,7 @@
 
 namespace SP
 {
-	//The assimp scene loader 
+	//The assimp scenee loader 
 	class SceneAssimpLoader
 	{
 	public:
@@ -24,10 +24,10 @@ namespace SP
 			if (bFlipUV) flag |= aiProcess_FlipUVs;
 
 			HL_INTERVAL_START;
-			const aiScene *aiscene = import.ReadFile(path.c_str(), flag);
+			const aiScene *aiscenee = import.ReadFile(path.c_str(), flag);
 			HL_INTERVAL_ENDSTR("import.ReadFile");
 
-			if (!aiscene || aiscene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiscene->mRootNode)
+			if (!aiscenee || aiscenee->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiscenee->mRootNode)
 			{
 				SP_CERR("ERROR::ASSIMP::" + std::string(import.GetErrorString()));
 				//exit(-1);
@@ -39,8 +39,8 @@ namespace SP
 			mTypeMap = TextureGlobal::getInstance().aiTextypeToTextype;
 
 			HL_INTERVAL_START;
-			_loadToScene(aiscene);
-			HL_INTERVAL_ENDSTR("_loadToScene(aiscene)");
+			_loadToScene(aiscenee);
+			HL_INTERVAL_ENDSTR("_loadToScene(aiscenee)");
 
 			return GL_TRUE;
 		}
@@ -53,33 +53,33 @@ namespace SP
 		//The map between the aiTextureType and TextureType of SPhoenix library
 		std::map<aiTextureType, TextureType> mTypeMap;
 
-		//The vector stores the meshID of the assimp scene
+		//The vector stores the meshID of the assimp scenee
 		std::vector<GLuint> mvMeshID;
 
 		//The map of the texture and its path
 		std::map<std::string, std::shared_ptr<Texture>> mmpPathTextureLoaded;
 
 	private:
-		void _loadToScene(const aiScene *aiscene)
+		void _loadToScene(const aiScene *aiscenee)
 		{
-			//Loading all materials in the scene
-			std::vector<std::shared_ptr<Material>> vpMaterial(aiscene->mNumMaterials);
-			for (size_t i = 0; i < aiscene->mNumMaterials; i++)
+			//Loading all materials in the scenee
+			std::vector<std::shared_ptr<Material>> vpMaterial(aiscenee->mNumMaterials);
+			for (size_t i = 0; i < aiscenee->mNumMaterials; i++)
 			{
-				aiMaterial *aimaterial = aiscene->mMaterials[i];
+				aiMaterial *aimaterial = aiscenee->mMaterials[i];
 				vpMaterial[i] = _loadMaterial(aimaterial);
 				std::cout << "\rLoading Material(" << i + 1 << "/"
-					<< aiscene->mNumMaterials << ")" << std::flush;
+					<< aiscenee->mNumMaterials << ")" << std::flush;
 			}
 			std::cout << std::endl;
 
-			//Loading all meshes in the scene
+			//Loading all meshes in the scenee
 			if (mvMeshID.size() > 0)mvMeshID.clear();
-			mvMeshID.reserve(aiscene->mNumMeshes);
+			mvMeshID.reserve(aiscenee->mNumMeshes);
 
-			for (size_t i = 0; i < aiscene->mNumMeshes; i++)
+			for (size_t i = 0; i < aiscenee->mNumMeshes; i++)
 			{
-				aiMesh *aimesh = aiscene->mMeshes[i];
+				aiMesh *aimesh = aiscenee->mMeshes[i];
 				std::shared_ptr<VertexArray> pVertexArray = _loadVertexArray(aimesh);
 				std::shared_ptr<Material> pMaterial = vpMaterial[aimesh->mMaterialIndex];
 
@@ -91,13 +91,13 @@ namespace SP
 				mpScene->addMesh(pMesh);
 
 				std::cout << "\rLoading Mesh(" << i + 1 << "/"
-					<< aiscene->mNumMeshes << ")" << std::flush;
+					<< aiscenee->mNumMeshes << ")" << std::flush;
 			}
 			std::cout << std::endl;
 
-			//Traveling the scene tree for retrieving the instanceN vector and model matrix array
+			//Traveling the scenee tree for retrieving the instanceN vector and model matrix array
 			glm::mat4 initModelMatrix;
-			_processNode(aiscene->mRootNode, initModelMatrix);
+			_processNode(aiscenee->mRootNode, initModelMatrix);
 		}
 
 		std::shared_ptr<VertexArray> _loadVertexArray(const aiMesh *aimesh)

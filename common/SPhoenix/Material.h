@@ -209,18 +209,22 @@ namespace SP
 			if (bValidTexCoord)
 			{
 				std::map<TextureType, std::string> &nameMap = TextureGlobal::getInstance().TextypeToMaterialName;
-				std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
-				for (iter = mmTextypeToTex.begin(); iter != mmTextypeToTex.end(); iter++)
-				{
-					int samplerLoc = glGetUniformLocation(programID, nameMap[iter->first].c_str());
-					glUniform1i(samplerLoc, int(iter->first));
-					//GL_DEBUG_ALL;
-				}
+				//std::map<TextureType, std::vector<std::shared_ptr<Texture>>>::iterator iter;
+				//for (iter = mmTextypeToTex.begin(); iter != mmTextypeToTex.end(); iter++)
+				//{
+				//	int samplerLoc = glGetUniformLocation(programID, nameMap[iter->first].c_str());
+				//	glUniform1i(samplerLoc, int(iter->first));
+				//	//GL_DEBUG_ALL;
+				//}
 
 				std::map<int, GLuint>::iterator iter_;
 				for (iter_ = mmTexunitToTexbuffer.begin();
 					 iter_ != mmTexunitToTexbuffer.end(); iter_++)
 				{
+					TextureType type = TextureType(iter_->first);
+					int samplerLoc = glGetUniformLocation(programID, nameMap[type].c_str());
+					glUniform1i(samplerLoc, int(iter_->first));
+
 					glActiveTexture(GL_TEXTURE0 + iter_->first);
 					//glBindTexture(GL_TEXTURE_2D, iter_->second);
 					glBindTexture(GL_TEXTURE_2D_ARRAY, iter_->second);
@@ -345,9 +349,19 @@ namespace SP
 		MaterialFBO() {}
 		~MaterialFBO() {}
 
-		void setTexbuffer(TextureType type, GLuint buffer)
+		bool setTexbuffer(int texUnit, GLuint buffer)
 		{
-			mmTexunitToTexbuffer[type] = buffer;
+			mmTexunitToTexbuffer[texUnit] = buffer;
+			return true;
+		}
+
+		bool getTexbuffer(int texUnit, GLuint &buffer)
+		{
+			if (mmTexunitToTexbuffer.find(texUnit) ==
+				mmTexunitToTexbuffer.end())
+				return false;
+
+			return buffer = mmTexunitToTexbuffer[texUnit];
 		}
 
 		//Get the macro for the shader codes, which defines some necessary variable 
@@ -357,19 +371,61 @@ namespace SP
 		{
 			std::string macros = "";
 
-			if (mmTexunitToTexbuffer.size() == 0) return macros;
+			//if (mmTexunitToTexbuffer.size() == 0) return macros;
 
 			macros += "#define HAVE_TEXTURE\n";
 
-			std::map<int, GLuint>::iterator iter;
-			for (iter = mmTexunitToTexbuffer.begin(); 
-				 iter != mmTexunitToTexbuffer.end(); iter++)
-			{
-				TextureType type = TextureType(iter->first);
-				macros += TextureGlobal::getInstance().TextypeToMacro[type];
-			}
+			macros += TextureGlobal::getInstance().TextypeToMacro[TextureType::Tex_DIFFUSE];
 
 			return macros;
+		}
+
+		virtual void active(const GLuint &programID,
+							bool bValidTexCoord = true,
+							bool bValidVertexColor = false)
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current material has not been uploaded befor activing");
+				return;
+			}
+
+			GLint uShininessLoc = glGetUniformLocation(programID, "material.uShininess");
+			glUniform1f(uShininessLoc, mShininess);
+
+			GLint uShininessStrengthLoc =
+				glGetUniformLocation(programID, "material.uShininessStrength");
+			glUniform1f(uShininessStrengthLoc, mShininessStrength);
+
+			if (bValidTexCoord)
+			{
+				std::map<TextureType, std::string> &nameMap = TextureGlobal::getInstance().TextypeToMaterialName;
+				std::map<int, GLuint>::iterator iter_;
+				for (iter_ = mmTexunitToTexbuffer.begin();
+					 iter_ != mmTexunitToTexbuffer.end(); iter_++)
+				{
+					TextureType type = TextureType(iter_->first);
+					int samplerLoc = glGetUniformLocation(programID, nameMap[type].c_str());
+					glUniform1i(samplerLoc, int(iter_->first));
+
+					glActiveTexture(GL_TEXTURE0 + iter_->first);
+					//glBindTexture(GL_TEXTURE_2D, iter_->second);
+					glBindTexture(GL_TEXTURE_2D, iter_->second);
+				}
+				glActiveTexture(GL_TEXTURE0);
+			}
+			else if (bValidVertexColor)
+			{
+				return;
+			}
+
+			bool bDiffuse = !(mbDiffuseMap && bValidTexCoord);
+			bool bAmbient = !(mbAmbientMap && bValidTexCoord) && bDiffuse;
+			bool bSpecular = !(mbSpecularMap && bValidTexCoord);
+
+			if (bDiffuse) uploadColor(programID, "material.uDiffuse", mDiffuseColor);
+			if (bAmbient) uploadColor(programID, "material.uAmbient", mAmbientColor);
+			if (bSpecular) uploadColor(programID, "material.uSpecular", mSpecularColor);
 		}
 
 	};

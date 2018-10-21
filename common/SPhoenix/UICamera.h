@@ -24,9 +24,11 @@ namespace SP
 		virtual void renderSceneArray(const std::vector<std::shared_ptr<Scene>>
 									&vpScene)
 		{
+			if (!mbDoRender) return;
+
 			if (!mbSetup)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current scene has not been uploaded befor drawing");
 				return;
 			}
 
@@ -55,7 +57,7 @@ namespace SP
 
 			glBindFramebuffer(GL_FRAMEBUFFER, mMSFBO);
 
-			//draw the scene
+			//draw the scenee
 			glDisable(GL_DEPTH_TEST);
 			for (size_t i = 0; i < vpScene.size(); i++)
 			{
@@ -82,9 +84,11 @@ namespace SP
 
 		virtual void roughRenderScene(const std::shared_ptr<Scene> &pScene)
 		{
+			if (!mbDoRender) return;
+
 			if (!mbSetup)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current camera has not been uploaded befor rendering");
 				return;
 			}
 
@@ -93,7 +97,7 @@ namespace SP
 			glViewport(mViewX, mViewY, mViewWidth, mViewHeight);
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			//draw the scene
+			//draw the scenee
 			glDisable(GL_DEPTH_TEST);
 			if (pScene.use_count() != 0)
 			{

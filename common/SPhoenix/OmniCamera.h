@@ -132,7 +132,7 @@ namespace SP
 			//return;
 			if (!mbSetup)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current camera has not been uploaded befor rendering");
 				return;
 			}
 
@@ -167,7 +167,7 @@ namespace SP
 				glBindBufferBase(GL_UNIFORM_BUFFER, VIEWUBO_BINDING_POINT, mvCubeViewUBO[i]);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-				//draw the scene
+				//draw the scenee
 				for (size_t j = 0; j < vpScene.size(); j++)
 				{
 					const std::shared_ptr<Scene> &pScene = vpScene[j];

@@ -15,8 +15,10 @@ namespace SP
 		Camera(int width = 0, int height = 0, int offsetX = 0, int offsetY = 0)
 			: mCWidth(width), mCHeight(height), mCOffsetX(offsetX), mCOffsetY(offsetY),
 			mViewX(offsetX), mViewY(offsetY), mViewWidth(width), mViewHeight(height),
-			mbSetup(false), mbClearPerFrame(true)
+			mbSetup(false), mbClearPerFrame(true), mbDoRender(true), mbShowCanvas(true)
 		{
+			mpAttachedScene = std::make_shared<Scene>();
+
 			setProjectionMatrix();
 			setViewMatrix();
 			mJoyStick3D.setTranslateVelocity(CAMERA_MOVE_MIN_SPEED);
@@ -45,6 +47,21 @@ namespace SP
 			mbClearPerFrame = bClear;
 		}
 
+		void setDoRender(bool bDoRender)
+		{
+			mbDoRender = bDoRender;
+		}
+
+		void setShowCanvas(bool bShowCanvas)
+		{
+			mbShowCanvas = bShowCanvas;
+		}
+
+		bool getShowCanvas()
+		{
+			return mbShowCanvas;
+		}
+
 		void setCanvas(int offsetX, int offsetY, int width, int height)
 		{
 			mCOffsetX = offsetX;
@@ -63,7 +80,11 @@ namespace SP
 
 		bool IsValidCanvas()
 		{
-			return mCWidth > 0 && mCHeight > 0;
+			if (mCWidth == 0 || mCHeight == 0)
+			{
+				SP_LOG("One of sides of the camera canvas is zero, camera will not show frame");
+			}
+			return mCWidth >= 0 && mCHeight >= 0;
 		}
 
 		void setViewport(int viewX, int viewY, int viewWidth, int viewHeight)
@@ -87,7 +108,8 @@ namespace SP
 						float zNear = 0.01, float zFar = 100.f)
 		{
 			mFovy = fovy; mZNear = zNear; mZFar = zFar;
-			mAspect = aspect == 0.0f ? mCWidth / float(mCHeight) : aspect;
+			float winAspect = mCWidth == 0 || mCHeight == 0 ? 1.5f : mCWidth / float(mCHeight);
+			mAspect = aspect == 0.0f ? winAspect : aspect;
 
 			mProjMatrix = glm::perspective(mFovy, mAspect, mZNear, mZFar);
 
@@ -117,29 +139,17 @@ namespace SP
 
 			if (mbSetup) _uploadViewMatrix();
 
-			if (mpCameraShape.use_count())
+			//Synthesize all attached meshes
+			if (mpAttachedScene.use_count() != 0)
 			{
-				mpCameraShape->setRelMMatrix(glm::inverse(mViewMatrix));
+				std::map<GLuint, std::shared_ptr<Mesh>> &vAttachedMesh =
+					mpAttachedScene->getAllMeshes();
 
-				/*glm::mat4 curM = mpCameraShape->getInstanceMMatrix(0);
-
-				glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
-				glm::mat4 oriM = glm::inverse(mViewMatrix) * scale;
-
-				glm::mat4 residual = curM - oriM;
-
-				if (residual != glm::mat4(0.0f))
+				std::for_each(vAttachedMesh.begin(), vAttachedMesh.end(),
+							  [&](std::pair<const GLuint, std::shared_ptr<Mesh>>&pair)
 				{
-					std::cout << "residual matrix = " << std::endl;
-					std::cout << residual[0][0] << " " << residual[1][0] << " " << residual[2][0] << " " << residual[3][0] << std::endl;
-					std::cout << residual[0][1] << " " << residual[1][1] << " " << residual[2][1] << " " << residual[3][1] << std::endl;
-					std::cout << residual[0][2] << " " << residual[1][2] << " " << residual[2][2] << " " << residual[3][2] << std::endl;
-					std::cout << residual[0][3] << " " << residual[1][3] << " " << residual[2][3] << " " << residual[3][3] << std::endl;
-					std::cout << std::endl;
-				}*/
-				
-				/*glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f * mZNear * 10.f));
-				mpCameraShape->setInstanceMMatrix(glm::inverse(mViewMatrix) * scale, 0);*/
+					pair.second->setRelMMatrix(glm::inverse(mViewMatrix));
+				});
 			}
 		}
 		
@@ -212,8 +222,12 @@ namespace SP
 			return mpCameraShape;
 		}
 
-		virtual std::shared_ptr<Mesh>
-			createCameraShape(glm::vec4 color = glm::vec4(1.0f),
+		std::shared_ptr<Scene> getAttachedScene()
+		{
+			return mpAttachedScene;
+		}
+
+		virtual void createCameraShape(glm::vec4 color = glm::vec4(1.0f),
 							  glm::mat4 scale = glm::mat4(1.0f))
 		{
 			std::vector<glm::vec3> vertices(5);
@@ -247,8 +261,8 @@ namespace SP
 			pVA->addInstance(scale);
 
 			std::shared_ptr<Material> pMatrial = std::make_shared<Material>(color);
-			std::shared_ptr<Mesh> pCameraShape = std::make_shared<Mesh>(pVA, pMatrial);
-			return pCameraShape;
+			mpCameraShape = std::make_shared<Mesh>(pVA, pMatrial);
+			mpAttachedScene->addMesh(mpCameraShape);
 		}
 
 		//According to looking the bonding box , this function adjust the
@@ -357,12 +371,14 @@ namespace SP
 			//Create RAW FBO
 			_createNormalFBO();
 
+			mpAttachedScene->uploadToDevice();
 			mbSetup = true;
 		}
 
 		//Can be only called from inherited class of the GLWindowBase class
 		virtual void renderScene(const std::shared_ptr<Scene> &pScene)
 		{
+			if (!mbDoRender) return;
 			renderSceneArray(std::vector<std::shared_ptr<Scene>>(1, pScene));
 		}
 
@@ -370,9 +386,11 @@ namespace SP
 		virtual void renderSceneArray(const std::vector<std::shared_ptr<Scene>>
 									&vpScene)
 		{
+			if (!mbDoRender) return;
+
 			if (!mbSetup)
 			{
-				SP_CERR("The current scen has not been uploaded befor drawing");
+				SP_CERR("The current camera has not been uploaded befor rendering");
 				return;
 			}
 
@@ -419,11 +437,13 @@ namespace SP
 			glReadBuffer(GL_COLOR_ATTACHMENT0);
 			glDrawBuffer(GL_BACK_LEFT);
 
-			glBlitFramebuffer(mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
-							  mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
-							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
-							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
-
+			if (mbShowCanvas)
+			{
+				glBlitFramebuffer(mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
+								  mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
+								  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
+								  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+			}
 		}
 
 		virtual void readColorBuffer(std::shared_ptr<unsigned char> &pData,
@@ -466,6 +486,7 @@ namespace SP
 
 		//The Mesh for showing the camera shape
 		std::shared_ptr<Mesh> mpCameraShape;
+		std::shared_ptr<Scene> mpAttachedScene;
 		glm::mat4 mCameraShapeMMatrix;
 
 		//The parameters of perspective frustum
@@ -482,8 +503,14 @@ namespace SP
 		int mViewX, mViewY, mViewWidth, mViewHeight;
 
 	protected:
-		//Indicatint whether the camera has been set up
+		//Indicate whether the camera has been set up
 		bool mbSetup;
+
+		//Indicate whether the camera will do the render
+		bool mbDoRender;
+
+		//Indicate whether the camera will show the render result on canvas
+		bool mbShowCanvas;
 
 		//The UBO for sharing the view matrix and projection matrix between shaders
 		GLuint mViewUBO;
@@ -576,6 +603,8 @@ namespace SP
 			glBindTexture(GL_TEXTURE_2D, mColorTexture);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, bufferW, bufferH, 0,
 						 GL_RGB, GL_UNSIGNED_BYTE, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 								   GL_TEXTURE_2D, mColorTexture, 0);
 

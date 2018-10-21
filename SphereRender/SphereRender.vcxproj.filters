@@ -68,6 +68,12 @@
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-Text.vert">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-GL4X-OIT.frag">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-GL4X-OIT.vert">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\SPhoenix\Manipulator.h">
@@ -115,9 +121,6 @@
     <ClInclude Include="..\common\SPhoenix\JoyStick.h">
       <Filter>Header Files\SPhoenix</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\SPhoenix\Core.h">
-      <Filter>Header Files\SPhoenix\WindowClass</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\SPhoenix\MonitorWindow.h">
       <Filter>Header Files\SPhoenix\WindowClass</Filter>
     </ClInclude>
@@ -132,6 +135,12 @@
     </ClInclude>
     <ClInclude Include="..\common\SPhoenix\OmniCamera.h">
       <Filter>Header Files\SPhoenix\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\GLWindowBase.h">
+      <Filter>Header Files\SPhoenix\WindowClass</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\SPhoenix\Plane.h">
+      <Filter>Header Files\SPhoenix\Mesh</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

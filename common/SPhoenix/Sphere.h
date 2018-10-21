@@ -202,10 +202,11 @@ namespace SP
 			{
 				glm::vec3 &vert = vVertice[i];
 
-				glm::vec3 color = 0.5f * (glm::normalize(vert) + glm::vec3(1.0f));
+				vert = glm::normalize(vert);
+				glm::vec3 color = 0.5f * (vert + glm::vec3(1.0f));
 				//glm::vec3 color =  vert;
 				vColor.push_back(glm::vec4(color, 1.0f));
-				vert = glm::normalize(vert) * radius;
+				vert = vert * radius;
 			}
 
 			std::shared_ptr<VertexArray> pVertexArray = std::make_shared<VertexArray>(
@@ -373,7 +374,7 @@ namespace SP
 			std::vector<glm::vec4> vColor;
 			std::for_each(vVertice.begin(), vVertice.end(), [&](glm::vec3 &vert)
 			{
-				glm::vec3 color = 0.5f * (vert + glm::vec3(1.0f));
+				glm::vec3 color = 0.5f * (glm::normalize(vert) + glm::vec3(1.0f));
 				//glm::vec3 color =  vert;
 				vColor.push_back(glm::vec4(color, 1.0f));
 			});
@@ -408,7 +409,7 @@ namespace SP
 	class CubeSphere : public Mesh
 	{
 	public:
-		CubeSphere(float radius, glm::vec3 color, int subdivison = 0)
+		CubeSphere(float radius, glm::vec4 color, int subdivison = 0)
 		{
 			//icosahedron parameters a, b for the rectangle height and width
 			float a =  2.0f * std::sqrtf(3.0f) * radius / 3.0f;
@@ -462,7 +463,7 @@ namespace SP
 					for (int i = 0; i <= numInterval; i++)
 					{
 						vVertice[vertIdx] = { xStart, a_2, a_2 };
-						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 						vertIdx++;
 						xStart += aInterval;
 					}
@@ -471,14 +472,14 @@ namespace SP
 					for (int i = 1; i <= numInterval; i++)
 					{
 						vVertice[vertIdx] = { -a_2, a_2, zStart };
-						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 						vertIdx++;
 
 						xStart = -a_2 + aInterval;
 						for (int j = 1; j <= numInterval; j++)
 						{
 							vVertice[vertIdx] = { xStart, a_2, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 							vIndice[indiceIdx] = vertIdx;
 							vIndice[indiceIdx + 1] = vertIdx - 1;
 							vIndice[indiceIdx + 2] = vertIdx - numInterval - 2;
@@ -529,14 +530,14 @@ namespace SP
 						float yStart = a_2 - aInterval;
 						int vertStartIdx = vertIdx;
 						vVertice[vertIdx] = { -a_2, yStart, a_2 };
-						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 						vertIdx++;
 						//Left
 						float zStart = a_2 - aInterval, xStart = -a_2;
 						for (int i = 1; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
@@ -555,7 +556,7 @@ namespace SP
 						for (int i = 0; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
@@ -574,7 +575,7 @@ namespace SP
 						for (int i = 0; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
@@ -593,7 +594,7 @@ namespace SP
 						for (int i = 0; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vLastUpRowVertIdx[vertIdx - vertStartIdx - 1];
@@ -622,14 +623,14 @@ namespace SP
 						float yStart = a_2 - float(i) * aInterval;
 						int vertStartIdx = vertIdx;
 						vVertice[vertIdx] = { -a_2, yStart, a_2 };
-						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 						vertIdx++;
 						//Left
 						float zStart = a_2 - aInterval, xStart = -a_2;
 						for (int i = 1; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
@@ -648,7 +649,7 @@ namespace SP
 						for (int i = 0; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
@@ -667,7 +668,7 @@ namespace SP
 						for (int i = 0; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
@@ -686,7 +687,7 @@ namespace SP
 						for (int i = 0; i < numInterval; i++)
 						{
 							vVertice[vertIdx] = { xStart, yStart, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 
 							vIndice[indiceIdx] = vertIdx - 1;
 							vIndice[indiceIdx + 1] = vertIdx - 1 - numInterval * 4;
@@ -733,7 +734,7 @@ namespace SP
 					for (int i = 0; i <= numInterval; i++)
 					{
 						vVertice[vertIdx] = { xStart, -a_2, -a_2 };
-						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 						vertIdx++;
 						xStart += aInterval;
 					}
@@ -742,14 +743,14 @@ namespace SP
 					for (int i = 1; i <= numInterval; i++)
 					{
 						vVertice[vertIdx] = { -a_2, -a_2, zStart };
-						vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+						//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 						vertIdx++;
 
 						xStart = -a_2 + aInterval;
 						for (int j = 1; j <= numInterval; j++)
 						{
 							vVertice[vertIdx] = { xStart, -a_2, zStart };
-							vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
+							//vVertice[vertIdx] = glm::normalize(vVertice[vertIdx]);
 							vIndice[indiceIdx] = vertIdx;
 							vIndice[indiceIdx + 1] = vertIdx - 1;
 							vIndice[indiceIdx + 2] = vertIdx - numInterval - 2;
@@ -812,20 +813,24 @@ namespace SP
 				
 			}
 
-			std::shared_ptr<VertexArray> pVertexArray = std::make_shared<VertexArray>(
-				vVertice, vIndice, TRIANGLES);
-			pVertexArray->setNormals(vVertice);
 			std::vector<glm::vec4> vColor;
 			std::for_each(vVertice.begin(), vVertice.end(), [&](glm::vec3 &vert)
 			{
-				glm::vec3 color = 0.5f * (vert + glm::vec3(1.0f));
+				vert = glm::normalize(vert);
+				glm::vec3 vertColor = 0.5f * (vert + glm::vec3(1.0f));
 				//glm::vec3 color =  vert;
-				vColor.push_back(glm::vec4(color, 1.0f));
-			});
-			pVertexArray->setColors(vColor);
+				vColor.push_back(glm::vec4(vertColor, color.w));
 
-			std::shared_ptr<Material> pMaterial = std::make_shared<Material>(
-				glm::vec4(color, 1.0f), glm::vec4(0.0f));
+				vert *= radius;
+			});
+
+			std::shared_ptr<VertexArray> pVertexArray = std::make_shared<VertexArray>(
+				vVertice, vIndice, TRIANGLES);
+			pVertexArray->setNormals(vVertice);
+			//pVertexArray->setColors(vColor);
+
+			std::shared_ptr<Material> pMaterial =
+				std::make_shared<Material>(color, glm::vec4(0.0f));
 
 			setMaterial(pMaterial);
 			setVertexArray(pVertexArray);

@@ -1,13 +1,14 @@
-#include <SPhoenix/Core.h>
+#include <SPhoenix/MonitorWindow.h>
 #include <SPhoenix/Manipulator.h>
 #include <SPhoenix/BBoxMesh.h>
 #include <SPhoenix/AxisMesh.h>
 #include <SPhoenix/SceneAssimpLoader.h>
 #include <SPhoenix/Sphere.h>
 #include <thread>
+
 using namespace SP;
 
-void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
+void TestThread1(std::string sceneeFullPath, std::string skyboxFolder)
 {
 	//std::shared_ptr<FasterScene> pFasterScene = std::make_shared<FasterScene>();
 	//std::shared_ptr<Scene> pScene = std::static_pointer_cast<Scene>(pFasterScene);
@@ -18,9 +19,9 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 	{
 		SceneAssimpLoader loader;
 
-		if (!loader.loadScene(sceneFullPath, pScene))
+		if (!loader.loadScene(sceneeFullPath, pScene))
 		{
-			SP_CERR("The scene (" + sceneFullPath + ") is failed to load");
+			SP_CERR("The scenee (" + sceneeFullPath + ") is failed to load");
 			exit(-1);
 		}
 
@@ -28,7 +29,7 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 
 		if (!loader.loadScene(fileFullPath, pScene))
 		{
-		SP_CERR("The scene (" + fileFullPath + ") is failed to load");
+		SP_CERR("The scenee (" + fileFullPath + ") is failed to load");
 		exit(-1);
 		}*/
 	}
@@ -98,7 +99,7 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 		for (size_t i = 0; i < 10; i++)
 		{
 			std::shared_ptr<IcoSphere> pSphere =
-				std::make_shared<IcoSphere>(1, glm::vec3(1.0f, 1.0f, 1.0f), i);
+				std::make_shared<IcoSphere>(1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), i);
 			pSphere->setRelInstanceMMatrix(glm::translate(glm::mat4(1.0f),
 														  glm::vec3(2.0f * i, 0.0f, 0.0f)),
 										   0);
@@ -112,7 +113,7 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 		for (size_t i = 0; i < 10; i++)
 		{
 			std::shared_ptr<UVSphere> pSphere =
-				std::make_shared<UVSphere>(1, glm::vec3(1.0f, 1.0f, 1.0f), i);
+				std::make_shared<UVSphere>(1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), i);
 			pSphere->setRelInstanceMMatrix(glm::translate(glm::mat4(1.0f),
 														  glm::vec3(2.0f * i, -2.0f, 0.0f)),
 										   0);
@@ -126,7 +127,7 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 		for (size_t i = 0; i < 10; i++)
 		{
 			std::shared_ptr<CubeSphere> pSphere =
-				std::make_shared<CubeSphere>(1, glm::vec3(1.0f, 1.0f, 1.0f), i);
+				std::make_shared<CubeSphere>(1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), i);
 			pSphere->setRelInstanceMMatrix(glm::translate(glm::mat4(1.0f),
 														  glm::vec3(2.0f * i, 2.0f, 0.0f)),
 										   0);
@@ -169,11 +170,9 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 		float fovy, aspect, zNear, zFar;
 		pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
 
-		std::shared_ptr<Mesh> pCameraShape =
-			pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
-									   glm::scale(glm::mat4(1.0f), glm::vec3(0.1/**zNear*/)));
+		pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+								   glm::scale(glm::mat4(1.0f), glm::vec3(0.1/**zNear*/)));
 
-		pCamera->setCameraShape(pCameraShape);
 
 		/*glm::vec3 eye, center, up;
 		pDefaultCamera->getCameraPose(eye, center, up);
@@ -203,11 +202,9 @@ void TestThread1(std::string sceneFullPath, std::string skyboxFolder)
 		float fovy, aspect, zNear, zFar;
 		pDefaultCamera->getFrustum(fovy, aspect, zNear, zFar);
 
-		std::shared_ptr<Mesh> pCameraShape =
-			pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
-									   glm::scale(glm::mat4(1.0f), glm::vec3(0.1/**zNear*/)));
+		pCamera->createCameraShape(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f),
+								   glm::scale(glm::mat4(1.0f), glm::vec3(0.1/**zNear*/)));
 
-		pCamera->setCameraShape(pCameraShape);
 		monitor->addCamera(pCamera);
 	}
 

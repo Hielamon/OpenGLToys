@@ -1,9 +1,6 @@
 #pragma once
 
-#include "Utils.h"
-#include "Core.h"
 #include "MonitorWindow.h"
-#include "ManipulatorBase.h"
 
 namespace SP
 {
@@ -533,6 +530,8 @@ namespace SP
 						}
 
 						mFollowedCameraIdx = (mFollowedCameraIdx + 1) % vpCamera.size();
+						if (mKeyState[GLFW_KEY_LEFT_CONTROL]) mFollowedCameraIdx = 0;
+
 						pFollowedCamera = vpCamera[mFollowedCameraIdx];
 						if (pFollowedCamera != pDefaultCamera)
 						{
@@ -564,7 +563,7 @@ namespace SP
 						BBox bbox = pScene->getTotalBBox();
 						glm::vec3 minVertex = bbox.getMinVertex();
 						glm::vec3 maxVertex = bbox.getMaxVertex();
-						glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
+						glm::vec3 sceneeCenter = (minVertex + maxVertex)*0.5f;
 
 						float fovy, aspect, zNear, zFar;
 						pReferCamera->getFrustum(fovy, aspect, zNear, zFar);

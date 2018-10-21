@@ -27,8 +27,6 @@
 #define BOUNDING_BOX_PADDING 0.01
 #define BOUNDINT_BOX_POINT_NUM 8
 
-#define DEFAULT_SHININESS 32.0f
-#define DEFAULT_SHININESS_STRENGTH 0.5f
 ///////////////////////////////////////
 
 #define GL_DEBUG_INVALID_ENUM \

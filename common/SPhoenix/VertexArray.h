@@ -314,6 +314,9 @@ namespace SP
 			{
 				glm::mat4 &modelMatrix = (*mpvInstanceMMatrix)[i];
 				modelMatrix = T*modelMatrix;
+
+				glm::mat4 &relModelMatrix = (*mpvRelInstanceMMatrix)[i];
+				relModelMatrix = T*relModelMatrix;
 			}
 
 			if (mbUploaded)

@@ -1,4 +1,6 @@
-FollowedEye			0.0 1.0 2.0
-FollowedUp			0.0 1.0 0.0
-CameraColor			0.0 0.0 1.0 1.0
-FollowedCameraColor	1.0 1.0 0.0 1.0
+FollowedEye					0.0 0.2 0.3
+FollowedUp					0.0 1.0 0.0
+CameraColor					0.0 0.0 1.0 1.0
+FollowedCameraColor			1.0 1.0 0.0 1.0
+DefaultShininess			32
+DefaultShininessStrength	0.0
