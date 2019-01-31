@@ -233,6 +233,11 @@ namespace SP
 			mvMoveDir.resize(6, glm::vec3(0.0f));
 			mAcEyeVary = glm::vec3(0.0f);
 			mAcUpVary = glm::vec3(0.0f);
+			mTranslate = glm::vec3(0.0f);
+
+			mCaptureScreenFolder = "ScreenCapture";
+			mCaptureScreenIndex = 0;
+			mbCaptureScreen = false;
 		}
 
 		~MonitorManipulator() {}
@@ -248,6 +253,8 @@ namespace SP
 		//Such as the movement of cameras
 		virtual void doFrameTasks()
 		{
+			captureScreen();
+
 			std::vector<std::shared_ptr<Camera>> vpCamera =
 				mpMonitorWindow->getAllCameras();
 			std::shared_ptr<Camera> pDefaultCamera = mpMonitorWindow->getDefaultCamera();
@@ -382,6 +389,11 @@ namespace SP
 		int mMaximizeCameraIdx;
 
 		glm::vec3 mAcEyeVary, mAcUpVary;
+		glm::vec3 mTranslate;
+
+		std::string mCaptureScreenFolder;
+		int mCaptureScreenIndex;
+		bool mbCaptureScreen;
 
 	protected:
 		virtual void keyCallBackImpl(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -396,6 +408,17 @@ namespace SP
 					GLint bias = rastMode - GL_POINT;
 					bias = (bias + 1) % 3;
 					glPolygonMode(GL_FRONT_AND_BACK, GL_POINT + bias);
+
+					glGetIntegerv(GL_POLYGON_MODE, &rastMode);
+					if (rastMode == GL_LINE)
+					{
+						glEnable(GL_CULL_FACE);
+						glCullFace(GL_BACK);
+					}
+					else
+					{
+						glDisable(GL_CULL_FACE);
+					}
 				}
 				break;
 
@@ -547,7 +570,8 @@ namespace SP
 									SPConfigure::getInstance().FollowedCameraColor);
 						}
 					}
-					else if(mKeyState[GLFW_KEY_LEFT_CONTROL])
+					else if(mKeyState[GLFW_KEY_LEFT_CONTROL] && 
+							mpMonitorWindow->getScene().use_count() != 0)
 					{
 						std::shared_ptr<Camera> pCurrentCamera = vpCamera[mMaximizeCameraIdx];
 						std::shared_ptr<Camera> pFollowedCamera = vpCamera[mFollowedCameraIdx];
@@ -594,6 +618,63 @@ namespace SP
 					}
 				}
 				break;
+
+			case GLFW_KEY_B:
+				if (action == GLFW_PRESS && mKeyState[GLFW_KEY_LEFT_CONTROL])
+				{
+					//Set the screen capture state
+					mbCaptureScreen = true;
+				}
+
+			/*case GLFW_KEY_T:
+				if (action == GLFW_PRESS)
+				{
+					std::vector<glm::vec3> vertices(4), normals(4);
+					std::vector<glm::vec4> colors(4);
+					std::vector<glm::vec2> texcoords(4);
+					std::vector<GLuint> indices;
+					{
+						vertices[0] = glm::vec3(1.0f, 1.0f, -0.0f);
+						vertices[1] = glm::vec3(1.0f, -1.0f, -0.0f);
+						vertices[2] = glm::vec3(-1.0f, -1.0f, -0.0f);
+						vertices[3] = glm::vec3(-1.0f, 1.0f, -0.0f);
+
+						normals[0] = glm::vec3(0.0f, 0.0f, 1.0f);
+						normals[1] = glm::vec3(0.0f, 0.0f, 1.0f);
+						normals[2] = glm::vec3(0.0f, 0.0f, 1.0f);
+						normals[3] = glm::vec3(0.0f, 0.0f, 1.0f);
+
+						colors[0] = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+						colors[1] = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+						colors[2] = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+						colors[3] = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+
+						texcoords[0] = glm::vec2(1.0f, 1.0f);
+						texcoords[1] = glm::vec2(1.0f, 0.0f);
+						texcoords[2] = glm::vec2(0.0f, 0.0f);
+						texcoords[3] = glm::vec2(0.0f, 1.0f);
+
+						indices =
+						{
+							0, 2, 1,
+							0, 3, 2
+						};
+					}
+					std::shared_ptr<VertexArray> pVA = std::make_shared<VertexArray>(vertices, indices);
+					pVA->setTexCoords(texcoords);
+
+					glm::mat4 T = glm::translate(glm::mat4(1.0f), mTranslate);
+					mTranslate += glm::vec3(0.0f, 0.0f, 0.1f);
+					pVA->addInstance(T);
+
+					std::shared_ptr<Texture> pTex = std::make_shared<Texture>("./awesomeface.png", TextureType::Tex_DIFFUSE);
+					std::shared_ptr<Material> pMatrial = std::make_shared<Material>();
+					pMatrial->addTexture(pTex);
+					std::shared_ptr<Mesh> pMesh = std::make_shared<Mesh>(pVA, pMatrial);
+					mpMonitorWindow->getScene()->addMesh(pMesh);
+				}
+				break;*/
+
 			/*case GLFW_KEY_RIGHT:
 			{
 				std::shared_ptr<Camera> pCameraMini = mpMonitorWindow->getCamera(1);
@@ -891,10 +972,113 @@ namespace SP
 				}
 			}
 
+			if (mMouseButtonState[GLFW_MOUSE_BUTTON_LEFT] &&
+				(abs(dx) >= 1.0 || abs(dy) >= 1.0))
+			{
+				std::shared_ptr<Camera> pDefaultCamera =
+					mpMonitorWindow->getDefaultCamera();
+
+				std::shared_ptr<Camera> pCurrentCamera =
+					mpMonitorWindow->getCamera(mMaximizeCameraIdx);
+				std::shared_ptr<Camera> pFollowedCamera =
+					mpMonitorWindow->getCamera(mFollowedCameraIdx);
+				std::shared_ptr<Camera> pReferCamera = pCurrentCamera;
+
+				if (pDefaultCamera == pReferCamera &&
+					pDefaultCamera != pFollowedCamera)
+				{
+					pReferCamera = pFollowedCamera;
+				}
+
+				float fovy, aspect, zNear, zFar;
+				pCurrentCamera->getFrustum(fovy, aspect, zNear, zFar);
+				float tanHalfFovy = std::tan(fovy*0.5);
+				float tanHalfFovx = tanHalfFovy * aspect;
+				float fovx = std::atan(tanHalfFovx) * 2;
+
+				int cx, cy, cw, ch;
+				pCurrentCamera->getCanvas(cx, cy, cw, ch);
+
+				float dxRad = fovx * dx / ch;
+				float dyRad = fovx * dy / cw;
+
+				JoyStick3D joystick;
+				joystick.setDoRotate(true);
+				float angle = 0.0f;
+
+				glm::mat4 referVM = pReferCamera->getViewMatrix();
+
+				glm::mat4 T = glm::mat4(glm::mat3(referVM));
+				joystick.setJoyStickSpace(T);
+
+				if (abs(dx) > abs(dy))
+				{
+					joystick.setRotateAxis(glm::vec3(0.0f, 1.0f, 0.0f));
+					angle = -dxRad;
+				}
+				else
+				{
+					joystick.setRotateAxis(glm::vec3(1.0f, 0.0f, 0.0f));
+					angle = -dyRad;
+				}
+
+				glm::vec3 eye, center, up;
+				pReferCamera->getCameraPose(eye, center, up);
+
+				joystick.executeRotation(eye, center, up, angle);
+				pReferCamera->setViewMatrix(eye, center, up);
+
+				//If the default camera was anchored, excute the follow
+				if (pDefaultCamera != pFollowedCamera &&
+					pFollowedCamera == pReferCamera)
+				{
+					followCamera(pFollowedCamera, pDefaultCamera,
+								 SPConfigure::getInstance().FollowedEye,
+								 SPConfigure::getInstance().FollowedUp);
+				}
+			}
+
 			WinManipulator::cursorPosCallBackImpl(window, xpos, ypos);
 		}
 
 	protected:
+		void captureScreen()
+		{
+			if (mbCaptureScreen)
+			{
+				if (mCaptureScreenIndex == 0 && 
+					_access(mCaptureScreenFolder.c_str(), 0) == -1)
+				{
+					_mkdir(mCaptureScreenFolder.c_str());
+				}
+
+				mCaptureScreenIndex--;
+				std::string saveFullPath;
+				do
+				{
+					mCaptureScreenIndex++;
+					std::stringstream ioStr;
+					ioStr << mCaptureScreenFolder << "/Capture-" <<
+						std::setw(4) << std::setfill('0') << mCaptureScreenIndex << ".jpg";
+					saveFullPath = ioStr.str();
+				} while (_access(saveFullPath.c_str(), 0) != -1);
+				
+
+				//Save the screen capture
+				{
+					std::shared_ptr<unsigned char> pData;
+					int width, height, channel;
+					mpMonitorWindow->getDefaultCamera()->readColorBuffer(pData, width, height, channel);
+					SOIL_save_image(saveFullPath.c_str(), SOIL_SAVE_TYPE_BMP,
+									width, height, channel, pData.get());
+					SP_LOG("Capture the main window screen to file : " << saveFullPath);
+				}
+
+				mCaptureScreenIndex++;
+				mbCaptureScreen = false;
+			}
+		}
+
 		void followCamera(const std::shared_ptr<Camera> &pFollowedCamera,
 						  const std::shared_ptr<Camera> &pCamera, 
 						  const glm::vec3 &relativeEye,

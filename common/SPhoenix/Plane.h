@@ -7,7 +7,7 @@ namespace SP
 	class Plane : public Mesh
 	{
 	public:
-		Plane(float width, float height, glm::mat4 m  = glm::mat4(1.0f), int subdivision = 0)
+		Plane(float width, float height, glm::mat4 m = glm::mat4(1.0f), int subdivision = 0)
 			: mSubDivision(subdivision)
 		{
 			float w_2 = width * 0.5, h_2 = height * 0.5;
@@ -91,6 +91,43 @@ namespace SP
 			setVertexArray(mpVertexArray);
 
 			if(mbUploaded)
+			{
+				mpVertexArray->clearUploaded();
+				mpVertexArray->uploadToDevice();
+			}
+		}
+
+		void setFlipTexCoord(float xOffset, float yOffset, float width, float height)
+		{
+			int numInterval = 1 << mSubDivision;
+			int numVertice = (numInterval + 1) * (numInterval + 1);
+			std::vector<glm::vec2> vTexCoord(numVertice);
+
+			float xInterval = width / numInterval;
+			float yInterval = height / numInterval;
+
+			float xOffset_ = xOffset, yOffset_ = yOffset;
+			for (size_t i = 0, vertIdx = 0; i <= numInterval; i++)
+			{
+				xOffset_ = xOffset;
+				for (size_t j = 0; j <= numInterval; j++)
+				{
+					vTexCoord[vertIdx] = { xOffset_, yOffset_ };
+					xOffset_ += xInterval;
+					vertIdx++;
+				}
+				yOffset_ += yInterval;
+			}
+
+			for (size_t i = 0; i < numVertice; i++)
+			{
+				vTexCoord[i].y = 1.0 - vTexCoord[i].y;
+			}
+
+			mpVertexArray->setTexCoords(vTexCoord);
+			setVertexArray(mpVertexArray);
+
+			if (mbUploaded)
 			{
 				mpVertexArray->clearUploaded();
 				mpVertexArray->uploadToDevice();

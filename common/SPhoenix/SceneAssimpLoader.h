@@ -20,7 +20,7 @@ namespace SP
 			mpScene = pScene;
 
 			Assimp::Importer import;
-			unsigned int flag = aiProcess_Triangulate;
+			unsigned int flag = aiProcess_SortByPType | aiProcess_Triangulate;
 			if (bFlipUV) flag |= aiProcess_FlipUVs;
 
 			HL_INTERVAL_START;
@@ -124,9 +124,34 @@ namespace SP
 				}
 			}
 
+			PrimitiveType type;
+			switch (aimesh->mPrimitiveTypes)
+			{
+			case aiPrimitiveType_POINT:
+				type = PrimitiveType::POINTS;
+				break;
+			case aiPrimitiveType_LINE:
+				type = PrimitiveType::LINES;
+				break;
+			case aiPrimitiveType_TRIANGLE:
+				type = PrimitiveType::TRIANGLES;
+				break;
+			default:
+				type = PrimitiveType::POINTS;
+				break;
+			}
+
+			if (aimesh->mNumFaces == 0)
+			{
+				pvIndice = nullptr;
+				if (aimesh->mNumVertices != 0)
+					type = PrimitiveType::POINTS;
+			}
+
+
 			std::shared_ptr<VertexArray> pVertexArray =
-				std::make_shared<VertexArray>(pvVertice, pvIndice,
-											  PrimitiveType::TRIANGLES);
+				std::make_shared<VertexArray>(pvVertice, pvIndice, type);
+
 			if (aimesh->mNormals)
 			{
 				pvNormal->reserve(aimesh->mNumVertices);

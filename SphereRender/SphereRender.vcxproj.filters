@@ -68,10 +68,16 @@
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-Text.vert">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
-    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-GL4X-OIT.frag">
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCamera.frag">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
-    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-GL4X-OIT.vert">
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCamera.vert">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCameraCube.frag">
+      <Filter>Header Files\SPhoenix\Shaders</Filter>
+    </None>
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCameraCube.vert">
       <Filter>Header Files\SPhoenix\Shaders</Filter>
     </None>
   </ItemGroup>

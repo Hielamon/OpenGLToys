@@ -18,6 +18,8 @@ namespace SP
 			mbSetup(false), mbClearPerFrame(true), mbDoRender(true), mbShowCanvas(true)
 		{
 			mpAttachedScene = std::make_shared<Scene>();
+			if (width == 0 || height == 0)
+				mbShowCanvas = false;
 
 			setProjectionMatrix();
 			setViewMatrix();
@@ -54,6 +56,12 @@ namespace SP
 
 		void setShowCanvas(bool bShowCanvas)
 		{
+			if (bShowCanvas && (mCWidth == 0 || mCHeight == 0))
+			{
+				SP_CERR("Cannot set the bShowCanvas to true, The Canvas size is invalid("
+						<< mCWidth << "¡Á" << mCHeight <<")");
+				return;
+			}
 			mbShowCanvas = bShowCanvas;
 		}
 
@@ -62,7 +70,7 @@ namespace SP
 			return mbShowCanvas;
 		}
 
-		void setCanvas(int offsetX, int offsetY, int width, int height)
+		virtual void setCanvas(int offsetX, int offsetY, int width, int height)
 		{
 			mCOffsetX = offsetX;
 			mCOffsetY = offsetY;
@@ -87,7 +95,7 @@ namespace SP
 			return mCWidth >= 0 && mCHeight >= 0;
 		}
 
-		void setViewport(int viewX, int viewY, int viewWidth, int viewHeight)
+		virtual void setViewport(int viewX, int viewY, int viewWidth, int viewHeight)
 		{
 			mViewX = viewX;
 			mViewY = viewY;
@@ -375,6 +383,11 @@ namespace SP
 			mbSetup = true;
 		}
 
+		virtual void clearSetup()
+		{
+			mbSetup = false;
+		}
+
 		//Can be only called from inherited class of the GLWindowBase class
 		virtual void renderScene(const std::shared_ptr<Scene> &pScene)
 		{
@@ -418,7 +431,7 @@ namespace SP
 				pScene->draw();
 			}
 
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			//Copy the color buffer from mMSFBO to mFBO
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, mMSFBO);
@@ -431,19 +444,23 @@ namespace SP
 							  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 							  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
-			//Copy the color buffer from mFBO to default FBO
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, mFBO);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-			glReadBuffer(GL_COLOR_ATTACHMENT0);
-			glDrawBuffer(GL_BACK_LEFT);
-
 			if (mbShowCanvas)
 			{
+				//Copy the color buffer from mFBO to default FBO
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, mFBO);
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+				glReadBuffer(GL_COLOR_ATTACHMENT0);
+				glDrawBuffer(GL_BACK_LEFT);
+
 				glBlitFramebuffer(mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
 								  mCOffsetX, mCOffsetY, mCWidth + mCOffsetX, mCHeight + mCOffsetY,
 								  GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 								  GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 			}
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		}
 
 		virtual void readColorBuffer(std::shared_ptr<unsigned char> &pData,
@@ -475,6 +492,14 @@ namespace SP
 			pData = pData_;
 		}
 
+		virtual void readColorBufferFloat(std::shared_ptr<float> &pData,
+										  int &width, int &height, int &channel)
+		{
+			width = mBWidth;
+			height = mBHeight;
+			channel = 3;
+		}
+
 	protected:
 		glm::vec3 mAcEyeVaring;
 
@@ -487,7 +512,7 @@ namespace SP
 		//The Mesh for showing the camera shape
 		std::shared_ptr<Mesh> mpCameraShape;
 		std::shared_ptr<Scene> mpAttachedScene;
-		glm::mat4 mCameraShapeMMatrix;
+		//glm::mat4 mCameraShapeMMatrix;
 
 		//The parameters of perspective frustum
 		//mFovy: the angle FOV in y direction
@@ -520,7 +545,7 @@ namespace SP
 		GLuint mMSFBO, mFBO;
 
 		//Samples for Super sample Anti-aliasing
-		static const int mNumSamples = 8;
+		static const int mNumSamples = 4;
 
 		//The buffer width and buffer height
 		int mBWidth, mBHeight;
@@ -555,7 +580,7 @@ namespace SP
 			//MSAA for anti-aliasing
 			glGenTextures(1, &mMSColorTexture);
 			glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mMSColorTexture);
-			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, mNumSamples, GL_RGB,
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, mNumSamples, GL_RGB8,
 									bufferW, bufferH, GL_TRUE);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 								   GL_TEXTURE_2D_MULTISAMPLE, mMSColorTexture, 0);
@@ -616,6 +641,8 @@ namespace SP
 						 GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
 								   GL_TEXTURE_2D, mMeshIDTexture, 0);
+
+			glBindTexture(GL_TEXTURE_2D, 0);
 
 			GLenum buffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 			glDrawBuffers(2, buffers);

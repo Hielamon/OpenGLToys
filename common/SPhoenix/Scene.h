@@ -133,6 +133,7 @@ namespace SP
 			if (mbUploaded) return;
 
 			std::map<GLuint, std::shared_ptr<Mesh>>::iterator iter;
+			//std::cout << "Mesh Size = " << mmMeshIDToMesh.size() << std::endl;
 			for (iter = mmMeshIDToMesh.begin(); 
 				 iter != mmMeshIDToMesh.end(); iter++)
 			{
@@ -141,6 +142,8 @@ namespace SP
 
 				//Upload the mesh
 				_uploadMesh(pMesh);
+				//std::cout << "Test Point" << std::endl;
+
 			}
 
 			//std::cout << "Shader ID count = " << mmLabelToMeshes.size() << std::endl;
@@ -496,7 +499,7 @@ namespace SP
 				|| mmLabelToShader[label].use_count() == 0)
 			{
 				std::shared_ptr<ShaderProgram> pShaderProgram =
-					std::make_shared<ShaderProgram>(*pShaderProgramTmp);
+					pShaderProgramTmp->createCopy();
 				pShaderProgram->addMacros(macros);
 				//Create the program, including compiling and linking the shader
 				pShaderProgram->createProgram();
@@ -949,54 +952,54 @@ namespace SP
 			{
 				if (vFileNames[i].find("right.") != std::string::npos)
 				{
-					vpTexture[0] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[0] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("left.") != std::string::npos)
 				{
-					vpTexture[1] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[1] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("top.") != std::string::npos)
 				{
-					vpTexture[2] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[2] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("bottom.") != std::string::npos)
 				{
-					vpTexture[3] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[3] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("front.") != std::string::npos)
 				{
-					vpTexture[4] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[4] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("back.") != std::string::npos)
 				{
-					vpTexture[5] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[5] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 
 				if (vFileNames[i].find("_rt.") != std::string::npos)
 				{
-					vpTexture[0] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[0] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("_lf.") != std::string::npos)
 				{
-					vpTexture[1] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[1] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("_up.") != std::string::npos)
 				{
-					vpTexture[2] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[2] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 					vpTexture[2]->antiClockWise90();
 				}
 				else if (vFileNames[i].find("_dn.") != std::string::npos)
 				{
-					vpTexture[3] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[3] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 					vpTexture[3]->clockWise90();
 				}
 				else if (vFileNames[i].find("_bk.") != std::string::npos)
 				{
-					vpTexture[4] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[4] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 				else if (vFileNames[i].find("_ft.") != std::string::npos)
 				{
-					vpTexture[5] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE);
+					vpTexture[5] = std::make_shared<Texture>(vFileNames[i], Tex_CUBE1);
 				}
 			}
 

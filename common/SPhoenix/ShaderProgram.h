@@ -6,14 +6,31 @@ namespace SP
 {
 	enum ShaderType
 	{
-		VERTEX, FRAGMENT, GEOMETRY
+		VERTEX = 0, FRAGMENT, GEOMETRY
 	};
 
 	//The warper class containing max all three shader codes and shader program
 	class ShaderProgram
 	{
 	public:
-		ShaderProgram() = delete;
+		//ShaderProgram() = delete;
+		ShaderProgram()
+			: mbValidProgram(false), mvbValidShader{ false, false, false },
+			mbCreated(false)
+		{
+
+		}
+		
+		ShaderProgram(const ShaderProgram &shader)
+		{
+			for (size_t i = 0; i < SHADER_KINDS; i++)
+			{
+				const std::string code = shader.getShaderCode(ShaderType(i));
+				setShaderCode(code, ShaderType(i));
+				const std::string path = shader.getShaderPath(ShaderType(i));
+				setShaderPath(path, ShaderType(i));
+			}
+		}
 
 		ShaderProgram(const std::string &vertFilePath, const std::string &fragFilePath)
 			: mbValidProgram(false), mvbValidShader { false, false, false },
@@ -30,6 +47,37 @@ namespace SP
 			_readFromFile(vertFilePath, ShaderType::VERTEX);
 			_readFromFile(fragFilePath, ShaderType::FRAGMENT);
 			_readFromFile(geomFilePath, ShaderType::GEOMETRY);
+		}
+
+		std::string getShaderCode(ShaderType type)
+		{
+			return mvCode[type];
+		}
+
+		std::string getShaderCode(ShaderType type) const
+		{
+			return mvCode[type];
+		}
+
+
+		std::string getShaderPath(ShaderType type)
+		{
+			return mvShaderPath[type];
+		}
+
+		std::string getShaderPath(ShaderType type) const
+		{
+			return mvShaderPath[type];
+		}
+
+		void setShaderCode(const std::string &code, ShaderType type)
+		{
+			mvCode[type] = code;
+		}
+
+		void setShaderPath(const std::string &shaderPath, ShaderType type)
+		{
+			mvShaderPath[type] = shaderPath;
 		}
 
 		~ShaderProgram()
@@ -53,20 +101,36 @@ namespace SP
 			}
 		}
 
-		void createProgram()
+		virtual void createProgram()
 		{
+			//_printShaderPath();
+
 			if (mbCreated) return;
 
 			for (size_t i = 0; i < SHADER_KINDS; i++)
 			{
 				if (!mvCode[i].empty())
 				{
+					//ShaderType type = i == 0 ? VERTEX : i == 1 ? FRAGMENT : GE
 					mvbValidShader[i] = _createAndCompile(mvCode[i], (ShaderType)i,
 														  mvShaderID[i]);
 				}
 			}
 			mbValidProgram = _linkShaders(mvShaderID, mProgramID);
 			mbCreated = true;
+		}
+
+		virtual std::shared_ptr<ShaderProgram> createCopy()
+		{
+			std::shared_ptr<ShaderProgram> pShader = std::make_shared<ShaderProgram>();
+			
+			for (size_t i = 0; i < SHADER_KINDS; i++)
+			{
+				pShader->setShaderCode(mvCode[i], ShaderType(i));
+				pShader->setShaderPath(mvShaderPath[i], ShaderType(i));
+			}
+
+			return pShader;
 		}
 
 		void clearProgram()
@@ -109,6 +173,7 @@ namespace SP
 
 	protected:
 		std::string mvCode[SHADER_KINDS];
+		std::string mvShaderPath[SHADER_KINDS];
 
 		GLuint mvShaderID[SHADER_KINDS];
 		bool mvbValidShader[SHADER_KINDS];
@@ -120,11 +185,12 @@ namespace SP
 	private:
 		bool _readFromFile(const std::string &filename, ShaderType type)
 		{
+			mvShaderPath[type] = filename;
 			std::string &shaderCode = mvCode[type], line = "";
 			std::ifstream shaderStream(filename, std::ios::in);
 			if (!shaderStream.is_open())
 			{
-				SP_CERR("Failed to valid File: " + filename);
+				SP_CERR("Failed to read File: " + filename);
 				exit(-1);
 			}
 			shaderCode = "";
@@ -141,8 +207,20 @@ namespace SP
 		{
 			const char * shaderCodePtr = shaderCode.c_str();
 
-			shaderID = glCreateShader(type == VERTEX ? GL_VERTEX_SHADER :
-				(type == FRAGMENT ? GL_FRAGMENT_SHADER : GL_GEOMETRY_SHADER));
+			switch (type)
+			{
+			case SP::VERTEX:
+				shaderID = glCreateShader(GL_VERTEX_SHADER);
+				break;
+			case SP::FRAGMENT:
+				shaderID = glCreateShader(GL_FRAGMENT_SHADER);
+				break;
+			case SP::GEOMETRY:
+				shaderID = glCreateShader(GL_GEOMETRY_SHADER);
+				break;
+			default:
+				break;
+			}
 
 			glShaderSource(shaderID, 1, &shaderCodePtr, NULL);
 			glCompileShader(shaderID);
@@ -155,6 +233,7 @@ namespace SP
 			{
 				glGetShaderInfoLog(shaderID, 512, NULL, infoLog);
 				SP_CERR("Compile Error log : " + std::string(infoLog));
+				_printShaderPath();
 				glDeleteShader(shaderID);
 				result = false;
 			}
@@ -184,12 +263,22 @@ namespace SP
 			{
 				glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
 				SP_CERR("Link Error log :" + std::string(infoLog));
+				_printShaderPath();
 				glDeleteProgram(shaderProgram);
 
 				result = false;
 			}
 
+			//_printShaderPath();
+
 			return result;
+		}
+
+		void _printShaderPath()
+		{
+			std::cout << "Vertex Shader Path: " << mvShaderPath[0] << std::endl;
+			std::cout << "Fragment Shader Path: " << mvShaderPath[1] << std::endl;
+			std::cout << "Geometry Shader Path: " << mvShaderPath[2] << std::endl;
 		}
 	};
 }

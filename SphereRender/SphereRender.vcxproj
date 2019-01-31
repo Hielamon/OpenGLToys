@@ -155,8 +155,10 @@
   <ItemGroup>
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-2DGraphic.frag" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-2DGraphic.vert" />
-    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-GL4X-OIT.frag" />
-    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-GL4X-OIT.vert" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCamera.frag" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCamera.vert" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCameraCube.frag" />
+    <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-OmniCameraCube.vert" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-SkyBox.frag" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-SkyBox.vert" />
     <None Include="..\common\SPhoenix\Shaders\SPhoenixScene-Text.frag" />

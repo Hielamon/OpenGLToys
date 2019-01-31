@@ -46,8 +46,8 @@ namespace SP
 	{
 	public:
 		GLWindowBase(const std::string &win_name = "Untitled", 
-					 int width = 0, int height = 0)
-			: mbValidWindow(false)
+					 int width = 0, int height = 0, bool visible = true)
+			: mbValidWindow(false), mbVisible(visible)
 		{
 			GlfwConfigure::Setup();
 
@@ -115,6 +115,8 @@ namespace SP
 		/**indicate the window state, TODO : maybe change to a enum*/
 		bool mbValidWindow;
 
+		bool mbVisible;
+
 		//A pointer to a manipulator for reflection to the callbacks
 		std::shared_ptr<ManipulatorBase> mpManipulator;
 
@@ -127,6 +129,14 @@ namespace SP
 				glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 				//glfwWindowHint(GLFW_SAMPLES, mNumSamples);
 				glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+				if (mbVisible)
+				{
+					glfwWindowHint(GLFW_VISIBLE, GL_TRUE);
+				}
+				else
+				{
+					glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
+				}
 			}
 
 			GLFWwindow *window = glfwCreateWindow(width, height, winName.c_str(), NULL, NULL);
@@ -146,7 +156,6 @@ namespace SP
 				glfwDestroyWindow(window);
 				mbValidWindow = false;
 			}
-
 			return window;
 		}
 	};

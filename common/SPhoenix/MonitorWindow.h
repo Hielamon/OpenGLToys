@@ -10,13 +10,16 @@ namespace SP
 	{
 	public:
 		MonitorWindow(const std::string &win_name = "Untitled",
-					  int width = 0, int height = 0)
-			: GLWindowBase(win_name, width, height), mFrameCostTime(0),
-			mDefaultCameraIndex(0), mFirstRunCameraIdx(0)
+					  int width = 0, int height = 0, bool visible = true)
+			: GLWindowBase(win_name, width, height, visible), mFrameCostTime(0),
+			mDefaultCameraIndex(0), mFirstRunCameraIdx(0), mbShowText(true)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEPTH_TEST);
+			glEnable(GL_LINE_SMOOTH);
+			glLineWidth(3.0f);
+			glPointSize(3.0f);
 			glDepthFunc(GL_LEQUAL);
 			//glEnable(GL_CULL_FACE);
 			//glCullFace(GL_BACK);
@@ -27,6 +30,7 @@ namespace SP
 
 			//For transfer buffers with any size
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+			glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
 			//Set up the UI Scene
 			mpUIScene = std::make_shared<TwoDScene>();
@@ -48,6 +52,28 @@ namespace SP
 		}
 
 		~MonitorWindow() {}
+
+		void setWindowVisible(bool bVisible)
+		{
+			if (bVisible)
+			{
+				glfwShowWindow(mGLFWWinPtr);
+			}
+			else
+			{
+				glfwHideWindow(mGLFWWinPtr);
+			}
+		}
+
+		void setDoShowText(bool bShowText)
+		{
+			mbShowText = bShowText;
+		}
+
+		void setBackgroundColor(glm::vec4 color = glm::vec4(0.0f))
+		{
+			glClearColor(color.r, color.g, color.b, color.a);
+		}
 
 		/**************************************************************************/
 		/*****************************Camera operation*****************************/
@@ -223,14 +249,24 @@ namespace SP
 		//pose between the cameras synchronous
 		void setScene(const std::shared_ptr<Scene> &pScene)
 		{
+			if (pScene->getNumMesh() == 0)return;
 			pScene->uploadToDevice();
+
+			if (mpScene.use_count() != 0)
+			{
+				mvpScene[0] = pScene;
+			}
+			else
+			{
+				mvpScene.insert(mvpScene.begin(), pScene);
+			}
+
 			mpScene = pScene;
-			mvpScene.insert(mvpScene.begin(), pScene);
 
 			std::shared_ptr<Camera> pDefaultCamera = getDefaultCamera();
 			adjustSceneToCamera(mpScene, pDefaultCamera);
 
-			adjustCameraToScene(pDefaultCamera, mpScene, mvpCamera);
+			adjustCameraToScene(pDefaultCamera, mpScene);
 		}
 
 		std::shared_ptr<Scene> getScene()
@@ -336,15 +372,7 @@ namespace SP
 			{
 				start_ = std::chrono::high_resolution_clock::now();
 
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
 				runOnce();
-
-				//std::string frameText = ioStr.str();
-				showText();
-
-				glfwPollEvents();
-				glfwSwapBuffers(mGLFWWinPtr);
 
 				frameCount++;
 
@@ -379,6 +407,8 @@ namespace SP
 
 		virtual void runOnce()
 		{
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
 			if (mpManipulator.use_count() != 0)
 				mpManipulator->doFrameTasks();
 
@@ -391,6 +421,12 @@ namespace SP
 
 			if (mpUIScene->getNumMesh() > 0)
 				mpUICamera->renderScene(mpUIScene);
+
+			if (mbShowText) showText();
+
+			glfwPollEvents();
+			glfwSwapBuffers(mGLFWWinPtr);
+
 		}
 
 	protected:
@@ -410,18 +446,18 @@ namespace SP
 			BBox sceneeBBox = pScene->getTotalBBox();
 			glm::vec3 minVertex = sceneeBBox.getMinVertex();
 			glm::vec3 maxVertex = sceneeBBox.getMaxVertex();
-			glm::vec3 sceneeCenter = (minVertex + maxVertex)*0.5f;
+			glm::vec3 sceneCenter = (minVertex + maxVertex)*0.5f;
 
 			pCamera->adjustCameraPose(sceneeBBox);
 			glm::vec3 eye, center, up;
 			pCamera->getCameraPose(eye, center, up);
-			glm::vec3 halfDiagonal = minVertex - sceneeCenter;
-			glm::vec3 viewAxis = eye - sceneeCenter;
+			glm::vec3 halfDiagonal = minVertex - sceneCenter;
+			glm::vec3 viewAxis = eye - sceneCenter;
 			float depthRange = std::sqrt(glm::dot(viewAxis, viewAxis)) +
 				std::sqrt(glm::dot(halfDiagonal, halfDiagonal));
 
 			glm::mat4 mt;
-			mt = glm::translate(mt, -sceneeCenter);
+			mt = glm::translate(mt, -sceneCenter);
 
 			float fovy, aspect, zNear, zFar;
 			pCamera->getFrustum(fovy, aspect, zNear, zFar);
@@ -453,7 +489,6 @@ namespace SP
 		std::shared_ptr<Scene> mpSkyBoxScene;
 		std::vector<std::shared_ptr<Scene>> mvpScene;
 
-
 		std::shared_ptr<Scene> mpUIScene;
 		std::shared_ptr<UICamera> mpUICamera;
 
@@ -464,7 +499,7 @@ namespace SP
 		//set in the constructor of this class or inherited class
 		std::vector<std::shared_ptr<Camera>> mvpCamera;
 
-	private:
+	protected:
 		//Cost time for the current frame, in millisecond
 		float mFrameCostTime;
 
@@ -472,9 +507,6 @@ namespace SP
 		int mDefaultCameraIndex;
 		int mFirstRunCameraIdx;
 
-	private:
-		
-
-		
+		bool mbShowText;
 	};
 }

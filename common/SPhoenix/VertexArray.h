@@ -128,6 +128,18 @@ namespace SP
 			}
 		}
 
+		void flipTexCoords()
+		{
+			if (mpvTexCoord.use_count() != 0)
+			{
+				for (size_t i = 0; i < mpvTexCoord->size(); i++)
+				{
+					glm::vec2 &texcoord = (*mpvTexCoord)[i];
+					texcoord = glm::vec2(texcoord.x, 1.0f - texcoord.y);
+				}
+			}
+		}
+
 		//If the input is not has the same size with the vertice array
 		//the corresponding array(normals, texcoord or colors) will not be changed
 		void setTexCoords(const std::shared_ptr<std::vector<glm::vec2>> &pTexcoords)
@@ -209,7 +221,7 @@ namespace SP
 
 			//If the array of model matrix has been uploaded to the device
 			//we will update the model matrix buffer 
-			if (mbUploaded)
+			if (mbUploaded && mNumInstance > 0)
 			{
 				_uploadArrayBuffer(GL_ARRAY_BUFFER, mMMatrixVBO, mpvInstanceMMatrix);
 			}
@@ -231,7 +243,7 @@ namespace SP
 				/*glm::mat4 &relModelMatrix = (*mpvRelInstanceMMatrix)[instanceID];
 				relModelMatrix *= (glm::inverse(modelMatrixOld) * instanceMMatrix);*/
 
-				if (mbUploaded)
+				if (mbUploaded && mNumInstance > 0)
 				{
 					glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
 					glBufferSubData(GL_ARRAY_BUFFER, instanceID * sizeof(glm::mat4),
@@ -259,7 +271,7 @@ namespace SP
 				glm::mat4 &relModelMatrix = (*mpvRelInstanceMMatrix)[instanceID];
 				relModelMatrix = relInstanceMMatrix;
 
-				if (mbUploaded)
+				if (mbUploaded && mNumInstance > 0)
 				{
 					glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
 					glBufferSubData(GL_ARRAY_BUFFER, instanceID * sizeof(glm::mat4),
@@ -319,7 +331,7 @@ namespace SP
 				relModelMatrix = T*relModelMatrix;
 			}
 
-			if (mbUploaded)
+			if (mbUploaded && mNumInstance > 0)
 			{
 				glBindBuffer(GL_ARRAY_BUFFER, mMMatrixVBO);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::mat4)*mNumInstance,
@@ -498,6 +510,12 @@ namespace SP
 				glDrawArraysInstanced(mDrawMode, 0, mNumDrawVertice, mNumInstance);
 				//glDrawArrays(mDrawMode, 0, mNumDrawVertice);
 			}
+			
+			//We comment this unbinding implementation for performance, 
+			//but it's a little dangerous. Though in our code it will perform
+			//right, but you are better to unbinding the VAO before binding 
+			//new buffers.
+			glBindVertexArray(0);
 		}
 
 	protected:

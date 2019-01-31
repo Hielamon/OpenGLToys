@@ -16,14 +16,14 @@ namespace SP
 		Material() : mTextureTotalCount(0), mDiffuseColor(glm::vec4(1.0f)),
 			mAmbientColor(glm::vec4(1.0f)), mSpecularColor(glm::vec4(0.0f)),
 			mShininess(DEFAULT_SHININESS), mShininessStrength(DEFAULT_SHININESS_STRENGTH),
-			mbUploaded(false) {}
+			mWarpType(GL_REPEAT), mbUploaded(false) {}
 
 		Material(const glm::vec4 &diffuseColor, const glm::vec4 &ambientColor,
 				 const glm::vec4 &specularColor, float shininess = DEFAULT_SHININESS,
 				 float shininessStrength = DEFAULT_SHININESS_STRENGTH)
 			: mTextureTotalCount(0), mDiffuseColor(diffuseColor), mAmbientColor(ambientColor),
 			mSpecularColor(specularColor), mShininess(shininess),
-			mShininessStrength(shininessStrength), mbUploaded(false) {}
+			mShininessStrength(shininessStrength), mWarpType(GL_REPEAT), mbUploaded(false) {}
 
 		Material(const glm::vec4 &diffAndambiColor, const glm::vec4 &specularColor,
 				 float shininess = DEFAULT_SHININESS, 
@@ -31,17 +31,31 @@ namespace SP
 			: mTextureTotalCount(0), mDiffuseColor(diffAndambiColor),
 			mAmbientColor(diffAndambiColor), mSpecularColor(specularColor),
 			mShininess(shininess), mShininessStrength(shininessStrength),
-			mbUploaded(false) {}
+			mWarpType(GL_REPEAT), mbUploaded(false) {}
 
 		Material(const glm::vec4 &uniformColor, float shininess = DEFAULT_SHININESS,
 				 float shininessStrength = DEFAULT_SHININESS_STRENGTH)
 			: mTextureTotalCount(0), mDiffuseColor(uniformColor), mAmbientColor(uniformColor),
 			mSpecularColor(uniformColor), mShininess(shininess),
-			mShininessStrength(shininessStrength), mbUploaded(false) {}
+			mShininessStrength(shininessStrength), mWarpType(GL_REPEAT), mbUploaded(false) {}
 
 		~Material()
 		{
 			clearUploaded();
+		}
+
+		void reset()
+		{
+			mmTextypeToTex.clear();
+			mTextureTotalCount = 0;
+
+			if (mbUploaded)
+				clearUploaded();
+		}
+
+		void setTexWarpType(GLint warpType = GL_REPEAT)
+		{
+			mWarpType = warpType;
 		}
 
 		void setShininess(const GLfloat& shininess)
@@ -107,6 +121,46 @@ namespace SP
 				return 0;
 			}
 
+		}
+
+		bool replaceTexture(const std::shared_ptr<Texture> &pTexture, int index)
+		{
+			TextureType curType = pTexture->getType();
+			if (mmTextypeToTex.find(curType) == mmTextypeToTex.end())
+			{
+				SP_CERR("There is not any texture has the same type the input texture");
+				return false;
+			}
+
+			std::vector<std::shared_ptr<Texture>> &vpTexture = mmTextypeToTex[curType];
+
+			if (index >= 0 && index < vpTexture.size() )
+			{
+				std::shared_ptr<Texture> pOtherTexture;
+				if(index + 1 < vpTexture.size())
+					pOtherTexture = vpTexture[index + 1];
+				else if(index - 1 >= 0)
+					pOtherTexture = vpTexture[index - 1];
+
+				if (pOtherTexture.use_count() != 0 &&
+					(pTexture->getHeight() != pOtherTexture->getHeight() ||
+					 pTexture->getWidth() != pOtherTexture->getWidth() ||
+					 pTexture->getChannel() != pOtherTexture->getChannel()))
+				{
+					SP_CERR("The texture size(width, height or channel) for the same \
+							type in a material is not consistent");
+
+					return false;
+				}
+
+				vpTexture[index] = pTexture;
+
+				if (mbUploaded)
+				{
+					clearUploaded();
+					uploadToDevice();
+				}
+			}
 		}
 
 		int getTextureTotalCount()
@@ -178,6 +232,7 @@ namespace SP
 				{
 					glDeleteTextures(1, &(iter->second));
 				}
+				mmTexunitToTexbuffer.clear();
 				mbUploaded = false;
 			}
 		}
@@ -259,8 +314,9 @@ namespace SP
 		int mTextureTotalCount;
 
 		//****** The inner variable for device ******//
-
 		bool mbUploaded;
+
+		GLint mWarpType;
 
 		//Indicate whether there is a *color map
 		bool mbDiffuseMap, mbAmbientMap, mbSpecularMap;
@@ -289,6 +345,8 @@ namespace SP
 			int height = vpTexture[0]->getHeight();
 			int channel = vpTexture[0]->getChannel();
 			int layerCount = vpTexture.size();
+
+			if (width <= 0 || height <= 0) return;
 
 			GLuint textureBuffer;
 			glGenTextures(1, &textureBuffer);
@@ -332,8 +390,8 @@ namespace SP
 
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, mWarpType);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, mWarpType);
 
 			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 			glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
@@ -405,6 +463,7 @@ namespace SP
 					 iter_ != mmTexunitToTexbuffer.end(); iter_++)
 				{
 					TextureType type = TextureType(iter_->first);
+					
 					int samplerLoc = glGetUniformLocation(programID, nameMap[type].c_str());
 					glUniform1i(samplerLoc, int(iter_->first));
 
@@ -437,6 +496,7 @@ namespace SP
 	public:
 		MaterialCube()
 		{
+			mWarpType = GL_CLAMP_TO_EDGE;
 			mvpCubeFaceTexture.reserve(6);
 		}
 
@@ -492,7 +552,7 @@ namespace SP
 				}
 			}
 
-			int textureUnit = Tex_CUBE;
+			int textureUnit = Tex_CUBE1;
 			_uploadCubeTexture(textureUnit, mvpCubeFaceTexture);
 
 			Material::uploadToDevice();
@@ -512,13 +572,13 @@ namespace SP
 				TextureGlobal::getInstance().TextypeToMaterialName;
 
 			{
-				int samplerLoc = glGetUniformLocation(programID, nameMap[Tex_CUBE].c_str());
-				glUniform1i(samplerLoc, Tex_CUBE);
+				int samplerLoc = glGetUniformLocation(programID, nameMap[Tex_CUBE1].c_str());
+				glUniform1i(samplerLoc, Tex_CUBE1);
 				//GL_DEBUG_ALL;
 			}
 
-			glActiveTexture(GL_TEXTURE0 + Tex_CUBE);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, mmTexunitToTexbuffer[Tex_CUBE]);
+			glActiveTexture(GL_TEXTURE0 + Tex_CUBE1);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, mmTexunitToTexbuffer[Tex_CUBE1]);
 			glActiveTexture(GL_TEXTURE0);
 		}
 
@@ -557,9 +617,9 @@ namespace SP
 			//not hit an exact face (due to some hardware limitations) so by using
 			// GL_CLAMP_TO_EDGE OpenGL always return their edge values whenever
 			// we sample between faces.
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, mWarpType);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, mWarpType);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, mWarpType);
 
 			//glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -567,11 +627,88 @@ namespace SP
 		}
 	};
 
-	/*class MaterialCubeFBO : public MaterialCube
+	class MaterialCubeFBO : public Material
 	{
 	public:
-		MaterialCubeFBO
-	};*/
+		MaterialCubeFBO()
+		{
+			mvpCubeFaceTextureBuffer.resize(6, 0);
+		}
+
+		~MaterialCubeFBO() {}
+
+		//The input vector holds the six face texture of the cube,
+		//following the order:right, left, top, bottom, back, front
+		/*void setCubeFaceTextureBuffer(int layer, GLuint faceBuffer)
+		{
+			if (layer >= 0 && layer < 6)
+			{
+				mvpCubeFaceTextureBuffer[layer] = faceBuffer;
+				glBindTexture(GL_TEXTURE_CUBE_MAP, mCubeMapBuffer);
+				glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X_EXT + layer, faceBuffer);
+				glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+			}
+		}*/
+
+		void setCubeTextureBuffer1(GLuint cubeBuffer)
+		{
+			mCubeMapBuffer1 = cubeBuffer;
+			int textureUnit = Tex_CUBE1;
+			mmTexunitToTexbuffer[textureUnit] = mCubeMapBuffer1;
+		}
+
+		void setCubeTextureBuffer2(GLuint cubeBuffer)
+		{
+			mCubeMapBuffer2 = cubeBuffer;
+			int textureUnit = Tex_CUBE2;
+			mmTexunitToTexbuffer[textureUnit] = mCubeMapBuffer2;
+		}
+
+		virtual void uploadToDevice()
+		{
+			if (mbUploaded) return;
+
+			Material::uploadToDevice();
+		}
+
+		virtual void active(const GLuint &programID,
+							bool bValidTexCoord = true,
+							bool bValidVertexColor = false)
+		{
+			if (!mbUploaded)
+			{
+				SP_CERR("The current MaterialCube has not been uploaded befor activing");
+				return;
+			}
+
+			std::map<TextureType, std::string> &nameMap =
+				TextureGlobal::getInstance().TextypeToMaterialName;
+
+			std::map<int, GLuint>::iterator iter_;
+			for (iter_ = mmTexunitToTexbuffer.begin();
+				 iter_ != mmTexunitToTexbuffer.end(); iter_++)
+			{
+				TextureType type = TextureType(iter_->first);
+
+				int samplerLoc = glGetUniformLocation(programID, nameMap[type].c_str());
+				glUniform1i(samplerLoc, int(iter_->first));
+
+				glActiveTexture(GL_TEXTURE0 + iter_->first);
+				//glBindTexture(GL_TEXTURE_2D, iter_->second);
+				glBindTexture(GL_TEXTURE_CUBE_MAP, iter_->second);
+			}
+			glActiveTexture(GL_TEXTURE0);
+		}
+
+	private:
+		//holds the six face texture of the cube, following the order:
+		//right, left, top, bottom, back, front
+		std::vector<GLuint> mvpCubeFaceTextureBuffer;
+
+		GLuint mCubeMapBuffer1;
+		GLuint mCubeMapBuffer2;
+	};
+
 
 	class MaterialText : public Material
 	{

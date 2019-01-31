@@ -14,7 +14,7 @@ namespace SP
 	enum TextureType
 	{
 		Tex_AMBIENT, Tex_DIFFUSE, Tex_SPECULAR/*, Tex_NORMALS*/,
-		Tex_CUBE
+		Tex_CUBE1, Tex_CUBE2
 	};
 
 	class TextureGlobal
@@ -46,7 +46,8 @@ namespace SP
 				{ Tex_AMBIENT , "#define AMBIENT_TEXTURE \n" },
 				{ Tex_DIFFUSE , "#define DIFFUSE_TEXTURE \n" },
 				{ Tex_SPECULAR, "#define SPECULAR_TEXTURE\n" },
-				{ Tex_CUBE, "#define CUBE_TEXTURE\n" }
+				{ Tex_CUBE1, "#define CUBE_TEXTURE1\n" },
+				{ Tex_CUBE2, "#define CUBE_TEXTURE2\n" },
 			};
 
 			TextypeToMaterialName =
@@ -54,7 +55,8 @@ namespace SP
 				{ Tex_AMBIENT , "material.ambient_maps" },
 				{ Tex_DIFFUSE , "material.diffuse_maps" },
 				{ Tex_SPECULAR, "material.specular_maps" },
-				{ Tex_CUBE, "skybox" }
+				{ Tex_CUBE1, "cube_map1" },
+				{ Tex_CUBE2, "cube_map2" },
 			};
 		}
 	};
@@ -62,7 +64,9 @@ namespace SP
 	class Texture
 	{
 	public:
-		Texture() : mWidth(-1), mHeight(-1), mChannels(-1), mForceChannels(3){}
+		Texture(TextureType type = TextureType::Tex_DIFFUSE)
+			: mWidth(-1), mHeight(-1), mChannels(-1),
+			mForceChannels(3), mType(type) {}
 
 		Texture(const std::string &imagePath, TextureType type)
 			: mForceChannels(3)

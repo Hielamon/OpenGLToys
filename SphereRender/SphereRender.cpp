@@ -92,56 +92,72 @@ void TestThread1(std::string sceneeFullPath, std::string skyboxFolder)
 
 	if (showBall)
 	{
+		//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		float rotAngle = std::atan2(std::sqrt(5.0f) - 1.0f, 2.0f);
+
+		glm::mat4 IcoRot = glm::rotate(glm::mat4(1.0f), rotAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+
 		std::shared_ptr<SpherePlane> pSpherePlane =
 			std::make_shared<SpherePlane>(1, glm::vec3(1.0f, 0.0f, 0.0f));
+		pSpherePlane->setRelInstanceMMatrix(IcoRot, 0);
 		//pScene->addMesh(pSpherePlane);
 
-		for (size_t i = 0; i < 10; i++)
+		/*for (size_t i = 6; i < 8; i++)
 		{
 			std::shared_ptr<IcoSphere> pSphere =
-				std::make_shared<IcoSphere>(1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), i);
-			pSphere->setRelInstanceMMatrix(glm::translate(glm::mat4(1.0f),
-														  glm::vec3(2.0f * i, 0.0f, 0.0f)),
-										   0);
+				std::make_shared<IcoSphere>(1, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f), i);
+
+			glm::mat4 relInstanceMM = glm::translate(glm::mat4(1.0f),
+													 glm::vec3(2.0f * i, 0.0f, 0.0f));
+			
+			relInstanceMM = glm::rotate(relInstanceMM, rotAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+
+			pSphere->setRelInstanceMMatrix(relInstanceMM, 0);
 			pScene->addMesh(pSphere);
 			int numVertice = pSphere->getNumVertice();
 			int numFace = pSphere->getNumFace();
 			std::cout << "IcoSphere " << i << ": vertice(" << numVertice 
 				<< "), face(" << numFace << ")" << std::endl;
-		}
+		}*/
 
-		for (size_t i = 0; i < 10; i++)
+		/*for (size_t i = 8; i < 9; i++)
 		{
-			std::shared_ptr<UVSphere> pSphere =
-				std::make_shared<UVSphere>(1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), i);
+			std::shared_ptr<UVSphereLine> pSphere =
+				std::make_shared<UVSphereLine>(1, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f), i, 3);
 			pSphere->setRelInstanceMMatrix(glm::translate(glm::mat4(1.0f),
-														  glm::vec3(2.0f * i, -2.0f, 0.0f)),
+														  glm::vec3(2.0f * 0, 0.0f, 0.0f)),
 										   0);
 			pScene->addMesh(pSphere);
 			int numVertice = pSphere->getNumVertice();
 			int numFace = pSphere->getNumFace();
 			std::cout << "UVSphere " << i << ": vertice(" << numVertice
 				<< "), face(" << numFace << ")" << std::endl;
-		}
+		}*/
 
-		for (size_t i = 0; i < 10; i++)
+		/*for (size_t i = 0; i < 1; i++)
 		{
 			std::shared_ptr<CubeSphere> pSphere =
 				std::make_shared<CubeSphere>(1, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), i);
 			pSphere->setRelInstanceMMatrix(glm::translate(glm::mat4(1.0f),
-														  glm::vec3(2.0f * i, 2.0f, 0.0f)),
+														  glm::vec3(2.0f * 0, 0.0f, 0.0f)),
 										   0);
 			pScene->addMesh(pSphere);
 			int numVertice = pSphere->getNumVertice();
 			int numFace = pSphere->getNumFace();
 			std::cout << "CubeSphere " << i << ": vertice(" << numVertice
 				<< "), face(" << numFace << ")" << std::endl;
-		}
+		}*/
+
+		glm::mat4 axisM = glm::mat4(1.0f);
+		std::shared_ptr<AxisMesh> axismesh = std::make_shared<AxisMesh>(0.2f, axisM);
+		pScene->addMesh(axismesh);
 	}
 
 	int width = 1440, height = 900;
 	std::shared_ptr<MonitorWindow> monitor =
 		std::make_shared<MonitorWindow>("TestThread1", width, height);
+
+	if (showBall)monitor->setBackgroundColor(glm::vec4(0.0f));
 
 	if (skyboxFolder != "")
 	{
@@ -152,19 +168,20 @@ void TestThread1(std::string sceneeFullPath, std::string skyboxFolder)
 	HL_INTERVAL_START
 		monitor->setScene(pScene);
 	HL_INTERVAL_ENDSTR("monitor.setScene(pScene)");
-	
+
 
 	std::shared_ptr<MonitorManipulator> pMonitorManip =
 		std::make_shared<MonitorManipulator>(monitor);
 	monitor->setManipulator(std::static_pointer_cast<ManipulatorBase>(pMonitorManip));
 	
+	if (0)
 	{
-		/*int faceSide = 50, faceTexSide = 1024;
+		int faceSide = 200, faceTexSide = 1024;
 		std::shared_ptr<OmniCamera> pCamera =
-		std::make_shared<OmniCamera>(faceSide, faceTexSide, width - faceSide *4, 0);*/
-		int minWidth = width * 0.25, minHeight = height * 0.25;
+		std::make_shared<OmniCamera>(faceSide, faceTexSide, width - faceSide *2, 0);
+		/*int minWidth = width * 0.25, minHeight = height * 0.25;
 		std::shared_ptr<Camera> pCamera =
-			std::make_shared<Camera>(minWidth, minHeight, width - minWidth, 0);
+			std::make_shared<Camera>(minWidth, minHeight, width - minWidth, 0);*/
 
 		std::shared_ptr<Camera> pDefaultCamera = monitor->getDefaultCamera();
 		float fovy, aspect, zNear, zFar;
@@ -183,16 +200,17 @@ void TestThread1(std::string sceneeFullPath, std::string skyboxFolder)
 		eye -= up * 0.3f * zNear * zNearAspect;
 		center -= up * 0.3f * zNear * zNearAspect;
 		pCamera->setViewMatrix(eye, center, up);*/
-		pCamera->setViewMatrix(glm::vec3(0.0f, 0.0f, 4.0f),
+		pCamera->setViewMatrix(glm::vec3(0.0f, 0.0f, 1.0f),
 							   glm::vec3(0.0f), 
 							   glm::vec3(0.0f, 1.0f, 0.0f));
 		monitor->addCamera(pCamera);
 
 		glm::mat4 axisM = glm::mat4(1.0f);
-		std::shared_ptr<AxisMesh> axismesh = std::make_shared<AxisMesh>(5.0f, axisM);
+		std::shared_ptr<AxisMesh> axismesh = std::make_shared<AxisMesh>(4.0f, axisM);
 		pScene->addMesh(axismesh);
 	}
 	
+	if (1)
 	{
 		int minWidth = width * 0.25, minHeight = height * 0.25;
 		std::shared_ptr<Camera> pCamera =
@@ -208,17 +226,18 @@ void TestThread1(std::string sceneeFullPath, std::string skyboxFolder)
 		monitor->addCamera(pCamera);
 	}
 
-	
-
 	monitor->run();
 }
 
 int main(int argc, char *argv[])
 {
 	//..\..\3DModels\Drone0001\Drone166.lws
+
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\nanosuit\\nanosuit.obj";
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Drone0003\\drone.obj";
-	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\City0001\\The-City.obj";
+	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\City0001\\The-City.obj";
+	std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Hall0002\\RE Dining room\\RE dining room.obj";
+	//std::string fileFullPath = "D:\\Funny-Works\\Academic-Codes\\SLAM\\MultiCol-SLAM\\indoor_dynamic\\pointCloud.ply";
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\ttl5ylhi9gjk-sofa\\trail.obj";
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\Hall0003\\hall\\hall.obj";
 	//std::string fileFullPath = "D:\\Funny-Works\\PlayWorks\\OpenGL\\3DModels\\citydetail-obj\\citydetail.obj";
